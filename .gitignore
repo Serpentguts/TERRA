@@ -1,0 +1,6 @@
+node_modules/
+.browser-cache/
+.server-test.*
+__pycache__/
+venv/
+.venv/
