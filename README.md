@@ -9,3 +9,4 @@ The first version will focus on capturing an observation with a photo, notes, an
 
 ## Status
 Early prototype — not yet connected to iNaturalist or a scientific review service.
+Add TERRA README
