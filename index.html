@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#214c3c">
+  <title>TERRA · Your field journal</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="TERRA home"><span class="brand-mark" aria-hidden="true">❧</span> TERRA</a>
+    <span class="header-note">A little closer to nature.</span>
+  </header>
+  <main id="main">
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">YOUR PERSONAL FIELD JOURNAL</p>
+      <h1 id="page-title">Small discoveries.<br>A growing connection.</h1>
+      <p>Notice a leaf, a mushroom, something new. Give your observations a place to take root.</p>
+      <div class="local-badge"><span aria-hidden="true">●</span> Browser-only · No account needed</div>
+    </section>
+    <aside class="privacy-note" aria-labelledby="privacy-title">
+      <span class="note-icon" aria-hidden="true">↳</span>
+      <div><strong id="privacy-title">Your journal stays with you.</strong>
+      <p>Saved only in this browser on this device. Nothing is synced, backed up, or submitted to iNaturalist. Clearing browser data can erase your journal—export a copy to keep it.</p></div>
+    </aside>
+    <div class="journal-layout">
+      <section class="panel" aria-labelledby="form-title">
+        <div class="section-heading"><span class="step" aria-hidden="true">01</span><div><h2 id="form-title">Record a discovery</h2><p>You don’t need to know its name to notice it.</p></div></div>
+        <noscript><p class="error">JavaScript is needed to save observations. Enable it in your browser to use this journal.</p></noscript>
+        <form id="observation-form">
+          <fieldset><legend>What did you find?</legend>
+            <div class="type-options">
+              <label><input type="radio" name="type" value="plant" checked> <span>Plant</span></label>
+              <label><input type="radio" name="type" value="fungus"> <span>Fungus</span></label>
+              <label><input type="radio" name="type" value="other"> <span>Other</span></label>
+            </div>
+          </fieldset>
+          <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Common dandelion" aria-describedby="name-help"><small id="name-help">Not sure? Leave it blank to save as “Unknown”.</small></div>
+          <div class="field"><label for="date">Observation date</label><input id="date" name="date" type="date" required></div>
+          <div class="field"><label for="notes">Field notes <span class="optional">(optional)</span></label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Colors, textures, habitat… what caught your eye?" aria-describedby="notes-help"></textarea><small id="notes-help">Avoid sensitive details or exact locations in names and notes.</small></div>
+          <div class="field"><label for="photo">Take a closer look <span class="optional">(optional)</span></label><input id="photo" type="file" accept="image/*" aria-describedby="photo-help"><small id="photo-help">Image preview only, up to 10 MB. Images are never uploaded, saved, or included in exports.</small><p id="photo-error" class="error" role="alert" hidden></p><div id="preview-wrap" hidden><img id="photo-preview" alt="Preview of your selected observation image"><button id="remove-photo" class="text-button" type="button">Remove preview</button></div></div>
+          <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">A preference only—not actual location storage. TERRA never requests your location or saves coordinates, whatever you choose.</small></div>
+          <p id="form-error" class="error" role="alert" hidden></p>
+          <button id="save-button" class="primary-button" type="submit">Save observation <span aria-hidden="true">↗</span></button>
+          <p class="form-footer">Just for your journal. No uploads, no sharing.</p>
+        </form>
+      </section>
+      <section class="saved-section" aria-labelledby="saved-title">
+        <div class="saved-heading"><div><p class="eyebrow">THE THINGS YOU NOTICED</p><h2 id="saved-title">Your observations <span id="count" class="count">0</span></h2></div><button id="export-button" class="secondary-button" type="button" disabled>Export JSON <span aria-hidden="true">↓</span></button></div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <p id="storage-error" class="error" role="alert" hidden></p>
+        <div id="empty-state" class="empty-state"><div class="empty-illustration" aria-hidden="true">❧</div><h3>Every journal starts with a first find.</h3><p>Add an observation and it will appear here.<br>There’s a whole world worth noticing.</p><span class="empty-caption">LOOK CLOSELY. START SMALL.</span></div>
+        <ul id="observation-list" class="observation-list" aria-label="Saved observations"></ul>
+      </section>
+    </div>
+    <footer> TERRA <span aria-hidden="true">/</span> A space for curiosity, not a species identification service.</footer>
+  </main>
+</body>
+</html>
