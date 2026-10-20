@@ -44,7 +44,7 @@
           <div class="field"><label for="photo">Take a closer look <span class="optional">(optional)</span></label><input id="photo" type="file" accept="image/*" aria-describedby="photo-help"><small id="photo-help">Image preview only, up to 10 MB. Images are never uploaded, saved, or included in exports.</small><p id="photo-error" class="error" role="alert" hidden></p><div id="preview-wrap" hidden><img id="photo-preview" alt="Preview of your selected observation image"><button id="remove-photo" class="text-button" type="button">Remove preview</button></div></div>
           <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">A preference only—not actual location storage. TERRA never requests your location or saves coordinates, whatever you choose.</small></div>
           <p id="form-error" class="error" role="alert" hidden></p>
-          <button id="save-button" class="primary-button" type="submit">Save observation <span aria-hidden="true">↗</span></button>
+          <button id="save-button" class="primary-button" type="submit" disabled>Save observation <span aria-hidden="true">↗</span></button>
           <p class="form-footer">Just for your journal. No uploads, no sharing.</p>
         </form>
       </section>
