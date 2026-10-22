@@ -15,6 +15,16 @@ const photoInput = document.querySelector("#photo");
 const preview = document.querySelector("#photo-preview");
 const previewWrap = document.querySelector("#preview-wrap");
 const photoError = document.querySelector("#photo-error");
+const importFile = document.querySelector("#import-file");
+const importPreview = document.querySelector("#import-preview");
+const importSummary = document.querySelector("#import-summary");
+const importRecords = document.querySelector("#import-records");
+const importError = document.querySelector("#import-error");
+const importStatus = document.querySelector("#import-status");
+const confirmImport = document.querySelector("#confirm-import");
+const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+let pendingImport = null;
+let importGeneration = 0;
 let observations = [];
 let storageReady = false;
 let previewUrl = null;
@@ -31,9 +41,11 @@ function validDate(value) {
 }
 
 function validObservation(item) {
-  return item && typeof item === "object" && typeof item.id === "string" && item.id.length > 0 &&
-    Object.hasOwn(categories, item.type) && Object.hasOwn(privacyLabels, item.privacy) &&
-    typeof item.name === "string" && item.name.length > 0 && item.name.length <= 120 &&
+  return item && typeof item === "object" && !Array.isArray(item) &&
+    typeof item.id === "string" && item.id.trim().length > 0 &&
+    typeof item.type === "string" && Object.hasOwn(categories, item.type) &&
+    typeof item.privacy === "string" && Object.hasOwn(privacyLabels, item.privacy) &&
+    typeof item.name === "string" && item.name.trim().length > 0 && item.name.length <= 120 &&
     typeof item.notes === "string" && item.notes.length <= 3000 && validDate(item.date);
 }
 
@@ -66,14 +78,14 @@ function load() {
   render();
 }
 
-function persist(next) {
+function persist(next, errorElement = formError) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     observations = next;
-    showError(formError, "");
+    showError(errorElement, "");
     return true;
   } catch {
-    showError(formError, "This change could not be saved. Browser storage may be full or blocked. Your form and saved observations have been kept. Export a backup, check storage permissions, and try again.");
+    showError(errorElement, "This change could not be saved. Browser storage may be full or blocked. Your form and saved observations have been kept. Export a backup, check storage permissions, and try again.");
     return false;
   }
 }
@@ -90,6 +102,8 @@ function render() {
   document.querySelector("#count").textContent = String(observations.length);
   document.querySelector("#empty-state").hidden = observations.length > 0 || !storageReady;
   exportButton.disabled = !storageReady || observations.length === 0;
+  importFile.disabled = !storageReady;
+  confirmImport.disabled = !storageReady || !pendingImport || pendingImport.additions.length === 0;
   for (const observation of [...observations].sort((a, b) => b.date.localeCompare(a.date))) {
     const card = element("li", "observation-card");
     const meta = element("div", "card-meta");
@@ -195,6 +209,123 @@ exportButton.addEventListener("click", () => {
   } catch {
     showError(storageError, "The export could not be created. Your saved observations have not changed. Please try again.");
   }
+});
+
+// Restore only the app's versioned export, never arbitrary arrays or partial files.
+function parseImport(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("This file is not valid JSON. Choose an unchanged TERRA JSON export.");
+  }
+  if (!data || Array.isArray(data) || data.format !== "terra-observations" || data.version !== 1 ||
+      typeof data.exportedAt !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(data.exportedAt) ||
+      !Number.isFinite(Date.parse(data.exportedAt)) || !Array.isArray(data.observations)) {
+    throw new Error("This is not a supported TERRA version-1 export. Nothing was imported.");
+  }
+  // Validate even records that will be skipped as duplicates, before any write.
+  const invalid = data.observations.findIndex(item => !validObservation(item));
+  if (invalid !== -1) {
+    throw new Error(`Observation ${invalid + 1} has invalid or missing fields. The whole file was rejected; nothing was imported.`);
+  }
+  return data.observations.map(({ id, type, name, notes, date, privacy }) => ({ id, type, name, notes, date, privacy }));
+}
+
+function resetImport() {
+  importGeneration += 1; // Ignore reads from an older selection or a cancelled preview.
+  pendingImport = null;
+  importFile.value = "";
+  importPreview.hidden = true;
+  importRecords.replaceChildren();
+  confirmImport.disabled = true;
+}
+
+function previewImport(records) {
+  const seen = new Set(observations.map(item => item.id));
+  const additions = [];
+  const rows = records.map(record => {
+    const duplicate = seen.has(record.id);
+    seen.add(record.id);
+    if (!duplicate) additions.push(record);
+    return { record, duplicate };
+  });
+  pendingImport = { records, additions, snapshot: JSON.stringify(observations) };
+  const summary = `${records.length} valid records: ${additions.length} to add; ${records.length - additions.length} duplicate IDs to skip. Existing observations will not be replaced.`;
+  importSummary.textContent = summary;
+  importStatus.textContent = `Preview ready. ${summary}`;
+  importRecords.replaceChildren();
+  // Bound preview DOM size even for large backups; all records are validated.
+  for (const { record, duplicate } of rows.slice(0, 20)) {
+    importRecords.append(element("li", "", `${duplicate ? "Skip duplicate" : "Add"}: ${record.name} · ${record.date} · ${categories[record.type]}`));
+  }
+  if (rows.length > 20) importRecords.append(element("li", "", `Showing the first 20 of ${rows.length} records.`));
+  importPreview.hidden = false;
+  confirmImport.disabled = !storageReady || additions.length === 0;
+}
+
+importFile.addEventListener("change", async () => {
+  const file = importFile.files[0];
+  resetImport();
+  showError(importError, "");
+  importStatus.textContent = "";
+  if (!file) return;
+  const generation = importGeneration;
+  try {
+    if (!/\.json$/i.test(file.name) || !["", "application/json", "text/json", "application/octet-stream"].includes(file.type)) {
+      throw new Error("Choose a .json file exported by TERRA.");
+    }
+    if (file.size === 0 || file.size > MAX_IMPORT_BYTES) {
+      throw new Error("Choose a non-empty JSON file no larger than 5 MB. Nothing was imported.");
+    }
+    let text;
+    try {
+      text = await file.text();
+    } catch {
+      throw new Error("This file could not be read. Select the original backup and try again.");
+    }
+    if (generation !== importGeneration) return;
+    const records = parseImport(text);
+    load();
+    if (!storageReady) throw new Error("Restore is paused because the current journal cannot be read. Existing browser data has not been changed. Check storage permissions and reload; do not clear site data.");
+    previewImport(records);
+  } catch (error) {
+    if (generation !== importGeneration) return;
+    showError(importError, error.message);
+  }
+});
+
+document.querySelector("#cancel-import").addEventListener("click", () => {
+  resetImport();
+  showError(importError, "");
+  importStatus.textContent = "Restore cancelled. No observations were imported.";
+  importFile.focus();
+});
+
+confirmImport.addEventListener("click", () => {
+  if (!pendingImport) return;
+  showError(importError, "");
+  // Re-read immediately before merging; never overwrite records added since preview.
+  load();
+  if (!storageReady) {
+    showError(importError, "Restore paused: the current journal cannot be read. Nothing was imported. Do not clear browser data.");
+    return;
+  }
+  if (JSON.stringify(observations) !== pendingImport.snapshot) {
+    previewImport(pendingImport.records);
+    importStatus.textContent = `Your journal changed. Review the updated preview and confirm again. ${importSummary.textContent}`;
+    return;
+  }
+  const { additions, records } = pendingImport;
+  if (additions.length === 0) return;
+  if (!persist([...additions, ...observations], importError)) {
+    importStatus.textContent = "Restore was not saved. Your previous observations and this preview are unchanged; you can retry.";
+    return;
+  }
+  resetImport();
+  render();
+  importStatus.textContent = `Restore complete: added ${additions.length} observations; skipped ${records.length - additions.length} duplicate IDs. Existing observations were not replaced.`;
+  importFile.focus();
 });
 
 window.addEventListener("storage", event => {

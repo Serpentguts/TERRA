@@ -1,6 +1,6 @@
 {
   "name": "terra-observation-logger",
-  "description": "A beginner-friendly, browser-only nature observation journal with local saving, privacy preferences, image previews, and JSON export.",
+  "description": "A browser-only nature observation journal with local saving, privacy preferences, image previews, JSON export, and validated, previewed, non-destructive JSON restore.",
   "type": "app",
   "entrypoint": "index.html",
   "created": "2026-10-20"
