@@ -55,6 +55,7 @@ async function testRestore(page, key, exported) {
     '{broken', 'null', '[]', '{}',
     { ...wrapper([]), format: 'other' }, { ...wrapper([]), version: 2 },
     { ...wrapper([]), version: '1' }, { ...wrapper([]), exportedAt: 'not-a-date' },
+    { ...wrapper([]), exportedAt: undefined }, { ...wrapper([]), exportedAt: '2025-02-29T12:00:00.000Z' },
     { ...wrapper([]), observations: {} },
     wrapper([record, null]), wrapper([record, []]),
     ...[
@@ -95,7 +96,23 @@ async function testRestore(page, key, exported) {
   assert.match(await page.locator('#import-error').textContent(), /could not be read/);
   await page.evaluate(() => { File.prototype.text = window.originalFileText; });
 
-  // Bound the DOM preview but import all validated entries.
+  // Replacing a pending selection cannot resurrect its asynchronously read preview.
+  await page.evaluate(() => {
+    File.prototype.text = function () {
+      return new Promise(resolve => { window.finishOldRead = () => window.originalFileText.call(this).then(resolve); });
+    };
+  });
+  await page.setInputFiles('#import-file', { name: 'slow.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(wrapper([record]))) });
+  await choose('not-json', 'wrong.txt', 'text/plain');
+  await page.evaluate(async () => {
+    File.prototype.text = window.originalFileText;
+    await window.finishOldRead();
+  });
+  assert.equal(await page.locator('#import-preview').isVisible(), false);
+  assert.equal(await page.locator('#confirm-import').isDisabled(), true);
+  assert.match(await page.locator('#import-error').textContent(), /\.json/);
+
+  // Bound the DOM preview even when more entries are validated.
   const many = Array.from({ length: 25 }, (_, i) => ({ ...record, id: `many-${i}` }));
   await choose(wrapper(many));
   assert.equal(await page.locator('#import-records li').count(), 21);
@@ -105,6 +122,7 @@ async function testRestore(page, key, exported) {
 
   // Quota and generic write failures leave bytes, rendered records, and retry preview intact.
   const retryRecord = { ...record, id: 'retry-after-quota' };
+  await page.fill('#name', 'Keep this restore-time draft');
   await choose(wrapper([retryRecord]));
   const renderedCount = await page.locator('.observation-card').count();
   for (const errorName of ['QuotaExceededError', 'SecurityError']) {
@@ -115,6 +133,7 @@ async function testRestore(page, key, exported) {
     await page.click('#confirm-import');
     assert.equal(await raw(), protectedRaw);
     assert.equal(await page.locator('.observation-card').count(), renderedCount);
+    assert.equal(await page.locator('#name').inputValue(), 'Keep this restore-time draft');
     assert.equal(await page.locator('#import-preview').isVisible(), true);
     assert.equal(await page.locator('#confirm-import').isEnabled(), true);
     assert.match(await page.locator('#import-error').textContent(), /could not be saved/);
@@ -163,6 +182,16 @@ async function testRestore(page, key, exported) {
   assert.equal(await page.getByLabel('Choose a TERRA JSON export', { exact: true }).count(), 1);
   assert.equal(await page.locator('#import-status').getAttribute('role'), 'status');
   assert.equal(await page.locator('#import-error').getAttribute('role'), 'alert');
+
+  // Fresh-profile recovery: importing into an empty journal restores the full backup.
+  await page.evaluate(k => localStorage.removeItem(k), key);
+  await page.reload();
+  await choose(exported);
+  assert.equal(await raw(), null);
+  await page.click('#confirm-import');
+  assert.deepEqual(await stored(), exported.observations);
+  await page.reload();
+  assert.equal(await page.locator('.observation-card').count(), exported.observations.length);
 }
 
 

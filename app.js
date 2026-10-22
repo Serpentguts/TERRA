@@ -72,7 +72,7 @@ function load() {
     showError(storageError, "");
   } catch {
     storageReady = false;
-    showError(storageError, "Your saved journal could not be read. Browser storage may be blocked or the saved data may be damaged. Saving and deletion are paused to protect existing data. Do not clear browser data; check storage permissions and reload.");
+    showError(storageError, "Your saved journal could not be read. Browser storage may be blocked or the saved data may be damaged. Saving, deletion, and restore are paused to protect existing data. Do not clear browser data; check storage permissions and reload.");
   }
   saveButton.disabled = !storageReady;
   render();
@@ -220,8 +220,9 @@ function parseImport(text) {
     throw new Error("This file is not valid JSON. Choose an unchanged TERRA JSON export.");
   }
   if (!data || Array.isArray(data) || data.format !== "terra-observations" || data.version !== 1 ||
-      typeof data.exportedAt !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(data.exportedAt) ||
-      !Number.isFinite(Date.parse(data.exportedAt)) || !Array.isArray(data.observations)) {
+      typeof data.exportedAt !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(data.exportedAt) ||
+      !Number.isFinite(Date.parse(data.exportedAt)) || new Date(data.exportedAt).toISOString() !== data.exportedAt ||
+      !Array.isArray(data.observations)) {
     throw new Error("This is not a supported TERRA version-1 export. Nothing was imported.");
   }
   // Validate even records that will be skipped as duplicates, before any write.
