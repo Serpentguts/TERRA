@@ -38,14 +38,22 @@
               <label><input type="radio" name="type" value="other"> <span>Other</span></label>
             </div>
           </fieldset>
-          <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Common dandelion" aria-describedby="name-help"><small id="name-help">Not sure? Leave it blank to save as “Unknown”.</small></div>
-          <div class="field"><label for="date">Observation date</label><input id="date" name="date" type="date" required></div>
+          <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label>
+            <input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help">
+            <ul id="name-suggestions" class="name-suggestions" role="listbox" aria-label="Starter species suggestions and custom name" hidden></ul>
+            <small id="name-help">Two local starter examples, not a taxonomy database or identification. Type a prefix; use ↑/↓ and Enter to choose, Escape to close, or keep your own name. Blank saves as “Unknown”.</small>
+            <span id="name-status" class="sr-only" role="status" aria-live="polite"></span>
+          </div>
+          <div class="field"><label for="date">Observation date</label><input id="date" name="date" type="text" required maxlength="10" placeholder="YYYY-MM-DD" aria-describedby="date-help"><small id="date-help">Type YYYY-MM-DD (year 0001–9999), or use the calendar below. Future dates are allowed.</small>
+            <label for="date-picker">Choose observation date with calendar</label><input id="date-picker" type="date" min="0001-01-01" max="9999-12-31" aria-describedby="date-help">
+          </div>
           <div class="field"><label for="notes">Field notes <span class="optional">(optional)</span></label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Colors, textures, habitat… what caught your eye?" aria-describedby="notes-help"></textarea><small id="notes-help">Avoid sensitive details or exact locations in names and notes.</small></div>
           <div class="field"><label for="photo">Take a closer look <span class="optional">(optional)</span></label><input id="photo" type="file" accept="image/*" aria-describedby="photo-help"><small id="photo-help">Image preview only, up to 10 MB. Images are never uploaded, saved, or included in exports.</small><p id="photo-error" class="error" role="alert" hidden></p><div id="preview-wrap" hidden><img id="photo-preview" alt="Preview of your selected observation image"><button id="remove-photo" class="text-button" type="button">Remove preview</button></div></div>
           <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">A preference only—not actual location storage. TERRA never requests your location or saves coordinates, whatever you choose.</small></div>
           <p id="form-error" class="error" role="alert" hidden></p>
-          <button id="save-button" class="primary-button" type="submit" disabled>Save observation <span aria-hidden="true">↗</span></button>
-          <p class="form-footer">Just for your journal. No uploads, no sharing.</p>
+          <button id="save-button" class="primary-button" type="submit" disabled>Save to local journal <span aria-hidden="true">↗</span></button>
+          <p class="form-footer">Local journal first. No uploads, no sharing.</p>
+          <p class="integration-note">iNaturalist publishing is a future integration only: review your saved observation and privacy, then explicitly approve publishing. No connection or publishing is available now.</p>
         </form>
       </section>
       <section class="saved-section" aria-labelledby="saved-title">
