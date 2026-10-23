@@ -7,7 +7,7 @@ const fs = require('node:fs/promises');
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
   try {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true, hasTouch: true });
     const page = await context.newPage();
     const errors = [];
     const requests = [];
@@ -74,7 +74,7 @@ const fs = require('node:fs/promises');
     await page.click('#save-button');
     await name.fill('My unlisted organism');
     assert.equal(await suggestionList.getByRole('option').count(), 1);
-    await suggestionList.getByRole('option').click();
+    await suggestionList.getByRole('option').tap();
     await page.click('#save-button');
     const featureRecords = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key);
     assert.deepEqual(featureRecords.map(item => item.name), [
@@ -199,6 +199,12 @@ const fs = require('node:fs/promises');
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 850 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `overflow at ${width}`);
+      await name.fill('Trich');
+      assert.equal(await page.locator('#name-suggestions').isVisible(), true);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `open suggestions overflow at ${width}`);
+      await name.fill('x'.repeat(120));
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `custom name overflow at ${width}`);
+      await name.press('Escape');
     }
     assert.equal(await page.getByLabel('Observation date', { exact: true }).count(), 1);
     assert.equal(await page.getByLabel('Location privacy preference', { exact: true }).count(), 1);
