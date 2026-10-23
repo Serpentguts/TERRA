@@ -90,6 +90,10 @@ h3 { font: 20px/1.4 Georgia, serif; margin-bottom: 12px; }
 .card-bottom small { margin: 0; }
 .text-button { background: transparent; border: 0; text-decoration: underline; text-underline-offset: 3px; font-size: 11px; color: #705443; padding: 5px; }
 .error { color: #8b3028; background: #fcf0ed; border: 1px solid #e8c4bb; padding: 12px; border-radius: 5px; font-size: 12px; overflow-wrap: anywhere; }
+summary { cursor: pointer; padding: 10px 0; font-size: 13px; font-weight: 650; }
+#discovery-images { font-size: 12px; overflow-wrap: anywhere; }
+#discovery-location { border-top: 1px solid var(--line); padding-top: 16px; }
+.identification-panel .secondary-button { white-space: normal; }
 .identification-panel { margin-bottom: 32px; }
 .identify-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .identify-heading h2 { font-size: 28px; }
