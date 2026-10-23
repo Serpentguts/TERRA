@@ -60,6 +60,17 @@
         <div class="saved-heading"><div><p class="eyebrow">THE THINGS YOU NOTICED</p><h2 id="saved-title">Your observations <span id="count" class="count">0</span></h2></div><button id="export-button" class="secondary-button" type="button" disabled>Export JSON <span aria-hidden="true">↓</span></button></div>
         <p id="status" class="status" role="status" aria-live="polite"></p>
         <p id="storage-error" class="error" role="alert" hidden></p>
+        <section class="restore-panel" aria-labelledby="restore-title">
+          <h3 id="restore-title">Restore a JSON backup</h3>
+          <div class="field"><label for="import-file">Choose a TERRA JSON export</label><input id="import-file" type="file" accept=".json,application/json" aria-describedby="import-help" disabled><small id="import-help">Up to 5 MB. Preview first, then confirm. Duplicate IDs are skipped, never overwritten. Files stay in your browser.</small></div>
+          <p id="import-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <p id="import-error" class="error" role="alert" hidden></p>
+          <div id="import-preview" hidden>
+            <p id="import-summary"></p>
+            <ul id="import-records" aria-label="Restore preview (first 20 records)"></ul>
+            <div class="restore-actions"><button id="confirm-import" class="secondary-button" type="button" disabled>Confirm merge</button><button id="cancel-import" class="text-button" type="button">Cancel restore</button></div>
+          </div>
+        </section>
         <div id="empty-state" class="empty-state"><div class="empty-illustration" aria-hidden="true">❧</div><h3>Every journal starts with a first find.</h3><p>Add an observation and it will appear here.<br>There’s a whole world worth noticing.</p><span class="empty-caption">LOOK CLOSELY. START SMALL.</span></div>
         <ul id="observation-list" class="observation-list" aria-label="Saved observations"></ul>
       </section>

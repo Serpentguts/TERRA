@@ -60,6 +60,13 @@ input::file-selector-button { border: 0; border-radius: 3px; background: #edf0e6
 .count { font: 11px system-ui, sans-serif; display: inline-block; border-radius: 20px; padding: 2px 8px; background: #e8ecdf; vertical-align: middle; margin-left: 5px; }
 .secondary-button { border: 1px solid #ccd5c8; background: transparent; border-radius: 5px; font-size: 11px; padding: 8px 10px; white-space: nowrap; color: var(--green); }
 .secondary-button:hover:not(:disabled) { background: #e8ecdf; }
+.restore-panel { margin-top: 18px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.restore-panel h3 { font-size: 18px; }
+.restore-panel .field { margin-bottom: 0; }
+#import-preview { font-size: 12px; overflow-wrap: anywhere; }
+#import-summary { margin: 12px 0; }
+#import-records { max-height: 240px; overflow-y: auto; padding-left: 20px; }
+.restore-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .status { color: var(--green); font-size: 12px; margin: 12px 0; }
 .status:empty { margin: 0; }
 .empty-state { text-align: center; padding: 68px 20px; border: 1px dashed #cfd7c7; border-radius: 8px; margin-top: 22px; }
