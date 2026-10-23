@@ -108,5 +108,15 @@ This fix starts from main `2df0d85`. PRs #1–#3 were already merged and no open
 
 Playwright and Chromium are test tools only; the app itself needs no npm dependencies or external network requests. The check uses a fresh, isolated browser profile and tests both starter names, prefix/substring/case matching, per-keystroke filtering and deletion, no-match messaging, custom names, keyboard/mouse/touch selection without submission, dismissal, accessible labels/live status/active descendants, dates, local saving, and JSON export/restore validation, duplicate handling, quota errors and retry. It also checks mobile widths and blocks external requests and network APIs. Firefox/Safari and a **manual screen-reader audit remain necessary**; automated accessibility checks do not replace assistive-technology review.
 
-For manual review, type `Trich` (two matches), `Trichoc` (one), `RICH` (two), `harz` (one), and `unlisted organism` (no matches). Delete characters and confirm the list expands again. Select with arrows/Enter, click, and tap: the name fills but the journal count must not change until **Save to local journal**. Check Escape/Tab preserve arbitrary text and a blank closes the list. Test with a screen reader and at narrow mobile widths. Also restore a JSON backup through preview/confirm to verify the existing merged feature remains available.
+### Manual review: Species suggestions and typed dates
+
+Type `Trich` (two matches), `Trichoc` (one), `RICH` (two), `harz` (one), and `unlisted organism` (no matches). Delete characters and confirm the list expands again. Select with arrows/Enter, click, and tap: the name fills but the journal count must not change until **Save to local journal**. Check Escape/Tab preserve arbitrary text and a blank closes the list. Test with a screen reader and at narrow mobile widths. Type `2024-02-29` (valid) and `2025-02-29` (invalid); select a calendar date and verify the typed date updates. Confirm the local-only save notice.
+
+### Manual review: JSON export and restore
+
+Use Tab/Shift+Tab and the skip link. Save an empty name, reload to verify persistence, preview an image, then save/reload to verify the photo is not retained. Cancel and confirm deletion, and inspect exported JSON. Restore a backup once to preview duplicates with no additions, cancel, delete one entry, then restore again and confirm recovery. Try invalid JSON and verify nothing changes. Resize to a narrow mobile viewport.
+
+### Validation of this fix
+
+The full Chromium suite, JavaScript syntax checks, manifest JSON parsing, Flask route checks, and `git diff --check` passed. The workspace lacked Chromium libraries/fonts, so development-only dependencies were extracted under ignored `.browser-cache` and the run used local `LD_LIBRARY_PATH` and `FONTCONFIG_FILE`; this adds no app dependencies. Firefox/Safari and manual assistive-technology review remain untested. No merge or deployment was performed.
 

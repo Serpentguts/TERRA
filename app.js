@@ -61,7 +61,7 @@ function closeSuggestions() {
   nameInput.setAttribute("aria-expanded", "false");
   nameInput.removeAttribute("aria-activedescendant");
   activeChoice = -1;
-  nameStatus.textContent = "";
+  // Keep the visible match status on blur: removing it would move pointer targets mid-click.
 }
 
 function chooseName(index) {
@@ -74,6 +74,7 @@ function chooseName(index) {
 function openSuggestions() {
   nameSuggestions.replaceChildren();
   closeSuggestions();
+  nameStatus.textContent = "";
   if (!nameInput.value.trim()) return;
   nameChoices = speciesSuggestions(nameInput.value);
   const labels = [...nameChoices, `Keep “${nameInput.value.trim()}” as my manual name`];
@@ -277,6 +278,7 @@ form.addEventListener("submit", event => {
   dateInput.value = today();
   syncDate();
   closeSuggestions();
+  nameStatus.textContent = "";
   clearPreview();
   render();
   status.textContent = `Saved “${observation.name}” to the local journal in this browser. Nothing was published to iNaturalist. Image previews are not saved.`;
