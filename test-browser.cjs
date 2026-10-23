@@ -239,6 +239,33 @@ async function testRestore(page, key, exported) {
     // Starter suggestions match any part of every local name, never forced replacements.
     const name = page.getByRole('combobox', { name: 'Species or common name' });
     const suggestionList = page.getByRole('listbox', { name: 'Starter species suggestions and custom name' });
+    assert.deepEqual(errors, []);
+    assert.equal(await page.locator('#save-button').isEnabled(), true);
+    const speciesOptions = () => suggestionList.getByRole('option').allTextContents().then(items => items.slice(0, -1));
+    const both = ['Trichocereus bridgesii', 'Trichoderma harzianum'];
+    // Real typing filters every keystroke; deleting broadens the list again.
+    await name.fill('');
+    for (const letter of 'Trich') {
+      await name.pressSequentially(letter);
+      assert.deepEqual(await speciesOptions(), both);
+    }
+    await name.pressSequentially('oc');
+    assert.deepEqual(await speciesOptions(), [both[0]]);
+    await name.press('Backspace');
+    assert.deepEqual(await speciesOptions(), both);
+    await name.fill('RICH');
+    assert.deepEqual(await speciesOptions(), both);
+    assert.equal(await name.getAttribute('aria-controls'), await suggestionList.getAttribute('id'));
+    assert.equal(await name.getAttribute('aria-autocomplete'), 'list');
+    assert.equal(await page.locator('#name-status').getAttribute('role'), 'status');
+    assert.equal(await page.locator('#name-status').getAttribute('aria-live'), 'polite');
+    assert.match(await page.locator('#name-help').textContent(), /not all real species/);
+    await name.fill('harz');
+    await suggestionList.getByRole('option', { name: both[1], exact: true }).tap();
+    assert.equal(await name.inputValue(), both[1]);
+    assert.equal(await page.locator('.observation-card').count(), 0, 'Touch fills without submitting');
+    assert.equal(await name.evaluate(el => document.activeElement === el), true);
+    assert.equal(await name.getAttribute('aria-expanded'), 'false');
     await name.fill('  tRiCh');
     assert.deepEqual(await suggestionList.getByRole('option').allTextContents(), [
       'Trichocereus bridgesii', 'Trichoderma harzianum', 'Keep “tRiCh” as my manual name'
@@ -257,6 +284,8 @@ async function testRestore(page, key, exported) {
     await name.fill('Trichoc');
     assert.equal(await suggestionList.getByRole('option').count(), 2);
     await suggestionList.getByRole('option', { name: 'Trichocereus bridgesii', exact: true }).click();
+    assert.equal(await name.inputValue(), 'Trichocereus bridgesii');
+    assert.equal(await page.locator('.observation-card').count(), 1, 'Mouse fills without submitting');
     await page.click('#save-button');
     await name.fill('Trich');
     await name.press('ArrowUp'); // Last option is the explicit manual choice.
@@ -265,7 +294,11 @@ async function testRestore(page, key, exported) {
     await page.click('#save-button');
     await name.fill('My unlisted organism');
     assert.equal(await suggestionList.getByRole('option').count(), 1);
+    assert.match(await page.locator('#name-status').textContent(), /No matching starter species/);
+    assert.equal(await page.locator('#name-status').isVisible(), true);
     await suggestionList.getByRole('option').tap();
+    assert.equal(await name.inputValue(), 'My unlisted organism');
+    assert.equal(await page.locator('.observation-card').count(), 3, 'Manual choice does not submit');
     await page.click('#save-button');
     const featureRecords = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key);
     assert.deepEqual(featureRecords.map(item => item.name), [
@@ -294,8 +327,12 @@ async function testRestore(page, key, exported) {
     assert.equal(await name.getAttribute('aria-expanded'), 'false');
     await name.fill('<img src=x onerror="window.injected=true">');
     assert.equal(await page.locator('#name-suggestions img').count(), 0);
+    await name.fill('unlisted manual text');
+    await name.press('Tab');
+    assert.equal(await name.inputValue(), 'unlisted manual text');
     await name.fill('');
     assert.equal(await name.getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.locator('#name-status').textContent(), '');
     // Real keyboard input, invalid calendar days, leap years, bounds, and calendar sync.
     const date = page.getByLabel('Observation date', { exact: true });
     const calendar = page.getByLabel('Choose observation date with calendar', { exact: true });

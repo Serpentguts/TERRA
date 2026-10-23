@@ -60,7 +60,7 @@ function closeSuggestions() {
   nameInput.setAttribute("aria-expanded", "false");
   nameInput.removeAttribute("aria-activedescendant");
   activeChoice = -1;
-  nameStatus.textContent = "";
+  // Keep visible status on blur so pointer targets do not move mid-click.
 }
 
 function chooseName(index) {
@@ -73,6 +73,7 @@ function chooseName(index) {
 function openSuggestions() {
   nameSuggestions.replaceChildren();
   closeSuggestions();
+  nameStatus.textContent = "";
   if (!nameInput.value.trim()) return;
   nameChoices = speciesSuggestions(nameInput.value);
   const labels = [...nameChoices, `Keep “${nameInput.value.trim()}” as my manual name`];
@@ -82,13 +83,15 @@ function openSuggestions() {
     option.setAttribute("role", "option");
     option.setAttribute("aria-selected", "false");
     // Keep DOM focus in the combobox while pointing at an option.
-    option.addEventListener("mousedown", event => event.preventDefault());
+    option.addEventListener("pointerdown", event => event.preventDefault());
     option.addEventListener("click", () => chooseName(index));
     nameSuggestions.append(option);
   });
   nameSuggestions.hidden = false;
   nameInput.setAttribute("aria-expanded", "true");
-  nameStatus.textContent = `${nameChoices.length} starter suggestions. Keep your manual name is also available.`;
+  nameStatus.textContent = nameChoices.length
+    ? `${nameChoices.length} matching starter suggestions. You can also keep your manual name.`
+    : "No matching starter species. You can keep your manual name.";
 }
 
 nameInput.addEventListener("input", openSuggestions);
@@ -284,6 +287,7 @@ form.addEventListener("submit", event => {
   dateInput.value = today();
   syncDate();
   closeSuggestions();
+  nameStatus.textContent = "";
   clearPreview();
   render();
   status.textContent = `Saved “${observation.name}” to the local journal in this browser. Nothing was published to iNaturalist. Image previews are not saved.`;

@@ -113,6 +113,8 @@ These are planning notes only, not claims of access, connections, identification
 
 ## Checks
 
+Coordination note: a concurrent task opened PR #4 while the focused autocomplete task was testing. Its startup/matching fixes overlapped, so additional visible/live no-match feedback, pointer-focus handling, and dynamic/keyboard/mouse/touch/accessibility regressions were consolidated into PR #4. Duplicate PR #5 is superseded; no merge/deployment. The combined full Chromium suite passed, including the integrated date bar and JSON restore. Syntax, manifest, Flask routes, and whitespace checks also pass. Workspace-only Chromium libraries/fonts were extracted into ignored `.browser-cache`, with local `LD_LIBRARY_PATH`/`FONTCONFIG_FILE`; no application dependencies were added.
+
 Basic checks (no browser-test tools needed):
 
 ```sh
@@ -131,8 +133,14 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" npx playwright install chromium
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-browser.cjs
 ```
 
+### Manual review: JSON export and restore
+
 For a manual review, use Tab/Shift+Tab and the skip link, submit an empty name, reload to verify persistence, preview an image then save/reload to verify it is not retained, cancel and confirm deletion, and inspect the exported JSON. Restore it once to preview duplicates (no additions), cancel, then delete one entry and restore again to preview and confirm its recovery. Try an invalid JSON file and verify that nothing changes. Resize to a narrow mobile viewport. No merge or deployment is required to review this feature branch.
 Playwright and Chromium are test tools only; the app itself needs no npm dependencies or external network requests. The check uses a fresh, isolated browser profile and tests both starter names, prefix/substring/case matching, custom names, keyboard selection/dismissal, safe suggestion rendering, one-bar layout, Enter/Space native-picker activation, typed invalid dates and leap days (including century rules), calendar/text input and change synchronization, unchanged date storage, local-only messaging, saving/reloading, Unknown names, safe text rendering, image preview/non-persistence, JSON export/restore round-trips, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, restore write-failure preservation/retry and changed-journal reconfirmation, confirm/cancel deletion, cross-tab updates, corrupt/blocked/full storage, labels, and overflow at 320, 390, 768, and 1280 pixels. Remote requests are blocked and asserted absent; fetch, XMLHttpRequest, WebSocket, EventSource, and sendBeacon calls are trapped and asserted absent across page loads. These checks do not establish behavior for a future integration. The suite has passed in Chromium, including touch selection and open-dropdown mobile overflow checks. Firefox/Safari and a **manual screen-reader audit remain necessary**, especially combobox announcements and native calendar operation.
+
+### Manual review: Species suggestions and typed dates
+
+Type `Trich` (both starter names), `Trichoc` (one), `RICH` (both substring matches), `harz` (one), and an unlisted name (visible no-match feedback with a manual-name option). Results update with each keystroke, replacement/paste, and deletion. Select by arrows/Enter, mouse, and touch; the field fills but the journal count stays unchanged until Save. Check Escape/Tab retain custom text and clearing closes the list. This searches every matching entry in the **two-name starter dataset, not all real species or biodiversity**.
 
 For a manual review, use Tab/Shift+Tab and the skip link. Type `Trich`, navigate with arrows and Enter, reopen with an arrow, dismiss with Escape, and keep an unlisted name. Check that Enter on an active suggestion does not save. Type `2024-02-29` (valid) and `2025-02-29` (invalid), then choose a calendar date and verify the text updates. Confirm local-only save/publishing notices. Submit an empty name, reload to verify persistence, preview an image then save/reload to verify it is not retained, cancel and confirm deletion, and inspect the exported JSON. Resize to a narrow mobile viewport. Review with a screen reader (not yet audited). No merge or deployment is required to review this feature branch.
 
