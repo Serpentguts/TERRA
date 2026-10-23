@@ -36,7 +36,8 @@ legend, .field > label { font-size: 12px; font-weight: 650; margin-bottom: 8px; 
 .type-options label:has(input:checked) { background: #edf2e8; border-color: #68816c; color: var(--green); }
 input[type=radio] { accent-color: var(--green); }
 .field { margin-bottom: 20px; }
-.name-suggestions { list-style: none; margin: 4px 0; padding: 4px; border: 1px solid #68816c; border-radius: 5px; font-size: 13px; overflow-wrap: anywhere; }
+.name-picker { position: relative; }
+.name-suggestions { position: absolute; top: 100%; left: 0; right: 0; z-index: 2; background: #fff; list-style: none; margin: 4px 0; padding: 4px; border: 1px solid #68816c; border-radius: 5px; font-size: 13px; overflow-wrap: anywhere; }
 .name-suggestions [role=option] { padding: 10px; cursor: pointer; }
 .name-suggestions [aria-selected=true], .name-suggestions [role=option]:hover { color: #fff; background: var(--green); }
 #date-picker { margin-top: 4px; }

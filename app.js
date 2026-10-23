@@ -93,7 +93,9 @@ nameInput.addEventListener("keydown", event => {
     if (nameSuggestions.hidden) openSuggestions();
     if (nameSuggestions.hidden) return;
     const count = nameSuggestions.children.length;
-    activeChoice = (activeChoice + (event.key === "ArrowDown" ? 1 : activeChoice === -1 ? 0 : -1) + count) % count;
+    activeChoice = event.key === "ArrowDown"
+      ? (activeChoice + 1) % count
+      : (activeChoice <= 0 ? count - 1 : activeChoice - 1);
     [...nameSuggestions.children].forEach((option, index) => {
       option.setAttribute("aria-selected", String(index === activeChoice));
     });
