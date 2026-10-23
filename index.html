@@ -26,6 +26,39 @@
       <div><strong id="privacy-title">Your journal stays with you.</strong>
       <p>Saved only in this browser on this device. Nothing is synced, backed up, or submitted to iNaturalist. Clearing browser data can erase your journal—export a copy to keep it.</p></div>
     </aside>
+    <section class="panel identification-panel" aria-labelledby="identify-title">
+      <div class="identify-heading"><div><p class="eyebrow">A CLOSER LOOK · LOCAL PROTOTYPE</p><h2 id="identify-title">Explore a photo</h2><p>Practice an identification review, without uploading a thing.</p></div><span class="demo-badge">MOCK · Not real AI</span></div>
+      <p id="identify-privacy" class="identify-notice">Images are not uploaded. Previews, context, and review choices stay in this page only and disappear on reset or reload. Nothing is added to your journal or exports.</p>
+      <noscript><p class="error">Enable JavaScript to use the local photo prototype.</p></noscript>
+      <div class="identify-layout">
+        <form id="identification-form" novalidate aria-describedby="identify-privacy">
+          <div class="field"><label for="identify-group">1. Organism group</label><select id="identify-group" required aria-describedby="identify-error"><option value="">Choose a group…</option><option value="plant">Plant</option><option value="fungus">Fungus / mushroom</option><option value="animal">Insect / animal</option><option value="unsure">Unsure</option></select></div>
+          <div class="field">
+            <label class="same-organism" for="identify-multiple"><input id="identify-multiple" type="checkbox"> Add multiple views of the same organism (optional)</label>
+            <small id="identify-mode-help">One photo is enough. For different organisms, reset and start a separate review. Multiple views must show the same organism.</small>
+          </div>
+          <div class="field"><label for="identify-files">2. Choose local photo(s)</label><input id="identify-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-describedby="identify-file-help identify-mode-help identify-error"><small id="identify-file-help">JPEG, PNG, WebP, GIF, or AVIF · up to 10 MB each · at most 6 views. Choose again to add a view in multi-image mode. Select the photographed part for each preview.</small></div>
+          <ul id="identify-previews" class="identify-previews" aria-label="Temporary photo previews"></ul>
+          <div class="identify-context">
+            <div class="field"><label for="identify-date">Observation date <span class="optional">(optional, not saved)</span></label><input id="identify-date" type="date" aria-describedby="identify-error"></div>
+            <div class="field"><label for="identify-region">Coarse region <span class="optional">(optional, not saved)</span></label><select id="identify-region" aria-describedby="identify-region-help"><option value="">Prefer not to say</option><option>Africa</option><option>Antarctica</option><option>Asia</option><option>Europe</option><option>North America</option><option>Oceania</option><option>South America</option></select><small id="identify-region-help">Broad region only. No GPS, coordinates, address, or photo metadata is read by TERRA. Context does not affect this mock.</small></div>
+          </div>
+          <p id="identify-error" class="error" role="alert" hidden></p>
+          <div class="identify-actions"><button class="primary-button" type="submit">Analyze — show MOCK suggestions <span aria-hidden="true">↗</span></button><button id="identify-reset" class="text-button" type="button">Reset photos &amp; review</button></div>
+        </form>
+        <section class="identify-results" aria-labelledby="identify-results-title">
+          <h3 id="identify-results-title" tabindex="-1">A little curiosity. A careful review.</h3>
+          <p id="identify-status" class="status" role="status" aria-live="polite" aria-atomic="true">Choose a photo and its photographed part to try the demo.</p>
+          <div id="identify-output" hidden>
+            <p class="identify-warning"><strong>Illustrative MOCK suggestions — not an identification.</strong> These fixed examples depend only on your selected group, not the image, part, date, or region. Source: Demo data. Confidence scores are arbitrary illustrations, not calibrated probabilities or evidence of a match.</p>
+            <p id="identify-caveat"></p>
+            <ol id="identify-candidates" class="identify-candidates" aria-label="Illustrative mock candidates"></ol>
+            <div class="identify-review"><h4>Your review · temporary only</h4><p>Accept a demo candidate above, enter your own label, or leave this uncertain. No choice is verified or saved.</p><div class="field"><label for="identify-correction">Your corrected name</label><input id="identify-correction" type="text" maxlength="120" placeholder="Common or scientific name" aria-describedby="identify-review-error"></div><p id="identify-review-error" class="error" role="alert" hidden></p><div class="restore-actions"><button id="identify-correct" class="secondary-button" type="button">Use corrected name</button><button id="identify-uncertain" class="secondary-button" type="button">Leave uncertain</button></div></div>
+            <p id="identify-review-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
+        </section>
+      </div>
+    </section>
     <div class="journal-layout">
       <section class="panel" aria-labelledby="form-title">
         <div class="section-heading"><span class="step" aria-hidden="true">01</span><div><h2 id="form-title">Record a discovery</h2><p>You don’t need to know its name to notice it.</p></div></div>
@@ -84,5 +117,206 @@
     </div>
     <footer> TERRA <span aria-hidden="true">/</span> A space for curiosity, not a species identification service.</footer>
   </main>
+  <script>
+  "use strict";
+  // Isolated, ephemeral prototype: no storage, network, metadata reads, or journal writes.
+  (() => {
+    const $ = id => document.getElementById(id);
+    const form = $("identification-form");
+    const group = $("identify-group");
+    const files = $("identify-files");
+    const multiple = $("identify-multiple");
+    const previews = $("identify-previews");
+    const output = $("identify-output");
+    const status = $("identify-status");
+    const parts = {
+      plant: ["Leaf", "Flower", "Fruit", "Bark", "Whole organism", "Other"],
+      fungus: ["Cap", "Gills / underside", "Stem", "Whole organism", "Other"],
+      animal: ["Dorsal / top", "Ventral / underside", "Wing", "Leg", "Whole organism", "Other"],
+      unsure: ["Whole organism", "Detail / close-up", "Other"]
+    };
+    const demos = {
+      plant: ["Common dandelion (Taraxacum officinale)", "Daisy (Bellis perennis)", "Broadleaf plantain (Plantago major)"],
+      fungus: ["Fly agaric (Amanita muscaria)", "Oyster mushroom (Pleurotus ostreatus)", "Turkey tail (Trametes versicolor)"],
+      animal: ["Seven-spot ladybird (Coccinella septempunctata)", "Monarch butterfly (Danaus plexippus)", "European honey bee (Apis mellifera)"],
+      unsure: ["Unresolved plant — demo label", "Unresolved fungus — demo label", "Unresolved animal — demo label"]
+    };
+    const caveats = {
+      plant: "Look-alike plants may require several features and expert review. Never use this demo to decide whether a plant is edible or medicinal.",
+      fungus: "Mushroom look-alikes can be deadly. Never eat or handle a mushroom based on these examples; seek a qualified local expert.",
+      animal: "Similar animals may need scale, multiple views, or expert examination. Keep a safe distance and do not disturb wildlife for a photo.",
+      unsure: "The organism group is unresolved. These examples are placeholders across groups, not evidence for choosing one. Leaving it uncertain is useful."
+    };
+    let images = [];
+    let nextId = 0;
+    function node(tag, text, className) {
+      const el = document.createElement(tag);
+      if (text !== undefined) el.textContent = text;
+      if (className) el.className = className;
+      return el;
+    }
+    function error(message, target) {
+      form.querySelectorAll("[aria-invalid]").forEach(el => el.removeAttribute("aria-invalid"));
+      $("identify-error").textContent = message;
+      $("identify-error").hidden = !message;
+      if (target) { target.setAttribute("aria-invalid", "true"); target.focus(); }
+    }
+    function invalidate(message = "Inputs changed. Analyze again to review fresh MOCK examples.") {
+      output.hidden = true;
+      $("identify-candidates").replaceChildren();
+      $("identify-review-status").textContent = "";
+      $("identify-correction").value = "";
+      $("identify-correction").removeAttribute("aria-invalid");
+      $("identify-review-error").hidden = true;
+      status.textContent = message;
+    }
+    function release(image) {
+      image.img.onload = null;
+      image.img.onerror = null;
+      image.img.removeAttribute("src");
+      URL.revokeObjectURL(image.url);
+    }
+    function fillParts(image) {
+      image.select.replaceChildren(new Option("Choose photographed part…", ""));
+      for (const part of parts[group.value] || []) image.select.add(new Option(part, part));
+      image.select.disabled = !group.value;
+      image.select.removeAttribute("aria-invalid");
+    }
+    function removeImage(image, focus = true) {
+      release(image);
+      images = images.filter(item => item !== image);
+      image.card.remove();
+      invalidate("Photo removed. Analyze again when ready.");
+      error("");
+      if (focus) files.focus();
+    }
+    group.addEventListener("change", () => {
+      images.forEach(fillParts); // Never carry a plant part into another organism group.
+      group.removeAttribute("aria-invalid");
+      error("");
+      invalidate("Group changed. Choose a photographed part for each image, then analyze.");
+    });
+    multiple.addEventListener("change", () => {
+      if (!multiple.checked && images.length > 1) {
+        multiple.checked = true;
+        error("Remove extra views before switching to a single photo.", multiple);
+        return;
+      }
+      multiple.removeAttribute("aria-invalid");
+      files.multiple = multiple.checked;
+      error("");
+      invalidate();
+    });
+    files.addEventListener("change", () => {
+      const selected = Array.from(files.files);
+      files.value = ""; // Can select the same file again after removal.
+      if (!selected.length) return;
+      const limit = multiple.checked ? 6 : 1;
+      if (images.length + selected.length > limit) {
+        error(multiple.checked ? "Use at most 6 views. Remove a photo before adding more." : "Remove the current photo, or enable multiple views of the same organism.", files);
+        return;
+      }
+      if (selected.some(file => !["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"].includes(file.type) || file.size === 0 || file.size > 10 * 1024 * 1024)) {
+        error("Choose non-empty JPEG, PNG, WebP, GIF, or AVIF images no larger than 10 MB each. This selection was not added.", files);
+        return;
+      }
+      files.removeAttribute("aria-invalid");
+      error("");
+      invalidate("Previews are local only. Choose a photographed part for each view.");
+      for (const file of selected) {
+        const id = ++nextId;
+        const card = node("li", undefined, "identify-photo");
+        const img = node("img");
+        img.alt = `Local preview: ${file.name}`;
+        const name = node("p", file.name, "identify-filename");
+        const label = node("label", "Photographed part");
+        const select = node("select");
+        select.id = `identify-part-${id}`;
+        select.setAttribute("aria-describedby", "identify-error");
+        select.required = true;
+        label.htmlFor = select.id;
+        select.setAttribute("aria-label", `Photographed part for ${file.name}, view ${id}`);
+        const remove = node("button", "Remove photo", "text-button");
+        remove.type = "button";
+        remove.setAttribute("aria-label", `Remove ${file.name}, view ${id}`);
+        const image = { card, img, select, url: URL.createObjectURL(file), ready: false };
+        fillParts(image);
+        select.addEventListener("change", () => { select.removeAttribute("aria-invalid"); error(""); invalidate(); });
+        remove.addEventListener("click", () => removeImage(image));
+        img.onload = () => { image.ready = true; };
+        img.onerror = () => {
+          removeImage(image, false);
+          error("An image could not be decoded and was removed. Try a supported JPEG or PNG.", files);
+        };
+        images.push(image);
+        card.append(img, name, label, select, remove);
+        previews.append(card);
+        img.src = image.url;
+      }
+    });
+    for (const id of ["identify-date", "identify-region"]) {
+      $(id).addEventListener("input", () => { $(id).removeAttribute("aria-invalid"); error(""); invalidate(); });
+    }
+    function review(message) {
+      $("identify-review-error").hidden = true;
+      $("identify-correction").removeAttribute("aria-invalid");
+      $("identify-review-status").textContent = `${message} Temporary review only; not verified and not saved to observations.`;
+    }
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      error("");
+      if (!group.value) { error("Choose an organism group, or Unsure.", group); return; }
+      if (!images.length) { error("Choose at least one photo to try the mock flow. Nothing will be uploaded.", files); return; }
+      if (images.some(image => !image.ready)) { error("Wait for the local previews to load, or remove an unreadable photo.", files); return; }
+      const missing = images.find(image => !image.select.value);
+      if (missing) { error("Choose the photographed part for every image.", missing.select); return; }
+      const date = $("identify-date");
+      const dateValue = date.value;
+      const parsed = new Date(`${dateValue}T12:00:00Z`);
+      if (date.validity.badInput || (dateValue && (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue) || dateValue.startsWith("0000") || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== dateValue))) {
+        error("Enter a valid optional date (year 0001–9999), or clear it.", date); return;
+      }
+      invalidate();
+      $("identify-caveat").textContent = caveats[group.value];
+      demos[group.value].forEach((name, index) => {
+        const card = node("li");
+        const accept = node("button", "Accept demo candidate", "secondary-button");
+        accept.type = "button";
+        accept.setAttribute("aria-label", `Accept demo candidate: ${name}`);
+        accept.addEventListener("click", () => review(`Accepted MOCK candidate: ${name}.`));
+        card.append(node("h4", name), node("p", `Demo data · Illustrative confidence: ${[72, 48, 26][index]}/100 — arbitrary, not a probability.`), accept);
+        $("identify-candidates").append(card);
+      });
+      output.hidden = false;
+      status.textContent = `MOCK examples ready for ${images.length} local photo(s). No image analysis was performed. Review below.`;
+      $("identify-results-title").focus();
+    });
+    $("identify-correct").addEventListener("click", () => {
+      const input = $("identify-correction");
+      const value = input.value.trim();
+      if (!value || value.length > 120) {
+        $("identify-review-error").textContent = "Enter a corrected name (1–120 characters), or leave uncertain.";
+        $("identify-review-error").hidden = false;
+        input.setAttribute("aria-invalid", "true");
+        input.focus();
+        return;
+      }
+      review(`Your corrected label: ${value}.`);
+    });
+    $("identify-uncertain").addEventListener("click", () => review("Left uncertain. No identification chosen."));
+    function reset() {
+      images.forEach(release);
+      images = [];
+      previews.replaceChildren();
+      form.reset();
+      files.multiple = false;
+      form.querySelectorAll("[aria-invalid]").forEach(el => el.removeAttribute("aria-invalid"));
+      error("");
+      invalidate("Photos and review cleared. Nothing was saved or uploaded.");
+    }
+    $("identify-reset").addEventListener("click", () => { reset(); group.focus(); });
+    window.addEventListener("pagehide", reset);
+  })();
+  </script>
 </body>
 </html>
