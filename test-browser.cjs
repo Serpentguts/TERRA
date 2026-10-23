@@ -47,15 +47,16 @@ const fs = require('node:fs/promises');
     }));
     // Starter suggestions are case-insensitive prefixes, never forced replacements.
     const name = page.getByRole('combobox', { name: 'Species or common name' });
+    const suggestionList = page.getByRole('listbox', { name: 'Starter species suggestions and custom name' });
     await name.fill('  tRiCh');
-    assert.deepEqual(await page.getByRole('option').allTextContents(), [
+    assert.deepEqual(await suggestionList.getByRole('option').allTextContents(), [
       'Trichocereus bridgesii', 'Trichoderma harzianum', 'Keep “tRiCh” as my manual name'
     ]);
     assert.equal(await name.getAttribute('aria-expanded'), 'true');
     await name.press('ArrowDown');
     assert.equal(await name.getAttribute('aria-activedescendant'), 'name-option-0');
     await name.press('ArrowDown');
-    assert.equal(await page.getByRole('option', { selected: true }).textContent(), 'Trichoderma harzianum');
+    assert.equal(await suggestionList.getByRole('option', { selected: true }).textContent(), 'Trichoderma harzianum');
     await name.press('Enter');
     assert.equal(await name.inputValue(), 'Trichoderma harzianum');
     assert.equal(await page.locator('.observation-card').count(), 0, 'Enter selects without submitting');
@@ -63,8 +64,8 @@ const fs = require('node:fs/promises');
     assert.equal(await page.locator('.observation-card h3').textContent(), 'Trichoderma harzianum');
     assert.match(await page.locator('#status').textContent(), /local journal.*Nothing was published to iNaturalist/);
     await name.fill('Trichoc');
-    assert.equal(await page.getByRole('option').count(), 2);
-    await page.getByRole('option', { name: 'Trichocereus bridgesii', exact: true }).click();
+    assert.equal(await suggestionList.getByRole('option').count(), 2);
+    await suggestionList.getByRole('option', { name: 'Trichocereus bridgesii', exact: true }).click();
     await page.click('#save-button');
     await name.fill('Trich');
     await name.press('ArrowUp'); // Last option is the explicit manual choice.
@@ -72,15 +73,15 @@ const fs = require('node:fs/promises');
     assert.equal(await name.inputValue(), 'Trich');
     await page.click('#save-button');
     await name.fill('My unlisted organism');
-    assert.equal(await page.getByRole('option').count(), 1);
-    await page.getByRole('option').click();
+    assert.equal(await suggestionList.getByRole('option').count(), 1);
+    await suggestionList.getByRole('option').click();
     await page.click('#save-button');
     const featureRecords = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key);
     assert.deepEqual(featureRecords.map(item => item.name), [
       'My unlisted organism', 'Trich', 'Trichocereus bridgesii', 'Trichoderma harzianum'
     ]);
     await name.fill('harz');
-    assert.equal(await page.getByRole('option').count(), 1, 'Only prefixes match');
+    assert.equal(await suggestionList.getByRole('option').count(), 1, 'Only prefixes match');
     await name.press('Escape');
     assert.equal(await name.getAttribute('aria-expanded'), 'false');
     assert.equal(await name.getAttribute('aria-activedescendant'), null);
