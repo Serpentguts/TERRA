@@ -156,6 +156,7 @@
       return el;
     }
     function error(message, target) {
+      form.querySelectorAll("[aria-invalid]").forEach(el => el.removeAttribute("aria-invalid"));
       $("identify-error").textContent = message;
       $("identify-error").hidden = !message;
       if (target) { target.setAttribute("aria-invalid", "true"); target.focus(); }

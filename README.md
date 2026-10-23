@@ -30,8 +30,8 @@ From your local TERRA repository folder, review this PR branch without merging:
 
 ```powershell
 git fetch origin
-git switch --track origin/fix/integrated-observation-date
-# If you already have that local branch: git switch fix/integrated-observation-date
+git switch --track origin/feature/local-photo-identification
+# If you already have that local branch: git switch feature/local-photo-identification
 py -m pip install -r requirements.txt
 py server.py
 ```
@@ -187,7 +187,7 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-browser.cjs
 
 ### Manual review: JSON export and restore
 
-The same suite now also exercises the mock photo flow: all four organism groups/part resets and caveats, required fields, unsupported/empty/oversize/undecodable photos, single/multi-image limits, preview removal and object-URL cleanup, mock labels/source/confidence, accept/correct/uncertain controls, literal text safety, context invalidation, reset/reload, unchanged local/session storage and journal schema, populated mobile widths, and no HTTP requests during the flow. `test-browser.cjs` is the current regression entry point; `test_browser.py` is a legacy script targeting obsolete markup and is not used for this prototype. There is no configured linter/build system; checks are JavaScript parse checks, Flask route smoke checks, and browser regressions.
+The same suite now also exercises the mock photo flow: all four organism groups/part resets and caveats, required fields, unsupported/empty/oversize/undecodable photos, single/multi-image limits, preview removal and object-URL cleanup, mock labels/source/confidence, accept/correct/uncertain controls, literal text safety, context invalidation, reset/reload, unchanged local/session storage and journal schema, populated mobile widths, and no HTTP requests during the flow. `test-browser.cjs` is the current regression entry point. There is no configured linter/build system; checks are JavaScript parse checks, Flask route smoke checks, and browser regressions.
 
 For a manual review, use Tab/Shift+Tab and the skip link, submit an empty name, reload to verify persistence, preview an image then save/reload to verify it is not retained, cancel and confirm deletion, and inspect the exported JSON. Restore it once to preview duplicates (no additions), cancel, then delete one entry and restore again to preview and confirm its recovery. Try an invalid JSON file and verify that nothing changes. Resize to a narrow mobile viewport. No merge or deployment is required to review this feature branch.
 Playwright and Chromium are test tools only; the app itself needs no npm dependencies or external network requests. The check uses a fresh, isolated browser profile and tests both starter names, prefix/substring/case matching, custom names, keyboard selection/dismissal, safe suggestion rendering, one-bar layout, Enter/Space native-picker activation, typed invalid dates and leap days (including century rules), calendar/text input and change synchronization, unchanged date storage, local-only messaging, saving/reloading, Unknown names, safe text rendering, image preview/non-persistence, JSON export/restore round-trips, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, restore write-failure preservation/retry and changed-journal reconfirmation, confirm/cancel deletion, cross-tab updates, corrupt/blocked/full storage, labels, and overflow at 320, 390, 768, and 1280 pixels. Remote requests are blocked and asserted absent; fetch, XMLHttpRequest, WebSocket, EventSource, and sendBeacon calls are trapped and asserted absent across page loads. These checks do not establish behavior for a future integration. The suite has passed in Chromium, including touch selection and open-dropdown mobile overflow checks. Firefox/Safari and a **manual screen-reader audit remain necessary**, especially combobox announcements and native calendar operation.

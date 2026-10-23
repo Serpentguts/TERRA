@@ -252,6 +252,7 @@ async function testIdentification(page, key) {
   await page.selectOption('#identify-region', 'North America');
   await analyze();
   assert.equal(await page.locator('#identify-output').isVisible(), true);
+  assert.equal(await page.locator('#identification-form [aria-invalid="true"]').count(), 0);
   assert.equal(await page.locator('#identify-candidates li').count(), 3);
   assert.match(await page.locator('#identify-output').textContent(), /not calibrated probabilities/);
   assert.match(await page.locator('#identify-candidates').textContent(), /Demo data · Illustrative confidence/);
