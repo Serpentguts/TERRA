@@ -285,7 +285,7 @@ async function testIdentification(page, key) {
   for (const select of await page.locator('#identify-previews select').all()) await select.selectOption('Whole organism');
   await analyze();
   assert.match(await page.locator('#identify-status').textContent(), /3 local photo/);
-  await page.uncheck('#identify-multiple');
+  await page.click('#identify-multiple'); // App intentionally keeps multi-view mode on until extras are removed.
   assert.equal(await page.locator('#identify-multiple').isChecked(), true);
   await error(/Remove extra views/);
   await page.setInputFiles('#identify-files', [photo('four.png'), photo('five.png'), photo('six.png')]);
