@@ -241,6 +241,13 @@ async function testIdentification(page, key) {
   await page.setInputFiles('#identify-files', photo('another.png'));
   await error(/enable multiple views/);
   assert.equal(await page.locator('#identify-previews img').count(), 1);
+  await page.evaluate(() => {
+    const date = document.querySelector('#identify-date');
+    date.value = '10000-01-01';
+    date.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await analyze();
+  await error(/valid optional date/);
   await page.fill('#identify-date', '2024-02-29');
   await page.selectOption('#identify-region', 'North America');
   await analyze();
@@ -265,6 +272,12 @@ async function testIdentification(page, key) {
   assert.equal(await snapshot(), before);
 
   // Every group has its own part vocabulary, drops stale parts/results, and supplies a caveat.
+  const expectedParts = {
+    plant: ['Leaf', 'Flower', 'Fruit', 'Bark', 'Whole organism', 'Other'],
+    fungus: ['Cap', 'Gills / underside', 'Stem', 'Whole organism', 'Other'],
+    animal: ['Dorsal / top', 'Ventral / underside', 'Wing', 'Leg', 'Whole organism', 'Other'],
+    unsure: ['Whole organism', 'Detail / close-up', 'Other']
+  };
   for (const [group, part, caveat] of [
     ['fungus', 'Gills / underside', /deadly/], ['animal', 'Dorsal / top', /safe distance/],
     ['unsure', 'Detail / close-up', /group is unresolved/], ['plant', 'Bark', /look-alike/i]
@@ -272,6 +285,7 @@ async function testIdentification(page, key) {
     await page.selectOption('#identify-group', group);
     assert.equal(await page.locator('#identify-output').isVisible(), false);
     assert.equal(await page.locator('#identify-previews select').inputValue(), '');
+    assert.deepEqual(await page.locator('#identify-previews select option').evaluateAll(options => options.slice(1).map(option => option.value)), expectedParts[group]);
     await page.locator('#identify-previews select').selectOption(part);
     await analyze();
     assert.match(await page.locator('#identify-caveat').textContent(), caveat);

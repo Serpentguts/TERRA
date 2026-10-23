@@ -115,7 +115,7 @@ h3 { font: 20px/1.4 Georgia, serif; margin-bottom: 12px; }
 .identify-candidates p { color: var(--muted); margin-bottom: 10px; }
 .identify-review { border-top: 1px solid var(--line); padding-top: 18px; }
 .identify-actions .text-button { display: block; margin: 8px auto 0; }
-.identify-panel button, .identification-panel button { min-height: 40px; }
+.identification-panel button { min-height: 40px; }
 [aria-invalid=true] { border: 2px solid #8b3028; }
 @media (max-width: 760px) { .identify-layout { grid-template-columns: 1fr; gap: 22px; } }
 @media (max-width: 480px) { .identify-heading { flex-direction: column; gap: 0; margin-bottom: 16px; } .identify-results { padding: 16px; } .identify-previews { grid-template-columns: 1fr; } .identify-actions .primary-button { text-align: left; } }

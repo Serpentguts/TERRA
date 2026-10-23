@@ -32,15 +32,15 @@
       <noscript><p class="error">Enable JavaScript to use the local photo prototype.</p></noscript>
       <div class="identify-layout">
         <form id="identification-form" novalidate aria-describedby="identify-privacy">
-          <div class="field"><label for="identify-group">1. Organism group</label><select id="identify-group" required><option value="">Choose a group…</option><option value="plant">Plant</option><option value="fungus">Fungus / mushroom</option><option value="animal">Insect / animal</option><option value="unsure">Unsure</option></select></div>
+          <div class="field"><label for="identify-group">1. Organism group</label><select id="identify-group" required aria-describedby="identify-error"><option value="">Choose a group…</option><option value="plant">Plant</option><option value="fungus">Fungus / mushroom</option><option value="animal">Insect / animal</option><option value="unsure">Unsure</option></select></div>
           <div class="field">
             <label class="same-organism" for="identify-multiple"><input id="identify-multiple" type="checkbox"> Add multiple views of the same organism (optional)</label>
             <small id="identify-mode-help">One photo is enough. For different organisms, reset and start a separate review. Multiple views must show the same organism.</small>
           </div>
-          <div class="field"><label for="identify-files">2. Choose local photo(s)</label><input id="identify-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-describedby="identify-file-help identify-mode-help"><small id="identify-file-help">JPEG, PNG, WebP, GIF, or AVIF · up to 10 MB each · at most 6 views. Choose again to add a view in multi-image mode. Select the photographed part for each preview.</small></div>
+          <div class="field"><label for="identify-files">2. Choose local photo(s)</label><input id="identify-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-describedby="identify-file-help identify-mode-help identify-error"><small id="identify-file-help">JPEG, PNG, WebP, GIF, or AVIF · up to 10 MB each · at most 6 views. Choose again to add a view in multi-image mode. Select the photographed part for each preview.</small></div>
           <ul id="identify-previews" class="identify-previews" aria-label="Temporary photo previews"></ul>
           <div class="identify-context">
-            <div class="field"><label for="identify-date">Observation date <span class="optional">(optional, not saved)</span></label><input id="identify-date" type="date"></div>
+            <div class="field"><label for="identify-date">Observation date <span class="optional">(optional, not saved)</span></label><input id="identify-date" type="date" aria-describedby="identify-error"></div>
             <div class="field"><label for="identify-region">Coarse region <span class="optional">(optional, not saved)</span></label><select id="identify-region" aria-describedby="identify-region-help"><option value="">Prefer not to say</option><option>Africa</option><option>Antarctica</option><option>Asia</option><option>Europe</option><option>North America</option><option>Oceania</option><option>South America</option></select><small id="identify-region-help">Broad region only. No GPS, coordinates, address, or photo metadata is read by TERRA. Context does not affect this mock.</small></div>
           </div>
           <p id="identify-error" class="error" role="alert" hidden></p>
@@ -231,6 +231,7 @@
         const label = node("label", "Photographed part");
         const select = node("select");
         select.id = `identify-part-${id}`;
+        select.setAttribute("aria-describedby", "identify-error");
         select.required = true;
         label.htmlFor = select.id;
         select.setAttribute("aria-label", `Photographed part for ${file.name}, view ${id}`);
