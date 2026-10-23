@@ -409,9 +409,7 @@ async function testRestore(page, key, exported) {
     assert.deepEqual(errors, []);
     assert.equal(requests.every(url => url.startsWith('http://127.0.0.1:8080/') || url.startsWith('blob:')), true);
     await context.close();
-feature/json-import-restore
     console.log('PASS: save/reload, safe text, previews, privacy, export/restore round-trip, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, storage-write preservation and retry, corrupt/blocked storage, changed-journal reconfirmation, cross-tab updates, labels, mobile widths, no external requests.');
-=======
     console.log('PASS: starter suggestions, custom names, keyboard selection/dismissal, typed/calendar date validation and persistence, local-only messaging, save/reload, Unknown, safe text, previews, privacy, JSON export, confirmed deletion, cross-tab updates, quota/corrupt/blocked storage, labels, mobile widths, no network API calls or external requests.');
   } finally {
     await browser.close();
