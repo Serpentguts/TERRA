@@ -27,13 +27,29 @@ There is no frontend build step, framework, CDN, external service, account, or d
 ## Use the journal
 
 1. Choose **Plant**, **Fungus**, or **Other**.
-2. Enter a species/common name, or leave it blank to save as **Unknown**.
-3. Set the observation date (defaults to today's local date) and optionally add notes.
+2. Enter a species/common name, choose a starter suggestion, keep a custom/manual name, or leave it blank to save as **Unknown**.
+3. Type the observation date as **YYYY-MM-DD**, or select it in the labeled calendar field; both stay in sync when valid. It defaults to today's local date. Optionally add notes.
 4. Optionally select an image up to 10 MB to preview. You can remove the preview; it is also cleared after a successful save or reload.
 5. Choose **Hidden**, **Approximate**, or **Exact** as a location privacy preference. All three are preferences only: none requests geolocation or saves coordinates.
-6. Select **Save observation**. The saved list shows newest observation dates first, with category, name, notes, and the privacy preference.
+6. Select **Save to local journal**. This saves only to this browser, not to iNaturalist. The saved list shows newest observation dates first, with category, name, notes, and the privacy preference.
 7. Use **Delete** on an entry and confirm the browser prompt to remove it permanently. Cancel leaves it unchanged.
 8. Select **Export JSON** to download all saved entries, plus an export timestamp and format version. Check your browser's downloads and keep the file somewhere safe.
+
+## Starter name suggestions and dates
+
+No curated taxonomy dataset exists in the current repository. `STARTER_SPECIES` in `app.js` is a transparent, hand-written two-name starter list: **Trichocereus bridgesii** and **Trichoderma harzianum**. These are examples, not verified identifications, an authoritative taxonomy, or a complete species catalog. Matching trims the search prefix and compares case-insensitively from the beginning of each name, without filtering by Plant/Fungus/Other. Nothing is queried or downloaded.
+
+Type `Trich` to see both; `Trichoc` or `Trichod` narrows the list. Arrow Up/Down moves through suggestions and an explicit **Keep … as my manual name** option; Enter chooses the active option without submitting. Click/tap also selects. Escape closes, and Tab leaves without changing the text. Merely typing or blurring never forces a suggestion. Custom names are always allowed and saved as text (trimmed as before); a blank saves as Unknown. To extend the examples, edit `STARTER_SPECIES`, update the visible two-example description, and extend the tests. Any larger curated dataset needs separate provenance, licensing, and maintenance review.
+
+The primary date field accepts keyboard input in strict `YYYY-MM-DD` format. The separate native date input offers calendar selection where supported by the browser. Invalid text clears the calendar field but remains editable; calendar changes update the text. Impossible dates, year 0000, and malformed formats are rejected; leap days, years 0001–9999, and future dates retain the existing validation rules. Storage/export still use the same ISO date string and version-1 schema. Native calendar presentation varies by browser/OS; there is no custom calendar widget.
+
+## Roadmap — not current connections
+
+- **iNaturalist:** local journal first. A future, optional flow would let the user review a saved observation and privacy details, connect an account, and explicitly approve publishing. Saving locally is never publishing consent. No authentication, upload, publishing button, or external API calls are implemented. Persistent photos, location handling, consent, and current API requirements need separate design before this is possible.
+- **BOLD Systems:** a potential future source of **DNA barcode reference data** for biodiversity work; not integrated, queried, or used by these suggestions.
+- **GenBank:** a potential future **nucleotide sequence database** reference integration; not integrated, queried, or used by these suggestions. It is not the same resource as BOLD's barcode reference data.
+
+These are planning notes only, not claims of access, connections, identification, or scientific validation. Any integration needs a separate scope and review of terms, provenance, privacy, and network behavior.
 
 ## Data, privacy, and limitations
 
@@ -67,6 +83,6 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" npx playwright install chromium
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-browser.cjs
 ```
 
-Playwright and Chromium are test tools only; the app itself needs no npm dependencies or external network requests. The check uses a fresh, isolated browser profile and tests saving/reloading, Unknown names, safe text rendering, image preview/non-persistence, JSON contents, confirm/cancel deletion, cross-tab updates, corrupt/blocked/full storage, labels, and overflow at 320, 390, 768, and 1280 pixels. These checks passed in Chromium; Firefox/Safari and a full screen-reader audit have not been run.
+Playwright and Chromium are test tools only; the app itself needs no npm dependencies or external network requests. The check uses a fresh, isolated browser profile and tests both starter names, prefix/case matching, custom names, keyboard selection/dismissal, safe suggestion rendering, typed invalid dates and leap days, calendar/text synchronization, unchanged date storage, local-only messaging, saving/reloading, Unknown names, safe text rendering, image preview/non-persistence, JSON contents, confirm/cancel deletion, cross-tab updates, corrupt/blocked/full storage, labels, and overflow at 320, 390, 768, and 1280 pixels. Remote requests are blocked and asserted absent; fetch, XMLHttpRequest, WebSocket, EventSource, and sendBeacon calls are trapped and asserted absent across page loads. These checks do not establish behavior for a future integration. The suite has passed in Chromium, including touch selection and open-dropdown mobile overflow checks. Firefox/Safari and a **manual screen-reader audit remain necessary**, especially combobox announcements and native calendar operation.
 
-For a manual review, use Tab/Shift+Tab and the skip link, submit an empty name, reload to verify persistence, preview an image then save/reload to verify it is not retained, cancel and confirm deletion, and inspect the exported JSON. Resize to a narrow mobile viewport. No merge or deployment is required to review this feature branch.
+For a manual review, use Tab/Shift+Tab and the skip link. Type `Trich`, navigate with arrows and Enter, reopen with an arrow, dismiss with Escape, and keep an unlisted name. Check that Enter on an active suggestion does not save. Type `2024-02-29` (valid) and `2025-02-29` (invalid), then choose a calendar date and verify the text updates. Confirm local-only save/publishing notices. Submit an empty name, reload to verify persistence, preview an image then save/reload to verify it is not retained, cancel and confirm deletion, and inspect the exported JSON. Resize to a narrow mobile viewport. Review with a screen reader (not yet audited). No merge or deployment is required to review this feature branch.
