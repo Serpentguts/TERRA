@@ -1,6 +1,6 @@
 {
   "name": "terra-observation-logger",
-  "description": "A browser-only nature journal with an integrated typed-date/calendar bar, strict ISO dates, live case-insensitive prefix/substring suggestions across a two-name starter list and custom names, plus validated preview-and-merge JSON backup restore. No external lookups or publishing.",
+  "description": "A browser-only nature journal with JSON backup restore and a local-first photo identification UI prototype: ephemeral multi-view previews, organism-part context, explicitly illustrative mock suggestions, and temporary user review. No image uploads, AI service, GPS, or publishing.",
   "type": "app",
   "entrypoint": "index.html",
   "created": "2026-10-20"

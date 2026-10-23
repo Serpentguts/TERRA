@@ -195,6 +195,144 @@ async function testRestore(page, key, exported) {
 }
 
 
+async function testIdentification(page, key) {
+  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
+  const photo = (name = 'view.png', buffer = image, mimeType = 'image/png') => ({ name, buffer, mimeType });
+  const snapshot = () => page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  const before = await snapshot();
+  const requests = [];
+  const capture = request => requests.push(request.url());
+  page.on('request', capture);
+  // Count URLs as well as DOM images to verify reset/removal/decode-failure cleanup.
+  await page.evaluate(() => {
+    window.mockUrls = { created: [], revoked: [] };
+    const create = URL.createObjectURL.bind(URL);
+    const revoke = URL.revokeObjectURL.bind(URL);
+    URL.createObjectURL = value => { const url = create(value); window.mockUrls.created.push(url); return url; };
+    URL.revokeObjectURL = url => { window.mockUrls.revoked.push(url); revoke(url); };
+    navigator.geolocation.getCurrentPosition = () => { throw new Error('GPS must not be requested'); };
+    navigator.geolocation.watchPosition = () => { throw new Error('GPS must not be requested'); };
+  });
+  const analyze = () => page.getByRole('button', { name: /Analyze — show MOCK/ }).click();
+  const ready = () => page.waitForFunction(() => Array.from(document.querySelectorAll('#identify-previews img')).every(img => img.complete && img.naturalWidth > 0));
+  const error = async pattern => assert.match(await page.locator('#identify-error').textContent(), pattern);
+  await analyze();
+  await error(/Choose an organism group/);
+  assert.equal(await page.locator('#identify-group').evaluate(el => el === document.activeElement), true);
+  await page.selectOption('#identify-group', 'plant');
+  await analyze();
+  await error(/at least one photo/);
+  await page.setInputFiles('#identify-files', photo('bad.txt', Buffer.from('bad'), 'text/plain'));
+  await error(/JPEG, PNG/);
+  await page.setInputFiles('#identify-files', photo('empty.png', Buffer.alloc(0)));
+  await error(/non-empty/);
+  await page.setInputFiles('#identify-files', photo('large.png', Buffer.alloc(10 * 1024 * 1024 + 1)));
+  await error(/10 MB/);
+  await page.setInputFiles('#identify-files', photo('broken.png', Buffer.from('not an image')));
+  await page.waitForFunction(() => document.querySelector('#identify-error').textContent.includes('could not be decoded'));
+  assert.equal(await page.locator('#identify-previews img').count(), 0);
+  await page.setInputFiles('#identify-files', photo('<img src=x onerror=alert(1)>.png'));
+  await ready();
+  assert.equal(await page.locator('#identify-previews img').count(), 1);
+  assert.equal(await page.locator('#identify-previews script').count(), 0);
+  await analyze();
+  await error(/photographed part for every image/);
+  await page.locator('#identify-previews select').selectOption('Leaf');
+  await page.setInputFiles('#identify-files', photo('another.png'));
+  await error(/enable multiple views/);
+  assert.equal(await page.locator('#identify-previews img').count(), 1);
+  await page.fill('#identify-date', '2024-02-29');
+  await page.selectOption('#identify-region', 'North America');
+  await analyze();
+  assert.equal(await page.locator('#identify-output').isVisible(), true);
+  assert.equal(await page.locator('#identify-candidates li').count(), 3);
+  assert.match(await page.locator('#identify-output').textContent(), /not calibrated probabilities/);
+  assert.match(await page.locator('#identify-candidates').textContent(), /Demo data · Illustrative confidence/);
+  assert.match(await page.locator('#identify-caveat').textContent(), /edible or medicinal/);
+  assert.equal(await page.locator('#identify-results-title').evaluate(el => el === document.activeElement), true);
+  await page.locator('#identify-candidates button').first().click();
+  assert.match(await page.locator('#identify-review-status').textContent(), /Accepted MOCK candidate: Common dandelion/);
+  await page.click('#identify-correct');
+  assert.equal(await page.locator('#identify-review-error').isVisible(), true);
+  const literal = '<img src=x onerror="window.mockInjected=true">';
+  await page.fill('#identify-correction', literal);
+  await page.click('#identify-correct');
+  assert.match(await page.locator('#identify-review-status').textContent(), /Your corrected label: <img/);
+  assert.equal(await page.locator('#identify-review-status img').count(), 0);
+  assert.equal(await page.evaluate(() => window.mockInjected), undefined);
+  await page.click('#identify-uncertain');
+  assert.match(await page.locator('#identify-review-status').textContent(), /Left uncertain/);
+  assert.equal(await snapshot(), before);
+
+  // Every group has its own part vocabulary, drops stale parts/results, and supplies a caveat.
+  for (const [group, part, caveat] of [
+    ['fungus', 'Gills / underside', /deadly/], ['animal', 'Dorsal / top', /safe distance/],
+    ['unsure', 'Detail / close-up', /group is unresolved/], ['plant', 'Bark', /look-alike/i]
+  ]) {
+    await page.selectOption('#identify-group', group);
+    assert.equal(await page.locator('#identify-output').isVisible(), false);
+    assert.equal(await page.locator('#identify-previews select').inputValue(), '');
+    await page.locator('#identify-previews select').selectOption(part);
+    await analyze();
+    assert.match(await page.locator('#identify-caveat').textContent(), caveat);
+  }
+  await page.check('#identify-multiple');
+  await page.setInputFiles('#identify-files', [photo('second.png'), photo('third.png')]);
+  await ready();
+  assert.equal(await page.locator('#identify-previews img').count(), 3);
+  await analyze();
+  await error(/photographed part for every image/);
+  for (const select of await page.locator('#identify-previews select').all()) await select.selectOption('Whole organism');
+  await analyze();
+  assert.match(await page.locator('#identify-status').textContent(), /3 local photo/);
+  await page.uncheck('#identify-multiple');
+  assert.equal(await page.locator('#identify-multiple').isChecked(), true);
+  await error(/Remove extra views/);
+  await page.setInputFiles('#identify-files', [photo('four.png'), photo('five.png'), photo('six.png')]);
+  await ready();
+  assert.equal(await page.locator('#identify-previews img').count(), 6);
+  await page.setInputFiles('#identify-files', photo('seven.png'));
+  await error(/at most 6/);
+  await page.locator('#identify-previews button').last().click();
+  assert.equal(await page.locator('#identify-output').isVisible(), false);
+  assert.equal(await page.locator('#identify-previews img').count(), 5);
+  for (const select of await page.locator('#identify-previews select').all()) await select.selectOption('Other');
+  await analyze();
+  for (const width of [320, 390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 850 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `populated mock overflow at ${width}`);
+  }
+  await page.selectOption('#identify-region', 'Europe');
+  assert.equal(await page.locator('#identify-output').isVisible(), false);
+  assert.equal(await page.locator('#identify-review-status').textContent(), '');
+  await page.click('#identify-reset');
+  assert.equal(await page.locator('#identify-previews img').count(), 0);
+  assert.equal(await page.locator('#identify-group').inputValue(), '');
+  assert.equal(await page.locator('#identify-date').inputValue(), '');
+  assert.equal(await page.locator('#identify-region').inputValue(), '');
+  assert.equal(await page.locator('#identify-multiple').isChecked(), false);
+  assert.equal(await page.locator('#identify-group').evaluate(el => el === document.activeElement), true);
+  const urls = await page.evaluate(() => window.mockUrls);
+  assert.deepEqual([...urls.created].sort(), [...urls.revoked].sort());
+  assert.equal(await snapshot(), before);
+  assert.equal(requests.every(url => url.startsWith('blob:')), true, `Unexpected mock network: ${requests}`);
+  page.off('request', capture);
+
+  // Reload also discards previews/context/review, without changing persisted observations.
+  await page.selectOption('#identify-group', 'unsure');
+  await page.setInputFiles('#identify-files', photo());
+  await ready();
+  await page.locator('#identify-previews select').selectOption('Other');
+  await analyze();
+  await page.click('#identify-uncertain');
+  await page.reload();
+  assert.equal(await page.locator('#identify-previews img').count(), 0);
+  assert.equal(await page.locator('#identify-output').isVisible(), false);
+  assert.equal(await snapshot(), before);
+  assert.equal(await page.evaluate(k => JSON.parse(localStorage.getItem(k)).every(item => Object.keys(item).sort().join() === 'date,id,name,notes,privacy,type'), key), true);
+  console.log('PASS: local mock identification, all groups/parts/caveats, single/multi-image limits, invalid files, URL cleanup, review controls, safe text, reset/reload, storage isolation, zero mock network calls, populated responsive widths.');
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
   try {
@@ -445,6 +583,7 @@ async function testRestore(page, key, exported) {
     assert.equal(await page.locator('.observation-card').count(), 3);
     await page.reload();
     await testRestore(page, key, exported);
+    await testIdentification(page, key);
     // Corrupt storage must not be silently overwritten.
     await page.evaluate(k => localStorage.setItem(k, '{broken'), key);
     await page.reload();
