@@ -1,9 +1,6 @@
 {
   "name": "terra-observation-logger",
-feature/json-import-restore
-  "description": "A browser-only nature observation journal with local saving, privacy preferences, image previews, JSON export, and validated, previewed, non-destructive JSON restore.",
-=======
-  "description": "A browser-local nature journal with transparent starter species suggestions, custom names, typed or calendar dates, and JSON export. External integrations are future-only.",
+  "description": "A browser-local nature journal with live case-insensitive prefix/substring matching across a two-name starter list, custom names, typed/calendar dates, and validated JSON export/restore. No external integrations.",
   "type": "app",
   "entrypoint": "index.html",
   "created": "2026-10-20"

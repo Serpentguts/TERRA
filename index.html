@@ -41,8 +41,8 @@
           <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label>
             <div class="name-picker"><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help">
             <ul id="name-suggestions" class="name-suggestions" role="listbox" aria-label="Starter species suggestions and custom name" hidden></ul></div>
-            <small id="name-help">Two local starter examples, not a taxonomy database or identification. Type a prefix; use ↑/↓ and Enter to choose, Escape to close, or keep your own name. Blank saves as “Unknown”.</small>
-            <span id="name-status" class="sr-only" role="status" aria-live="polite"></span>
+            <small id="name-help">Type any part of a name to see every matching entry (case-insensitive) in this two-name starter list—not all real species. Use ↑/↓ and Enter, or click/tap to fill the field without saving. You can always keep your own name. Blank saves as “Unknown”.</small>
+            <small id="name-status" role="status" aria-live="polite" aria-atomic="true"></small>
           </div>
           <div class="field"><label for="date">Observation date</label><input id="date" name="date" type="text" required maxlength="10" placeholder="YYYY-MM-DD" aria-describedby="date-help"><small id="date-help">Type YYYY-MM-DD (year 0001–9999), or use the calendar below. Future dates are allowed.</small>
             <label for="date-picker">Choose observation date with calendar</label><input id="date-picker" type="date" min="0001-01-01" max="9999-12-31" aria-describedby="date-help">

@@ -236,9 +236,43 @@ async function testRestore(page, key, exported) {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }));
-    // Starter suggestions are case-insensitive prefixes, never forced replacements.
+    // Startup regression: main's merge debris previously prevented all initialization.
+    assert.deepEqual(errors, []);
+    assert.equal(await page.locator('#save-button').isEnabled(), true);
+    // Starter suggestions include every case-insensitive prefix or substring match.
     const name = page.getByRole('combobox', { name: 'Species or common name' });
     const suggestionList = page.getByRole('listbox', { name: 'Starter species suggestions and custom name' });
+    const speciesOptions = () => suggestionList.getByRole('option').allTextContents().then(items => items.slice(0, -1));
+    const both = ['Trichocereus bridgesii', 'Trichoderma harzianum'];
+    // Real typing filters after every keystroke; Backspace broadens the list again.
+    await name.fill('');
+    for (const letter of 'Trich') {
+      await name.pressSequentially(letter);
+      assert.deepEqual(await speciesOptions(), both);
+    }
+    await name.pressSequentially('o');
+    await name.pressSequentially('c');
+    assert.deepEqual(await speciesOptions(), [both[0]]);
+    await name.press('Backspace');
+    assert.deepEqual(await speciesOptions(), both);
+    for (const [query, expected] of [
+      ['RICH', both], ['  iChO  ', both], ['BRIDGESII', [both[0]]], ['hArZ', [both[1]]]
+    ]) {
+      await name.fill(query); // Also covers replacing/pasting a query.
+      assert.deepEqual(await speciesOptions(), expected, query);
+      assert.equal(await name.getAttribute('aria-activedescendant'), null);
+    }
+    assert.equal(await name.getAttribute('aria-controls'), await suggestionList.getAttribute('id'));
+    assert.equal(await name.getAttribute('aria-autocomplete'), 'list');
+    assert.equal(await page.locator('#name-status').getAttribute('role'), 'status');
+    assert.equal(await page.locator('#name-status').getAttribute('aria-live'), 'polite');
+    assert.match(await page.locator('#name-help').textContent(), /not all real species/);
+    await name.fill('harz');
+    await suggestionList.getByRole('option', { name: both[1], exact: true }).tap();
+    assert.equal(await name.inputValue(), both[1]);
+    assert.equal(await page.locator('.observation-card').count(), 0, 'Touch fills without submitting');
+    assert.equal(await name.evaluate(el => document.activeElement === el), true);
+    assert.equal(await name.getAttribute('aria-expanded'), 'false');
     await name.fill('  tRiCh');
     assert.deepEqual(await suggestionList.getByRole('option').allTextContents(), [
       'Trichocereus bridgesii', 'Trichoderma harzianum', 'Keep “tRiCh” as my manual name'
@@ -257,6 +291,8 @@ async function testRestore(page, key, exported) {
     await name.fill('Trichoc');
     assert.equal(await suggestionList.getByRole('option').count(), 2);
     await suggestionList.getByRole('option', { name: 'Trichocereus bridgesii', exact: true }).click();
+    assert.equal(await name.inputValue(), 'Trichocereus bridgesii');
+    assert.equal(await page.locator('.observation-card').count(), 1, 'Mouse fills without submitting');
     await page.click('#save-button');
     await name.fill('Trich');
     await name.press('ArrowUp'); // Last option is the explicit manual choice.
@@ -265,14 +301,18 @@ async function testRestore(page, key, exported) {
     await page.click('#save-button');
     await name.fill('My unlisted organism');
     assert.equal(await suggestionList.getByRole('option').count(), 1);
+    assert.match(await page.locator('#name-status').textContent(), /No matching starter species/);
+    assert.equal(await page.locator('#name-status').isVisible(), true);
     await suggestionList.getByRole('option').tap();
+    assert.equal(await name.inputValue(), 'My unlisted organism');
+    assert.equal(await page.locator('.observation-card').count(), 3, 'Manual choice does not submit');
     await page.click('#save-button');
     const featureRecords = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key);
     assert.deepEqual(featureRecords.map(item => item.name), [
       'My unlisted organism', 'Trich', 'Trichocereus bridgesii', 'Trichoderma harzianum'
     ]);
     await name.fill('harz');
-    assert.equal(await suggestionList.getByRole('option').count(), 1, 'Only prefixes match');
+    assert.equal(await suggestionList.getByRole('option').count(), 2, 'Substring plus manual choice');
     await name.press('Escape');
     assert.equal(await name.getAttribute('aria-expanded'), 'false');
     assert.equal(await name.getAttribute('aria-activedescendant'), null);
@@ -282,8 +322,12 @@ async function testRestore(page, key, exported) {
     assert.equal(await name.getAttribute('aria-expanded'), 'false');
     await name.fill('<img src=x onerror="window.injected=true">');
     assert.equal(await page.locator('#name-suggestions img').count(), 0);
+    await name.fill('unlisted manual text');
+    await name.press('Tab');
+    assert.equal(await name.inputValue(), 'unlisted manual text');
     await name.fill('');
     assert.equal(await name.getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.locator('#name-status').textContent(), '');
     // Real keyboard input, invalid calendar days, leap years, bounds, and calendar sync.
     const date = page.getByLabel('Observation date', { exact: true });
     const beforeInvalid = await page.evaluate(k => localStorage.getItem(k), key);
@@ -409,10 +453,7 @@ async function testRestore(page, key, exported) {
     assert.deepEqual(errors, []);
     assert.equal(requests.every(url => url.startsWith('http://127.0.0.1:8080/') || url.startsWith('blob:')), true);
     await context.close();
-feature/json-import-restore
-    console.log('PASS: save/reload, safe text, previews, privacy, export/restore round-trip, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, storage-write preservation and retry, corrupt/blocked storage, changed-journal reconfirmation, cross-tab updates, labels, mobile widths, no external requests.');
-=======
-    console.log('PASS: starter suggestions, custom names, keyboard selection/dismissal, typed/calendar date validation and persistence, local-only messaging, save/reload, Unknown, safe text, previews, privacy, JSON export, confirmed deletion, cross-tab updates, quota/corrupt/blocked storage, labels, mobile widths, no network API calls or external requests.');
+    console.log('PASS: all starter prefix/substring/case matches, dynamic filtering, no-match state, keyboard/mouse/touch selection without submit, custom names, accessibility attributes, dates, local journal, export/restore regressions, mobile widths, no external requests.');
   } finally {
     await browser.close();
   }
