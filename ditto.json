@@ -1,6 +1,6 @@
 {
   "name": "terra-observation-logger",
-  "description": "A browser-local nature journal with transparent starter species suggestions, custom names, typed or calendar dates, and JSON export. External integrations are future-only.",
+  "description": "A browser-only nature journal with an integrated typed-date/calendar bar, strict ISO dates, local substring species suggestions and custom names, plus validated preview-and-merge JSON backup restore. No external lookups or publishing.",
   "type": "app",
   "entrypoint": "index.html",
   "created": "2026-10-20"

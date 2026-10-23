@@ -51,8 +51,8 @@ function validDate(value) {
 }
 
 function speciesSuggestions(value) {
-  const prefix = value.trim().toLowerCase();
-  return prefix ? STARTER_SPECIES.filter(name => name.toLowerCase().startsWith(prefix)) : [];
+  const query = value.trim().toLowerCase();
+  return query ? STARTER_SPECIES.filter(name => name.toLowerCase().includes(query)) : [];
 }
 
 function closeSuggestions() {
@@ -125,9 +125,19 @@ function syncDate() {
   datePicker.value = valid ? dateInput.value : "";
 }
 dateInput.addEventListener("input", syncDate);
-datePicker.addEventListener("change", () => {
+function pickDate() {
   dateInput.value = datePicker.value;
   syncDate();
+}
+datePicker.addEventListener("input", pickDate);
+datePicker.addEventListener("change", pickDate);
+// The native input overlays only the icon inside the bar, not a second visible field.
+// Pointer/touch use the native picker directly; provide explicit keyboard activation too.
+datePicker.addEventListener("keydown", event => {
+  if (["Enter", " ", "ArrowDown"].includes(event.key) && typeof datePicker.showPicker === "function") {
+    event.preventDefault();
+    datePicker.showPicker();
+  }
 });
 
 function validObservation(item) {
