@@ -40,7 +40,7 @@
           <div class="field"><label for="identify-files">2. Choose local photo(s)</label><input id="identify-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-describedby="identify-file-help identify-mode-help identify-error"><small id="identify-file-help">JPEG, PNG, WebP, GIF, or AVIF · up to 10 MB each · at most 6 views. Choose again to add a view in multi-image mode. Select the photographed part for each preview.</small></div>
           <ul id="identify-previews" class="identify-previews" aria-label="Temporary photo previews"></ul>
           <div class="identify-context">
-            <div class="field"><label for="identify-date">Observation date <span class="optional">(optional, not saved)</span></label><input id="identify-date" type="date" aria-describedby="identify-error"></div>
+            <div class="field"><label for="identify-date">Observation date <span class="optional">(optional; temporary until transfer)</span></label><input id="identify-date" type="date" aria-describedby="identify-error"></div>
             <div class="field"><label for="identify-region">Coarse region <span class="optional">(optional, not saved)</span></label><select id="identify-region" aria-describedby="identify-region-help"><option value="">Prefer not to say</option><option>Africa</option><option>Antarctica</option><option>Asia</option><option>Europe</option><option>North America</option><option>Oceania</option><option>South America</option></select><small id="identify-region-help">Broad region first; optional finer detail is manual only. No GPS, coordinates, address, or photo metadata is read by TERRA. No geocoding or external lookup. Context does not affect this mock.</small></div>
           </div>
           <fieldset id="identify-location-detail" hidden aria-describedby="identify-location-help"><legend>Optional finer location · enter manually</legend>
@@ -62,7 +62,7 @@
             <p class="identify-warning"><strong>Illustrative MOCK suggestions — not an identification.</strong> These fixed examples depend only on your selected group, not the image, part, date, or region. Source: Demo data. Confidence scores are arbitrary illustrations, not calibrated probabilities or evidence of a match.</p>
             <p id="identify-caveat"></p>
             <ol id="identify-candidates" class="identify-candidates" aria-label="Illustrative mock candidates"></ol>
-            <details id="identify-more"><summary>All remaining MOCK candidates · Demo data · non-calibrated scores</summary><ol id="identify-remaining" class="identify-candidates" start="4" aria-label="Remaining mock candidates in descending score order"></ol></details>
+            <details id="identify-more"><summary>All remaining MOCK candidates · descending scores · Demo data · non-calibrated</summary><ol id="identify-remaining" class="identify-candidates" start="4" aria-label="Remaining mock candidates in descending score order"></ol></details>
             <div class="identify-review"><h4>Your review · temporary only</h4><p>Accept a demo candidate above, enter your own label, or leave this uncertain. No choice is verified or saved.</p><div class="field"><label for="identify-correction">Your corrected name</label><input id="identify-correction" type="text" maxlength="120" placeholder="Common or scientific name" aria-describedby="identify-review-error"></div><p id="identify-review-error" class="error" role="alert" hidden></p><div class="restore-actions"><button id="identify-correct" class="secondary-button" type="button">Use corrected name</button><button id="identify-uncertain" class="secondary-button" type="button">Leave uncertain</button></div></div>
             <button id="identify-record" class="primary-button" type="button" aria-describedby="identify-transfer-help">Use selected organism to record a discovery</button>
             <p id="identify-transfer-help">Select a candidate (including in the remaining list) or use your corrected name first. Next, confirm the transfer. This replaces the discovery draft’s name, group, photos, date, and temporary location fields, but keeps notes and privacy preference. Review there, then save separately. Images and location detail are never saved or exported.</p>
@@ -294,10 +294,20 @@
       if (precision.value !== "city") $("identify-city").value = "";
     }
     for (const id of ["identify-date", "identify-region", "identify-precision", "identify-country", "identify-state", "identify-city"]) {
-      $(id).addEventListener("input", () => { syncLocation(); $(id).removeAttribute("aria-invalid"); error(""); invalidate(); });
+      $(id).addEventListener("input", () => {
+        // A different broad region must not silently reuse its previous locality.
+        if (id === "identify-region") $("identify-precision").value = "";
+        syncLocation();
+        $(id).removeAttribute("aria-invalid");
+        error("");
+        invalidate();
+      });
     }
     function review(message, name = "") {
       selectedName = name;
+      document.querySelectorAll("#identify-candidates button, #identify-remaining button").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.dataset.name === name));
+      });
       $("identify-review-error").hidden = true;
       $("identify-correction").removeAttribute("aria-invalid");
       $("identify-review-status").textContent = `${message} Temporary review only; not verified and not saved to observations.`;
@@ -322,6 +332,8 @@
         const card = node("li");
         const accept = node("button", "Accept demo candidate", "secondary-button");
         accept.type = "button";
+        accept.dataset.name = name;
+        accept.setAttribute("aria-pressed", "false");
         accept.setAttribute("aria-label", `Accept demo candidate: ${name}`);
         accept.addEventListener("click", () => review(`Accepted MOCK candidate: ${name}.`, name));
         card.append(node("h4", name), node("p", `MOCK · Demo data · Illustrative confidence / score: ${[72, 48, 26, 19, 12, 5][index]}/100 — non-calibrated, arbitrary, not a probability.`), accept);
@@ -345,8 +357,7 @@
     });
     $("identify-uncertain").addEventListener("click", () => review("Left uncertain. No identification chosen."));
     $("identify-correction").addEventListener("input", () => {
-      selectedName = "";
-      $("identify-review-status").textContent = "Name edited. Use corrected name to select it before transfer.";
+      review("Name edited. Use corrected name to select it before transfer.");
     });
     $("identify-record").addEventListener("click", () => {
       if (output.hidden || !selectedName.trim() || selectedName.length > 120 || !images.length || images.some(image => !image.ready)) {

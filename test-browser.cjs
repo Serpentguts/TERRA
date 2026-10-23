@@ -405,6 +405,10 @@ async function testDiscoveryHandoff(page, key) {
   await page.fill('#identify-city', 'Ottawa');
   await page.selectOption('#identify-precision', 'state');
   assert.equal(await page.locator('#identify-city').inputValue(), '');
+  await page.selectOption('#identify-region', 'Europe');
+  assert.equal(await page.locator('#identify-precision').inputValue(), '');
+  assert.equal(await page.locator('#identify-country').inputValue(), '');
+  assert.equal(await page.locator('#identify-state').inputValue(), '');
   await page.selectOption('#identify-region', '');
   assert.equal(await page.locator('#identify-location-detail').isVisible(), false);
   for (const field of ['precision', 'country', 'state', 'city']) assert.equal(await page.locator(`#identify-${field}`).inputValue(), '');
@@ -435,6 +439,8 @@ async function testDiscoveryHandoff(page, key) {
   // Candidate from the disclosure is selectable; cancellation preserves the entire draft.
   await page.locator('#identify-more summary').click();
   await page.locator('#identify-remaining button').last().click();
+  assert.equal(await page.locator('#identify-remaining button').last().getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('#identify-candidates button[aria-pressed=true]').count(), 0);
   const chosen = await page.locator('#identify-remaining h4').last().textContent();
   await confirm(false);
   assert.equal(await page.locator('#name').inputValue(), 'Original draft');
@@ -535,9 +541,31 @@ async function testDiscoveryHandoff(page, key) {
   assert.equal(await page.locator('#discovery-previews img').count(), 0);
   await confirm(true);
   await ready();
+  const draftUrls = await page.locator('#discovery-previews img').evaluateAll(imgs => imgs.map(img => img.src));
+  await confirm(false);
+  assert.deepEqual(await page.locator('#discovery-previews img').evaluateAll(imgs => imgs.map(img => img.src)), draftUrls);
   for (const width of [320, 390, 768, 1280]) {
     await page.setViewportSize({ width, height: 850 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `discovery draft overflow at ${width}`);
+  }
+  // A single view transfers too, with fungus and unresolved group mapping preserved.
+  for (const [group, type] of [['fungus', 'fungus'], ['unsure', 'other']]) {
+    await page.click('#identify-reset');
+    await page.selectOption('#identify-group', group);
+    await page.setInputFiles('#identify-files', photo(`single-${group}.png`));
+    await ready();
+    await page.locator('#identify-previews select').selectOption('Whole organism');
+    await analyze();
+    await page.locator('#identify-candidates button').first().click();
+    const dialogPromise = page.waitForEvent('dialog');
+    const click = transfer();
+    const dialog = await dialogPromise;
+    assert.match(dialog.message(), /Photos: 1 temporary preview/);
+    await dialog.accept();
+    await click;
+    await ready();
+    assert.equal(await page.locator('input[name=type]:checked').inputValue(), type);
+    assert.equal(await page.locator('#discovery-previews img').count(), 1);
   }
   // pagehide clears both owners; each object URL must be revoked exactly once.
   await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
