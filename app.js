@@ -15,7 +15,6 @@ const photoInput = document.querySelector("#photo");
 const preview = document.querySelector("#photo-preview");
 const previewWrap = document.querySelector("#preview-wrap");
 const photoError = document.querySelector("#photo-error");
-feature/json-import-restore
 const importFile = document.querySelector("#import-file");
 const importPreview = document.querySelector("#import-preview");
 const importSummary = document.querySelector("#import-summary");
@@ -26,7 +25,6 @@ const confirmImport = document.querySelector("#confirm-import");
 const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 let pendingImport = null;
 let importGeneration = 0;
-=======
 // Transparent starter examples only, not verified identifications or a taxonomy database.
 // Extend this list deliberately; no remote lookup, category filtering, or automatic selection.
 const STARTER_SPECIES = Object.freeze(["Trichocereus bridgesii", "Trichoderma harzianum"]);
@@ -53,8 +51,8 @@ function validDate(value) {
 }
 
 function speciesSuggestions(value) {
-  const prefix = value.trim().toLowerCase();
-  return prefix ? STARTER_SPECIES.filter(name => name.toLowerCase().startsWith(prefix)) : [];
+  const query = value.trim().toLowerCase();
+  return query ? STARTER_SPECIES.filter(name => name.toLowerCase().includes(query)) : [];
 }
 
 function closeSuggestions() {
@@ -62,7 +60,7 @@ function closeSuggestions() {
   nameInput.setAttribute("aria-expanded", "false");
   nameInput.removeAttribute("aria-activedescendant");
   activeChoice = -1;
-  nameStatus.textContent = "";
+  // Keep visible status on blur so pointer targets do not move mid-click.
 }
 
 function chooseName(index) {
@@ -75,6 +73,7 @@ function chooseName(index) {
 function openSuggestions() {
   nameSuggestions.replaceChildren();
   closeSuggestions();
+  nameStatus.textContent = "";
   if (!nameInput.value.trim()) return;
   nameChoices = speciesSuggestions(nameInput.value);
   const labels = [...nameChoices, `Keep “${nameInput.value.trim()}” as my manual name`];
@@ -84,13 +83,15 @@ function openSuggestions() {
     option.setAttribute("role", "option");
     option.setAttribute("aria-selected", "false");
     // Keep DOM focus in the combobox while pointing at an option.
-    option.addEventListener("mousedown", event => event.preventDefault());
+    option.addEventListener("pointerdown", event => event.preventDefault());
     option.addEventListener("click", () => chooseName(index));
     nameSuggestions.append(option);
   });
   nameSuggestions.hidden = false;
   nameInput.setAttribute("aria-expanded", "true");
-  nameStatus.textContent = `${nameChoices.length} starter suggestions. Keep your manual name is also available.`;
+  nameStatus.textContent = nameChoices.length
+    ? `${nameChoices.length} matching starter suggestions. You can also keep your manual name.`
+    : "No matching starter species. You can keep your manual name.";
 }
 
 nameInput.addEventListener("input", openSuggestions);
@@ -127,9 +128,19 @@ function syncDate() {
   datePicker.value = valid ? dateInput.value : "";
 }
 dateInput.addEventListener("input", syncDate);
-datePicker.addEventListener("change", () => {
+function pickDate() {
   dateInput.value = datePicker.value;
   syncDate();
+}
+datePicker.addEventListener("input", pickDate);
+datePicker.addEventListener("change", pickDate);
+// The native input overlays only the icon inside the bar, not a second visible field.
+// Pointer/touch use the native picker directly; provide explicit keyboard activation too.
+datePicker.addEventListener("keydown", event => {
+  if (["Enter", " ", "ArrowDown"].includes(event.key) && typeof datePicker.showPicker === "function") {
+    event.preventDefault();
+    datePicker.showPicker();
+  }
 });
 
 function validObservation(item) {
@@ -276,6 +287,7 @@ form.addEventListener("submit", event => {
   dateInput.value = today();
   syncDate();
   closeSuggestions();
+  nameStatus.textContent = "";
   clearPreview();
   render();
   status.textContent = `Saved “${observation.name}” to the local journal in this browser. Nothing was published to iNaturalist. Image previews are not saved.`;

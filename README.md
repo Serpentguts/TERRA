@@ -24,11 +24,40 @@ Open **http://localhost:8080**. The Flask development server listens on `0.0.0.0
 
 There is no frontend build step, framework, CDN, external service, account, or database. The frontend is plain `index.html`, `styles.css`, and `app.js`. Flask only serves files and `/api/health`; it does not receive observations. Use the server rather than opening `index.html` directly, because `file://` storage behavior varies between browsers.
 
+### Windows (PowerShell)
+
+From your local TERRA repository folder, review this PR branch without merging:
+
+```powershell
+git fetch origin
+git switch --track origin/fix/integrated-observation-date
+# If you already have that local branch: git switch fix/integrated-observation-date
+py -m pip install -r requirements.txt
+py server.py
+```
+
+Open **http://localhost:8080** and keep the terminal running. Use `python` instead of `py` if that is your installed launcher. Stop with Ctrl+C. Keep using the same browser profile, hostname, and port to see your existing journal; export a backup before testing.
+
+Check that there is **one date bar**: type `2024-02-29`, choose another date with its calendar icon, then type again. Try `2025-02-29` and `1900-02-29` (must not save), and `2000-02-29` (valid). Tab to the calendar icon and open it with Enter/Space. Type `Trich`, `BRIDGESII`, and `harz`; confirm matching local suggestions and save an unlisted custom name. Reload and verify dates/names persist. Resize to a narrow window.
+
+Optional automated checks, in a second PowerShell terminal (Node.js 18+ required; server still running):
+
+```powershell
+npm install --no-save --package-lock=false playwright
+$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD/.browser-cache"
+npx playwright install chromium
+node --check app.js
+node --check test-browser.cjs
+node test-browser.cjs
+```
+
+These Windows steps are provided for local review; automated tests here run on Linux Chromium. Firefox/Safari and a manual screen-reader review remain unverified. Nothing is merged or deployed by these commands.
+
 ## Use the journal
 
 1. Choose **Plant**, **Fungus**, or **Other**.
 2. Enter a species/common name, choose a starter suggestion, keep a custom/manual name, or leave it blank to save as **Unknown**.
-3. Type the observation date as **YYYY-MM-DD**, or select it in the labeled calendar field; both stay in sync when valid. It defaults to today's local date. Optionally add notes.
+3. Type the observation date as **YYYY-MM-DD**, or use the calendar icon **inside the same date bar**; both stay in sync. It defaults to today's local date. Optionally add notes.
 4. Optionally select an image up to 10 MB to preview. You can remove the preview; it is also cleared after a successful save or reload.
 5. Choose **Hidden**, **Approximate**, or **Exact** as a location privacy preference. All three are preferences only: none requests geolocation or saves coordinates.
 6. Select **Save to local journal**. This saves only to this browser, not to iNaturalist. The saved list shows newest observation dates first, with category, name, notes, and the privacy preference.
@@ -55,11 +84,11 @@ There is no frontend build step, framework, CDN, external service, account, or d
 
 ## Starter name suggestions and dates
 
-No curated taxonomy dataset exists in the current repository. `STARTER_SPECIES` in `app.js` is a transparent, hand-written two-name starter list: **Trichocereus bridgesii** and **Trichoderma harzianum**. These are examples, not verified identifications, an authoritative taxonomy, or a complete species catalog. Matching trims the search prefix and compares case-insensitively from the beginning of each name, without filtering by Plant/Fungus/Other. Nothing is queried or downloaded.
+No curated taxonomy dataset exists in the current repository. `STARTER_SPECIES` in `app.js` is a transparent, hand-written two-name starter list: **Trichocereus bridgesii** and **Trichoderma harzianum**. These are examples, not verified identifications, an authoritative taxonomy, or a complete species catalog. Matching trims the search text and shows **every local name that starts with or contains it**, case-insensitively, without filtering by Plant/Fungus/Other. Nothing is queried or downloaded.
 
-Type `Trich` to see both; `Trichoc` or `Trichod` narrows the list. Arrow Up/Down moves through suggestions and an explicit **Keep … as my manual name** option; Enter chooses the active option without submitting. Click/tap also selects. Escape closes, and Tab leaves without changing the text. Merely typing or blurring never forces a suggestion. Custom names are always allowed and saved as text (trimmed as before); a blank saves as Unknown. To extend the examples, edit `STARTER_SPECIES`, update the visible two-example description, and extend the tests. Any larger curated dataset needs separate provenance, licensing, and maintenance review.
+Type `Trich` to see both; `Trichoc`, `bridgesii`, or `harz` narrows the list. Arrow Up/Down moves through suggestions and an explicit **Keep … as my manual name** option; Enter chooses the active option without submitting. Click/tap also selects. Escape closes, and Tab leaves without changing the text. Merely typing or blurring never forces a suggestion. Custom names are always allowed and saved as text (trimmed as before); a blank saves as Unknown. To extend the examples, edit `STARTER_SPECIES`, update the visible two-example description, and extend the tests. Any larger curated dataset needs separate provenance, licensing, and maintenance review.
 
-The primary date field accepts keyboard input in strict `YYYY-MM-DD` format. The separate native date input offers calendar selection where supported by the browser. Invalid text clears the calendar field but remains editable; calendar changes update the text. Impossible dates, year 0000, and malformed formats are rejected; leap days, years 0001–9999, and future dates retain the existing validation rules. Storage/export still use the same ISO date string and version-1 schema. Native calendar presentation varies by browser/OS; there is no custom calendar widget.
+One integrated date bar accepts keyboard input in strict `YYYY-MM-DD` format and includes a calendar icon backed by the browser's native date picker. There is no second visible date field. Tab from the text to the icon, then press Enter or Space to open the calendar; click/tap also works. Invalid text clears the internal picker value but remains editable in the bar; calendar selections immediately update that same text. Impossible dates, year 0000, and malformed formats are rejected; leap days, years 0001–9999, and future dates retain the existing validation rules. Storage/export still use the same ISO date string and version-1 schema. Native calendar presentation varies by browser/OS; there is no custom calendar widget.
 
 ## Roadmap — not current connections
 
@@ -84,6 +113,8 @@ These are planning notes only, not claims of access, connections, identification
 
 ## Checks
 
+Coordination note: a concurrent task opened PR #4 while the focused autocomplete task was testing. Its startup/matching fixes overlapped, so additional visible/live no-match feedback, pointer-focus handling, and dynamic/keyboard/mouse/touch/accessibility regressions were consolidated into PR #4. Duplicate PR #5 is superseded; no merge/deployment. The combined full Chromium suite passed, including the integrated date bar and JSON restore. Syntax, manifest, Flask routes, and whitespace checks also pass. Workspace-only Chromium libraries/fonts were extracted into ignored `.browser-cache`, with local `LD_LIBRARY_PATH`/`FONTCONFIG_FILE`; no application dependencies were added.
+
 Basic checks (no browser-test tools needed):
 
 ```sh
@@ -102,12 +133,14 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" npx playwright install chromium
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-browser.cjs
 ```
 
-feature/json-import-restore
-Playwright and Chromium are test tools only; the app itself needs no npm dependencies or external network requests. The check uses a fresh, isolated browser profile and tests saving/reloading, Unknown names, safe text rendering, image preview/non-persistence, JSON export/restore round-tripping, preview/cancel/confirm, existing and within-file duplicate IDs, invalid JSON/wrappers/record fields/file types/sizes, bounded previews, file-read failures, restore quota/blocked-write preservation and retry, changed-journal reconfirmation, confirm/cancel deletion, cross-tab updates, corrupt/blocked/full storage, labels, and overflow at 320, 390, 768, and 1280 pixels. These checks passed in Chromium; Firefox/Safari and a full screen-reader audit have not been run.
+### Manual review: JSON export and restore
 
 For a manual review, use Tab/Shift+Tab and the skip link, submit an empty name, reload to verify persistence, preview an image then save/reload to verify it is not retained, cancel and confirm deletion, and inspect the exported JSON. Restore it once to preview duplicates (no additions), cancel, then delete one entry and restore again to preview and confirm its recovery. Try an invalid JSON file and verify that nothing changes. Resize to a narrow mobile viewport. No merge or deployment is required to review this feature branch.
-=======
-Playwright and Chromium are test tools only; the app itself needs no npm dependencies or external network requests. The check uses a fresh, isolated browser profile and tests both starter names, prefix/case matching, custom names, keyboard selection/dismissal, safe suggestion rendering, typed invalid dates and leap days, calendar/text synchronization, unchanged date storage, local-only messaging, saving/reloading, Unknown names, safe text rendering, image preview/non-persistence, JSON contents, confirm/cancel deletion, cross-tab updates, corrupt/blocked/full storage, labels, and overflow at 320, 390, 768, and 1280 pixels. Remote requests are blocked and asserted absent; fetch, XMLHttpRequest, WebSocket, EventSource, and sendBeacon calls are trapped and asserted absent across page loads. These checks do not establish behavior for a future integration. The suite has passed in Chromium, including touch selection and open-dropdown mobile overflow checks. Firefox/Safari and a **manual screen-reader audit remain necessary**, especially combobox announcements and native calendar operation.
+Playwright and Chromium are test tools only; the app itself needs no npm dependencies or external network requests. The check uses a fresh, isolated browser profile and tests both starter names, prefix/substring/case matching, custom names, keyboard selection/dismissal, safe suggestion rendering, one-bar layout, Enter/Space native-picker activation, typed invalid dates and leap days (including century rules), calendar/text input and change synchronization, unchanged date storage, local-only messaging, saving/reloading, Unknown names, safe text rendering, image preview/non-persistence, JSON export/restore round-trips, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, restore write-failure preservation/retry and changed-journal reconfirmation, confirm/cancel deletion, cross-tab updates, corrupt/blocked/full storage, labels, and overflow at 320, 390, 768, and 1280 pixels. Remote requests are blocked and asserted absent; fetch, XMLHttpRequest, WebSocket, EventSource, and sendBeacon calls are trapped and asserted absent across page loads. These checks do not establish behavior for a future integration. The suite has passed in Chromium, including touch selection and open-dropdown mobile overflow checks. Firefox/Safari and a **manual screen-reader audit remain necessary**, especially combobox announcements and native calendar operation.
+
+### Manual review: Species suggestions and typed dates
+
+Type `Trich` (both starter names), `Trichoc` (one), `RICH` (both substring matches), `harz` (one), and an unlisted name (visible no-match feedback with a manual-name option). Results update with each keystroke, replacement/paste, and deletion. Select by arrows/Enter, mouse, and touch; the field fills but the journal count stays unchanged until Save. Check Escape/Tab retain custom text and clearing closes the list. This searches every matching entry in the **two-name starter dataset, not all real species or biodiversity**.
 
 For a manual review, use Tab/Shift+Tab and the skip link. Type `Trich`, navigate with arrows and Enter, reopen with an arrow, dismiss with Escape, and keep an unlisted name. Check that Enter on an active suggestion does not save. Type `2024-02-29` (valid) and `2025-02-29` (invalid), then choose a calendar date and verify the text updates. Confirm local-only save/publishing notices. Submit an empty name, reload to verify persistence, preview an image then save/reload to verify it is not retained, cancel and confirm deletion, and inspect the exported JSON. Resize to a narrow mobile viewport. Review with a screen reader (not yet audited). No merge or deployment is required to review this feature branch.
 

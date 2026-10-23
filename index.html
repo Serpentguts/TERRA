@@ -41,11 +41,18 @@
           <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label>
             <div class="name-picker"><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help">
             <ul id="name-suggestions" class="name-suggestions" role="listbox" aria-label="Starter species suggestions and custom name" hidden></ul></div>
-            <small id="name-help">Two local starter examples, not a taxonomy database or identification. Type a prefix; use ↑/↓ and Enter to choose, Escape to close, or keep your own name. Blank saves as “Unknown”.</small>
-            <span id="name-status" class="sr-only" role="status" aria-live="polite"></span>
+            <small id="name-help">Type any part of a name to see every matching entry (case-insensitive) in this two-name starter list—not all real species. Use ↑/↓ and Enter, or click/tap to fill the field without saving. You can always keep your own name. Blank saves as “Unknown”.</small>
+            <small id="name-status" role="status" aria-live="polite" aria-atomic="true"></small>
           </div>
-          <div class="field"><label for="date">Observation date</label><input id="date" name="date" type="text" required maxlength="10" placeholder="YYYY-MM-DD" aria-describedby="date-help"><small id="date-help">Type YYYY-MM-DD (year 0001–9999), or use the calendar below. Future dates are allowed.</small>
-            <label for="date-picker">Choose observation date with calendar</label><input id="date-picker" type="date" min="0001-01-01" max="9999-12-31" aria-describedby="date-help">
+          <div class="field"><label id="date-label" for="date">Observation date</label>
+            <div class="date-bar" role="group" aria-label="Observation date controls" aria-describedby="date-help">
+              <input id="date" name="date" type="text" required maxlength="10" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" placeholder="YYYY-MM-DD" autocomplete="off" aria-describedby="date-help">
+              <span class="date-calendar">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2"/></svg>
+                <input id="date-picker" type="date" min="0001-01-01" max="9999-12-31" aria-label="Choose observation date with calendar" aria-describedby="date-help" title="Choose observation date with calendar">
+              </span>
+            </div>
+            <small id="date-help">Type YYYY-MM-DD (year 0001–9999), or use the calendar icon in this bar. Tab to the icon and press Enter or Space to open the calendar. Future dates are allowed.</small>
           </div>
           <div class="field"><label for="notes">Field notes <span class="optional">(optional)</span></label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Colors, textures, habitat… what caught your eye?" aria-describedby="notes-help"></textarea><small id="notes-help">Avoid sensitive details or exact locations in names and notes.</small></div>
           <div class="field"><label for="photo">Take a closer look <span class="optional">(optional)</span></label><input id="photo" type="file" accept="image/*" aria-describedby="photo-help"><small id="photo-help">Image preview only, up to 10 MB. Images are never uploaded, saved, or included in exports.</small><p id="photo-error" class="error" role="alert" hidden></p><div id="preview-wrap" hidden><img id="photo-preview" alt="Preview of your selected observation image"><button id="remove-photo" class="text-button" type="button">Remove preview</button></div></div>

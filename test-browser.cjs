@@ -236,9 +236,36 @@ async function testRestore(page, key, exported) {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }));
-    // Starter suggestions are case-insensitive prefixes, never forced replacements.
+    // Starter suggestions match any part of every local name, never forced replacements.
     const name = page.getByRole('combobox', { name: 'Species or common name' });
     const suggestionList = page.getByRole('listbox', { name: 'Starter species suggestions and custom name' });
+    assert.deepEqual(errors, []);
+    assert.equal(await page.locator('#save-button').isEnabled(), true);
+    const speciesOptions = () => suggestionList.getByRole('option').allTextContents().then(items => items.slice(0, -1));
+    const both = ['Trichocereus bridgesii', 'Trichoderma harzianum'];
+    // Real typing filters every keystroke; deleting broadens the list again.
+    await name.fill('');
+    for (const letter of 'Trich') {
+      await name.pressSequentially(letter);
+      assert.deepEqual(await speciesOptions(), both);
+    }
+    await name.pressSequentially('oc');
+    assert.deepEqual(await speciesOptions(), [both[0]]);
+    await name.press('Backspace');
+    assert.deepEqual(await speciesOptions(), both);
+    await name.fill('RICH');
+    assert.deepEqual(await speciesOptions(), both);
+    assert.equal(await name.getAttribute('aria-controls'), await suggestionList.getAttribute('id'));
+    assert.equal(await name.getAttribute('aria-autocomplete'), 'list');
+    assert.equal(await page.locator('#name-status').getAttribute('role'), 'status');
+    assert.equal(await page.locator('#name-status').getAttribute('aria-live'), 'polite');
+    assert.match(await page.locator('#name-help').textContent(), /not all real species/);
+    await name.fill('harz');
+    await suggestionList.getByRole('option', { name: both[1], exact: true }).tap();
+    assert.equal(await name.inputValue(), both[1]);
+    assert.equal(await page.locator('.observation-card').count(), 0, 'Touch fills without submitting');
+    assert.equal(await name.evaluate(el => document.activeElement === el), true);
+    assert.equal(await name.getAttribute('aria-expanded'), 'false');
     await name.fill('  tRiCh');
     assert.deepEqual(await suggestionList.getByRole('option').allTextContents(), [
       'Trichocereus bridgesii', 'Trichoderma harzianum', 'Keep “tRiCh” as my manual name'
@@ -257,6 +284,8 @@ async function testRestore(page, key, exported) {
     await name.fill('Trichoc');
     assert.equal(await suggestionList.getByRole('option').count(), 2);
     await suggestionList.getByRole('option', { name: 'Trichocereus bridgesii', exact: true }).click();
+    assert.equal(await name.inputValue(), 'Trichocereus bridgesii');
+    assert.equal(await page.locator('.observation-card').count(), 1, 'Mouse fills without submitting');
     await page.click('#save-button');
     await name.fill('Trich');
     await name.press('ArrowUp'); // Last option is the explicit manual choice.
@@ -265,14 +294,30 @@ async function testRestore(page, key, exported) {
     await page.click('#save-button');
     await name.fill('My unlisted organism');
     assert.equal(await suggestionList.getByRole('option').count(), 1);
+    assert.match(await page.locator('#name-status').textContent(), /No matching starter species/);
+    assert.equal(await page.locator('#name-status').isVisible(), true);
     await suggestionList.getByRole('option').tap();
+    assert.equal(await name.inputValue(), 'My unlisted organism');
+    assert.equal(await page.locator('.observation-card').count(), 3, 'Manual choice does not submit');
     await page.click('#save-button');
     const featureRecords = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key);
     assert.deepEqual(featureRecords.map(item => item.name), [
       'My unlisted organism', 'Trich', 'Trichocereus bridgesii', 'Trichoderma harzianum'
     ]);
+    for (const [query, expected] of [
+      ['harz', ['Trichoderma harzianum']],
+      ['BRIDGESII', ['Trichocereus bridgesii']],
+      ['  ICHO  ', ['Trichocereus bridgesii', 'Trichoderma harzianum']],
+      ['tricho', ['Trichocereus bridgesii', 'Trichoderma harzianum']],
+      ['not in the starter list', []], ['   ', []]
+    ]) {
+      await name.fill(query);
+      const options = await suggestionList.getByRole('option').allTextContents();
+      assert.deepEqual(query.trim() ? options.slice(0, -1) : options, expected, query);
+      assert.equal(await name.inputValue(), query, 'Filtering preserves manual text');
+    }
     await name.fill('harz');
-    assert.equal(await suggestionList.getByRole('option').count(), 1, 'Only prefixes match');
+    assert.equal(await suggestionList.getByRole('option').count(), 2, 'Substring matches plus manual option');
     await name.press('Escape');
     assert.equal(await name.getAttribute('aria-expanded'), 'false');
     assert.equal(await name.getAttribute('aria-activedescendant'), null);
@@ -282,24 +327,50 @@ async function testRestore(page, key, exported) {
     assert.equal(await name.getAttribute('aria-expanded'), 'false');
     await name.fill('<img src=x onerror="window.injected=true">');
     assert.equal(await page.locator('#name-suggestions img').count(), 0);
+    await name.fill('unlisted manual text');
+    await name.press('Tab');
+    assert.equal(await name.inputValue(), 'unlisted manual text');
     await name.fill('');
     assert.equal(await name.getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.locator('#name-status').textContent(), '');
     // Real keyboard input, invalid calendar days, leap years, bounds, and calendar sync.
     const date = page.getByLabel('Observation date', { exact: true });
+    const calendar = page.getByLabel('Choose observation date with calendar', { exact: true });
+    assert.equal(await page.locator('.date-bar').count(), 1);
+    assert.equal(await page.locator('.date-bar #date, .date-bar #date-picker').count(), 2);
+    await date.focus();
+    await date.press('Tab');
+    assert.equal(await calendar.evaluate(el => el === document.activeElement), true);
+    // Exercise real user-gesture activation of the native picker with Enter and Space.
+    await calendar.evaluate(el => {
+      const nativeShowPicker = el.showPicker.bind(el);
+      window.pickerActivations = 0;
+      el.showPicker = () => { window.pickerActivations++; nativeShowPicker(); };
+    });
+    for (const key of ['Enter', ' ']) {
+      await calendar.focus();
+      await calendar.press(key);
+      await page.keyboard.press('Escape');
+    }
+    assert.equal(await page.evaluate(() => window.pickerActivations), 2);
     const beforeInvalid = await page.evaluate(k => localStorage.getItem(k), key);
-    for (const invalid of ['', '2025-02-29', '2024-02-30', '2025-04-31', '0000-01-01', '10000-01-01', '04/02/2025', '2025-4-2', 'not a date']) {
+    for (const invalid of ['', '1900-02-29', '2100-02-29', '2025-02-29', '2024-02-30', '2025-04-31', '0000-01-01', '10000-01-01', '04/02/2025', '2025-4-2', 'not a date']) {
       await date.fill(invalid);
       await page.click('#save-button');
       assert.equal(await date.evaluate(el => el.checkValidity()), false, invalid);
       assert.equal(await page.evaluate(k => localStorage.getItem(k), key), beforeInvalid);
       assert.equal(await page.locator('#date-picker').inputValue(), '');
     }
-    for (const valid of ['2024-02-29', '0001-01-01', '9999-12-31']) {
+    for (const valid of ['2024-02-29', '2000-02-29', '0001-01-01', '9999-12-31']) {
       await date.fill('');
       await date.pressSequentially(valid);
       assert.equal(await date.evaluate(el => el.checkValidity()), true, valid);
       assert.equal(await page.locator('#date-picker').inputValue(), valid);
     }
+    // Native picker input and change both synchronize the one visible text value.
+    await calendar.fill('2024-02-29');
+    await calendar.dispatchEvent('input');
+    assert.equal(await date.inputValue(), '2024-02-29');
     await page.locator('#date-picker').fill('2025-04-02');
     await page.locator('#date-picker').dispatchEvent('change');
     assert.equal(await date.inputValue(), '2025-04-02');
@@ -397,6 +468,11 @@ async function testRestore(page, key, exported) {
       assert.equal(await page.locator('#name-suggestions').isVisible(), true);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `open suggestions overflow at ${width}`);
       await name.fill('x'.repeat(120));
+      const textBounds = await date.boundingBox();
+      const iconBounds = await calendar.boundingBox();
+      assert.ok(Math.abs(textBounds.y - iconBounds.y) <= 1, `one date bar at ${width}`);
+      assert.ok(textBounds.x + textBounds.width <= iconBounds.x + 1, 'Icon does not cover typed text');
+      assert.ok(iconBounds.width >= 44 && iconBounds.height >= 44, 'Calendar touch target');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `custom name overflow at ${width}`);
       await name.press('Escape');
     }
@@ -409,10 +485,8 @@ async function testRestore(page, key, exported) {
     assert.deepEqual(errors, []);
     assert.equal(requests.every(url => url.startsWith('http://127.0.0.1:8080/') || url.startsWith('blob:')), true);
     await context.close();
-feature/json-import-restore
-    console.log('PASS: save/reload, safe text, previews, privacy, export/restore round-trip, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, storage-write preservation and retry, corrupt/blocked storage, changed-journal reconfirmation, cross-tab updates, labels, mobile widths, no external requests.');
-=======
-    console.log('PASS: starter suggestions, custom names, keyboard selection/dismissal, typed/calendar date validation and persistence, local-only messaging, save/reload, Unknown, safe text, previews, privacy, JSON export, confirmed deletion, cross-tab updates, quota/corrupt/blocked storage, labels, mobile widths, no network API calls or external requests.');
+    console.log('PASS: integrated date bar, native keyboard activation, manual/calendar sync, strict/leap dates, substring autocomplete, custom names; save/reload, safe text, previews, privacy, export/restore round-trip, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, storage-write preservation and retry, corrupt/blocked storage, changed-journal reconfirmation, cross-tab updates, labels, mobile widths, no external requests.');
+
   } finally {
     await browser.close();
   }
