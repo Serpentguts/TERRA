@@ -290,6 +290,19 @@ async function testIdentification(page, key) {
     await page.locator('#identify-previews select').selectOption(part);
     await analyze();
     assert.match(await page.locator('#identify-caveat').textContent(), caveat);
+    assert.equal(await page.locator('#identify-candidates > li').count(), 3);
+    assert.equal(await page.locator('#identify-remaining > li').count(), 3);
+    assert.equal(await page.locator('#identify-more').getAttribute('open'), null);
+    const summary = page.locator('#identify-more summary');
+    await summary.focus();
+    await summary.press('Enter');
+    assert.equal(await page.locator('#identify-remaining').isVisible(), true);
+    assert.equal(await page.locator('#identify-candidates > li').first().isVisible(), true);
+    const scores = await page.locator('#identify-candidates > li p, #identify-remaining > li p').allTextContents();
+    assert.deepEqual(scores.map(text => Number(text.match(/score: (\d+)/)[1])), [72, 48, 26, 19, 12, 5]);
+    assert.ok(scores.every(text => /MOCK · Demo data/.test(text) && /non-calibrated/.test(text)));
+    await summary.press('Space');
+    assert.equal(await page.locator('#identify-remaining').isVisible(), false);
   }
   await page.check('#identify-multiple');
   await page.setInputFiles('#identify-files', [photo('second.png'), photo('third.png')]);
@@ -316,6 +329,9 @@ async function testIdentification(page, key) {
   for (const width of [320, 390, 768, 1280]) {
     await page.setViewportSize({ width, height: 850 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `populated mock overflow at ${width}`);
+    await page.locator('#identify-more summary').click();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `expanded candidates overflow at ${width}`);
+    await page.locator('#identify-more summary').click();
   }
   await page.selectOption('#identify-region', 'Europe');
   assert.equal(await page.locator('#identify-output').isVisible(), false);
@@ -346,6 +362,197 @@ async function testIdentification(page, key) {
   assert.equal(await snapshot(), before);
   assert.equal(await page.evaluate(k => JSON.parse(localStorage.getItem(k)).every(item => Object.keys(item).sort().join() === 'date,id,name,notes,privacy,type'), key), true);
   console.log('PASS: local mock identification, all groups/parts/caveats, single/multi-image limits, invalid files, URL cleanup, review controls, safe text, reset/reload, storage isolation, zero mock network calls, populated responsive widths.');
+}
+
+async function testDiscoveryHandoff(page, key) {
+  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
+  const photo = name => ({ name, mimeType: 'image/png', buffer: image });
+  const snapshot = () => page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  const before = await snapshot();
+  const raw = await page.evaluate(k => localStorage.getItem(k), key);
+  const requests = [];
+  const capture = request => requests.push(request.url());
+  page.on('request', capture);
+  await page.evaluate(() => {
+    window.handoffUrls = { created: [], revoked: [] };
+    const create = URL.createObjectURL.bind(URL), revoke = URL.revokeObjectURL.bind(URL);
+    URL.createObjectURL = value => { const url = create(value); window.handoffUrls.created.push(url); return url; };
+    URL.revokeObjectURL = url => { window.handoffUrls.revoked.push(url); revoke(url); };
+    navigator.geolocation.getCurrentPosition = navigator.geolocation.watchPosition = () => { throw new Error('No GPS'); };
+  });
+  const analyze = () => page.getByRole('button', { name: /Analyze — show MOCK/ }).click();
+  const transfer = () => page.click('#identify-record');
+  const ready = () => page.waitForFunction(() => [...document.querySelectorAll('#identify-previews img, #discovery-previews img')].every(img => img.complete && img.naturalWidth));
+  const confirm = async accept => {
+    const dialogPromise = page.waitForEvent('dialog');
+    const click = transfer();
+    const dialog = await dialogPromise;
+    assert.match(dialog.message(), /nothing is saved or sent to iNaturalist/);
+    assert.match(dialog.message(), /Photos: 2 temporary preview/);
+    if (accept) await dialog.accept(); else await dialog.dismiss();
+    await click;
+  };
+  assert.equal(await page.locator('#identify-location-detail').isVisible(), false);
+  await page.selectOption('#identify-region', 'North America');
+  assert.equal(await page.locator('#identify-location-detail').isVisible(), true);
+  assert.equal(await page.locator('#identify-manual-location').isVisible(), false);
+  await page.selectOption('#identify-precision', 'state');
+  assert.equal(await page.locator('#identify-state').isVisible(), true);
+  assert.equal(await page.locator('#identify-city').isVisible(), false);
+  await page.fill('#identify-country', 'Canada');
+  await page.fill('#identify-state', 'Ontario');
+  await page.selectOption('#identify-precision', 'city');
+  await page.fill('#identify-city', 'Ottawa');
+  await page.selectOption('#identify-precision', 'state');
+  assert.equal(await page.locator('#identify-city').inputValue(), '');
+  await page.selectOption('#identify-region', '');
+  assert.equal(await page.locator('#identify-location-detail').isVisible(), false);
+  for (const field of ['precision', 'country', 'state', 'city']) assert.equal(await page.locator(`#identify-${field}`).inputValue(), '');
+  await page.selectOption('#identify-region', 'North America');
+  await page.selectOption('#identify-precision', 'city');
+  await page.fill('#identify-country', 'Canada');
+  await page.fill('#identify-state', 'Ontario');
+  const literal = '<img src=x onerror="window.locationInjected=true">';
+  await page.fill('#identify-city', literal);
+  await page.selectOption('#identify-group', 'animal');
+  await page.check('#identify-multiple');
+  await page.setInputFiles('#identify-files', [photo('one.png'), photo('two.png')]);
+  await ready();
+  for (const select of await page.locator('#identify-previews select').all()) await select.selectOption('Whole organism');
+  await page.fill('#identify-date', '2024-02-29');
+  await analyze();
+  // Empty selection and uncertain review cannot transfer anything.
+  await transfer();
+  assert.match(await page.locator('#identify-review-error').textContent(), /Select a candidate/);
+  assert.equal(await page.locator('#identify-correction').evaluate(el => el === document.activeElement), true);
+  await page.click('#identify-uncertain');
+  await transfer();
+  assert.equal(await snapshot(), before);
+  await page.fill('#name', 'Original draft');
+  await page.fill('#notes', 'Keep notes');
+  await page.selectOption('#privacy', 'approximate');
+  await page.fill('#date', '2000-01-01');
+  // Candidate from the disclosure is selectable; cancellation preserves the entire draft.
+  await page.locator('#identify-more summary').click();
+  await page.locator('#identify-remaining button').last().click();
+  const chosen = await page.locator('#identify-remaining h4').last().textContent();
+  await confirm(false);
+  assert.equal(await page.locator('#name').inputValue(), 'Original draft');
+  assert.equal(await page.locator('#date').inputValue(), '2000-01-01');
+  assert.equal(await page.locator('#discovery-previews img').count(), 0);
+  await confirm(true);
+  await ready();
+  assert.equal(await page.locator('#name').inputValue(), chosen);
+  assert.equal(await page.locator('input[name=type]:checked').inputValue(), 'other');
+  assert.equal(await page.locator('#date').inputValue(), '2024-02-29');
+  assert.equal(await page.locator('#date-picker').inputValue(), '2024-02-29');
+  assert.equal(await page.locator('#notes').inputValue(), 'Keep notes');
+  assert.equal(await page.locator('#privacy').inputValue(), 'approximate');
+  assert.equal(await page.locator('#discovery-previews img').count(), 2);
+  for (const [field, value] of Object.entries({ region: 'North America', precision: 'city', country: 'Canada', state: 'Ontario', city: literal })) {
+    assert.equal(await page.locator(`#discovery-${field}`).inputValue(), value);
+  }
+  assert.equal(await page.locator('#discovery-location img').count(), 0);
+  assert.equal(await page.evaluate(() => window.locationInjected), undefined);
+  assert.equal(await page.locator('#name').evaluate(el => el === document.activeElement), true);
+  assert.equal(await snapshot(), before, 'Confirmation only prefills, never saves');
+  // Repeated transfer releases previous draft URLs, never source URLs.
+  await confirm(true);
+  await ready();
+  let urls = await page.evaluate(() => window.handoffUrls);
+  assert.equal(urls.created.length, 6);
+  assert.equal(urls.revoked.length, 2);
+  assert.ok(urls.revoked.every(url => !urls.created.slice(0, 2).includes(url)));
+  // Editing a custom label clears any stale selection; blank labels are rejected.
+  await page.fill('#identify-correction', ' ');
+  await page.click('#identify-correct');
+  assert.match(await page.locator('#identify-review-error').textContent(), /1–120/);
+  await transfer();
+  assert.match(await page.locator('#identify-review-error').textContent(), /Select a candidate/);
+  await page.fill('#identify-correction', literal);
+  await page.click('#identify-correct');
+  await confirm(true);
+  assert.equal(await page.locator('#name').inputValue(), literal);
+  assert.equal(await page.locator('#identify-review-status img').count(), 0);
+  // Context changes invalidate selection. Empty optional date transfers as blank, requiring review.
+  await page.fill('#identify-date', '');
+  assert.equal(await page.locator('#identify-output').isVisible(), false);
+  await analyze();
+  await transfer();
+  assert.match(await page.locator('#identify-review-error').textContent(), /Select a candidate/);
+  await page.locator('#identify-candidates button').first().click();
+  await confirm(true);
+  assert.equal(await page.locator('#date').inputValue(), '');
+  await page.click('#save-button');
+  assert.equal(await snapshot(), before, 'Missing date must not save');
+  // Reset of source photos leaves valid independently owned draft previews.
+  await page.click('#identify-reset');
+  await ready();
+  assert.equal(await page.locator('#identify-previews img').count(), 0);
+  assert.equal(await page.locator('#discovery-previews img').count(), 2);
+  await page.fill('#date', '2024-02-29');
+  // Failed save keeps transferred previews and all context for retry.
+  await page.evaluate(() => {
+    window.handoffSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); };
+  });
+  await page.click('#save-button');
+  assert.equal(await page.locator('#form-error').isVisible(), true);
+  assert.equal(await page.locator('#discovery-previews img').count(), 2);
+  assert.equal(await page.locator('#discovery-city').inputValue(), literal);
+  assert.equal(await snapshot(), before);
+  await page.evaluate(() => { Storage.prototype.setItem = window.handoffSetItem; });
+  await page.click('#save-button');
+  assert.equal(await page.locator('#discovery-previews img').count(), 0);
+  assert.equal(await page.locator('#discovery-city').inputValue(), '');
+  const records = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key);
+  assert.ok(records.every(item => Object.keys(item).sort().join() === 'date,id,name,notes,privacy,type'));
+  assert.equal(records[0].date, '2024-02-29');
+  assert.equal(records[0].notes, 'Keep notes');
+  const downloadPromise = page.waitForEvent('download');
+  await page.click('#export-button');
+  const exported = JSON.parse(await fs.readFile(await (await downloadPromise).path(), 'utf8'));
+  assert.deepEqual(exported.observations, records);
+  assert.equal(exported.version, 1);
+  // Another transfer: replacing images with journal input and explicit removal both release URLs.
+  await page.selectOption('#identify-group', 'plant');
+  await page.check('#identify-multiple');
+  await page.setInputFiles('#identify-files', [photo('three.png'), photo('four.png')]);
+  await ready();
+  for (const select of await page.locator('#identify-previews select').all()) await select.selectOption('Leaf');
+  await analyze();
+  await page.locator('#identify-candidates button').first().click();
+  await confirm(true);
+  assert.equal(await page.locator('input[name=type]:checked').inputValue(), 'plant');
+  await page.setInputFiles('#photo', photo('replacement.png'));
+  assert.equal(await page.locator('#discovery-previews img').count(), 0);
+  assert.equal(await page.locator('#preview-wrap').isVisible(), true);
+  await confirm(true);
+  assert.equal(await page.locator('#preview-wrap').isVisible(), false);
+  await page.locator('#discovery-previews img').first().dispatchEvent('error');
+  assert.equal(await page.locator('#discovery-previews img').count(), 1);
+  await page.click('#discovery-clear-images');
+  assert.equal(await page.locator('#discovery-previews img').count(), 0);
+  await confirm(true);
+  await ready();
+  for (const width of [320, 390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 850 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `discovery draft overflow at ${width}`);
+  }
+  // pagehide clears both owners; each object URL must be revoked exactly once.
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  await page.waitForTimeout(1100); // Delayed JSON export URL revocation.
+  urls = await page.evaluate(() => window.handoffUrls);
+  assert.deepEqual([...urls.created].sort(), [...urls.revoked].sort());
+  assert.equal(new Set(urls.revoked).size, urls.revoked.length);
+  assert.equal(requests.every(url => url.startsWith('blob:')), true, `Unexpected handoff network: ${requests}`);
+  page.off('request', capture);
+  await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key, raw });
+  await page.reload();
+  assert.equal(await page.locator('#discovery-previews img').count(), 0);
+  assert.equal(await page.locator('#discovery-region').inputValue(), '');
+  assert.equal(await snapshot(), before);
+  console.log('PASS: manual administrative precision/privacy, all-ranked accessible disclosure, selection guards, cancel/confirmed candidate and custom handoff, date/context/images review, independent URL ownership/replacement/error/removal/pagehide, unchanged save/export schema, failed-save retry, no GPS/network, responsive draft.');
 }
 
 (async () => {
@@ -599,6 +806,7 @@ async function testIdentification(page, key) {
     await page.reload();
     await testRestore(page, key, exported);
     await testIdentification(page, key);
+    await testDiscoveryHandoff(page, key);
     // Corrupt storage must not be silently overwritten.
     await page.evaluate(k => localStorage.setItem(k, '{broken'), key);
     await page.reload();
