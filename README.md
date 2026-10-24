@@ -141,6 +141,57 @@ Type `Trich` to see both; `Trichoc`, `bridgesii`, or `harz` narrows the list. Ar
 
 One integrated date bar accepts keyboard input in strict `YYYY-MM-DD` format and includes a calendar icon backed by the browser's native date picker. There is no second visible date field. Tab from the text to the icon, then press Enter or Space to open the calendar; click/tap also works. Invalid text clears the internal picker value but remains editable in the bar; calendar selections immediately update that same text. Impossible dates, year 0000, and malformed formats are rejected; leap days, years 0001–9999, and future dates retain the existing validation rules. Storage/export still use the same ISO date string and version-1 schema. Native calendar presentation varies by browser/OS; there is no custom calendar widget.
 
+## Projects / Field Summary — local descriptive reporting
+
+This small prototype is a step toward Trevor's reporting idea, **not an AI summary, ecological inference, mapping tool, trend analysis, or species verification**. It does not call an API or add a reporting backend. Existing journal saving, starter suggestions, dates, JSON export/restore, and the explicitly mock photo-review flow remain unchanged. No mock review rewards or camera-roll permissions have been added.
+
+1. Scroll to **Projects / Field Summary** and choose **New project**.
+2. Enter a title (required, 1–120 characters), group type, optional date/site/species and notes (up to 3,000 characters).
+   - **Project date / day:** requires a valid `YYYY-MM-DD` date, year 0001–9999; only records on that exact day are eligible.
+   - **Species / name:** requires a recorded name, up to 120 characters; exact, case-sensitive matching after trimming. This is not a taxonomy lookup.
+   - **Site / name:** requires a site label, up to 120 characters. Sites are manually assigned at the **project** level, not inferred from observations. The existing journal has no site/coordinate fields, so any journal record can be selected.
+   - **Custom collection:** requires only the project title; any journal record can be selected. An optional date must still be valid.
+3. Check existing observations and **Create project**. No matches are automatically selected; later journal additions are never silently included. An empty project is allowed and explains that there is nothing to summarize; no data is invented.
+4. Select a saved project to edit its metadata or check/uncheck records, then **Save project changes**. Changing a day/species scope removes nonmatching selections **on save**, with a visible warning first. Unsaved edits never affect the saved report or CSV.
+5. **Mark complete** locks editing of the saved project; **Reopen project** enables it. Completion is a workflow label, not scientific validation or a frozen snapshot. Switching projects or using **Discard draft / refresh** discards unsaved project edits.
+6. Review scope, reference/included/missing counts, date/name tables, and the included-record ledger. Each group lists the contributing observation IDs. Tables support horizontal scrolling with keyboard focus on narrow screens.
+7. **Export summary CSV** downloads saved scope, notes, state, counts, and one row per included record, plus missing-ID rows (not counted) or an empty-report row. Counts repeat as project metadata, not extra observations. Treat site labels/notes as sensitive. CSV quotes commas/newlines/quotes and prefixes formula-like text with an apostrophe for spreadsheet safety. It is a readable report, **not a restore format**.
+
+### Metric definitions and compatibility
+
+- **Total observations:** number of currently resolvable, explicitly included IDs. Each ID counts once, regardless of repeated species/date. Other journal records do not count.
+- **Unique taxa labels:** distinct exact trimmed recorded names, excluding `Unknown` in any letter case. Case variants and common/scientific synonyms remain separate; unverified/custom names are labels, **not verified biological richness**. Unknown records still count in totals and tables.
+- **Records by date/species:** deterministic grouping of those same included records, with exact name labels and ISO dates. Both grouped counts sum to the total. No abundance, sampling effort, ecological condition, presence prediction, or trend is inferred.
+- Projects use a separate localStorage key, `terra.projects.v1`, with `{format: "terra-projects", version: 1, projects: [...]}`. Each stores `id`, `title`, `type`, `date`, `site`, `species`, `notes`, `complete`, and `observationIds`. Existing journal IDs already support references; **no duplicate observations are stored and the observation schema/key are unchanged**.
+- Existing browsers with no project key are treated as an empty project list without writing or migrating their journal. The version-1 project reader validates the whole payload, rejects duplicate project/reference IDs and malformed/unsupported versions, and selects only known fields, just like the existing journal's JSON compatibility style. No destructive auto-migration is attempted.
+- Journal deletion leaves a visible **missing ID reference**, excluded from all metrics. Restoring that exact ID through journal JSON restore reconnects it; a different ID with the same name does not. Reopen an affected project and uncheck the missing reference to remove it permanently. Completed reports also reflect current journal deletions/restorations.
+- Damaged/blocked journal or project reads pause project writes/exports rather than overwrite data. Project write failures retain the draft and saved bytes. Invalid project data does not block the independent journal. Tabs refresh saved reports without replacing drafts; stale project writes require an explicit refresh/review. localStorage is not transactional: use one active editing tab.
+- **Journal JSON exports/restores do not include projects.** There is no project JSON backup/restore UI in this small step; keep CSV reports and do not clear browser data. Both projects and journal are local to the exact browser profile/origin. Project deletion, shared/synced projects, frozen reports, charts, richer taxonomic normalization, and geographic matching are outside this prototype.
+
+### Windows manual review (PowerShell / VS Code)
+
+Review the branch without merging or deploying. Start from a clean working tree in your existing repository; stop if Git reports local changes/conflicts (do not force-reset them):
+
+```powershell
+git status -sb
+git fetch origin
+git switch --track origin/feature/local-field-summary
+# If this local branch already exists: git switch feature/local-field-summary
+python -m pip install -r requirements.txt
+python server.py
+```
+
+Open **http://localhost:8080** using the same browser/profile/address as your existing journal to check compatibility; export a journal JSON backup first. A different port, profile, `127.0.0.1`, or private window has separate storage. Do not clear an existing journal to test the empty state—use a separate browser profile instead. Stop the server with Ctrl+C when finished.
+
+- In a fresh profile, confirm the project empty state explains how to add/restore journal observations. Create an empty project; expect zero counts and an empty CSV row.
+- In your normal test journal, add two `Oak` records on `2024-02-29`, one blank-name `Unknown` record on `2025-01-01`, and one `Birch` record not selected. Include only the first three in a custom project: expect **3 observations, 1 unique taxa label**, date counts **2 + 1**, name counts **Oak 2 / Unknown 1**. Compare IDs with the source table and CSV. Existing observations must survive reload unchanged.
+- Try all four grouping types, missing title/site/species/day, impossible `2025-02-29`, valid `2024-02-29`, a species name with different case, and a day with no matches. Confirm no records are auto-selected and scope-change exclusions are disclosed. Uncheck a record, save and verify all counts update.
+- Mark complete, reload, reselect the project, verify editing is locked, then reopen/edit/save. Delete an included journal record and confirm its missing ID is visible and excluded, even when complete; restore the original journal JSON and confirm that ID reconnects.
+- Enter punctuation/newlines and text such as `=1+1` in a project title or notes; inspect the CSV with Notepad and Excel. Confirm literal text, correct rows, and apostrophe-prefixed formula-like cells (nothing executes).
+- Open a second tab, edit the same project there, and verify the first tab's unsaved draft survives but cannot overwrite the newer project until **Discard draft / refresh**. Prefer one editing tab thereafter.
+- Use Tab/Shift+Tab, Space to toggle checkboxes, and Enter on buttons. Review alerts/statuses and table headers with your screen reader. Resize to 320/390 px; scroll tables without whole-page overflow. In browser DevTools Network, after the page assets load, project editing/export should make **no network requests**. No GPS/camera-roll/account permissions should appear.
+- Regression-check the two starter suggestions (`Trich`), manual/calendar dates, photo preview/save/reload, JSON export/restore preview/cancel/confirm and duplicates, and the existing clearly labeled MOCK photo-review flow. Windows/Excel, Firefox/Safari, and a manual screen-reader audit still need human verification; automated checks run in Chromium on Linux.
+
 ## Roadmap — not current connections
 
 - **iNaturalist:** local journal first. A future, optional flow would let the user review a saved observation and privacy details, connect an account, and explicitly approve publishing. Saving locally is never publishing consent. No authentication, upload, publishing button, or external API calls are implemented. Persistent photos, location handling, consent, and current API requirements need separate design before this is possible.
@@ -171,7 +222,10 @@ Basic checks (no browser-test tools needed):
 ```sh
 node --check app.js
 node --check test-browser.cjs
-node -e "const fs=require('fs'),vm=require('vm'); for (const m of fs.readFileSync('index.html','utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(m[1]);"
+node --check test-projects-browser.cjs
+node --test test-field-summary.cjs
+python3 -m unittest test_server.py
+node -e "const fs=require('fs'),vm=require('vm'); for (const m of fs.readFileSync('index.html','utf8').matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(m[1]);"
 python3 -c "from server import app; c = app.test_client(); assert all(c.get(p).status_code == 200 for p in ['/', '/app.js', '/styles.css', '/api/health'])"
 ```
 
@@ -183,7 +237,22 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" npx playwright install chromium
 # On Linux, if browser libraries are missing (may require admin permissions):
 # npx playwright install-deps chromium
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-browser.cjs
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-projects-browser.cjs
 ```
+
+PowerShell equivalents for the automated browser checks (server running in another terminal):
+
+```powershell
+npm install --no-save --package-lock=false playwright
+$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD/.browser-cache"
+npx playwright install chromium
+node --test test-field-summary.cjs
+python -m unittest test_server.py
+node test-browser.cjs
+node test-projects-browser.cjs
+```
+
+`test-field-summary.cjs` covers versioned JSON compatibility/validation, exact scopes, metric reconciliation, deterministic ordering, missing/unknown records, and CSV quoting/formula safety. `test-projects-browser.cjs` covers all group types, membership editing, complete/reopen/reload, source tables, CSV downloads, missing/restored IDs, unchanged journal bytes/schema, quota/read/version failures, concurrent drafts, labels/keyboard/mobile widths, and no remote or network API calls. The original full `test-browser.cjs` remains a required regression check; the Flask unittest checks routes, manifest, and HTML IDs/labels.
 
 ### Manual review: JSON export and restore
 
