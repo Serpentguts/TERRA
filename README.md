@@ -8,8 +8,9 @@ TERRA is a project exploring tools for recording and reviewing nature observatio
 The browser-only journal records plant, fungus, or other observations with a name (or “Unknown”), notes, a date, and a location-privacy preference. An optional photo is previewed temporarily; it is not saved. No location is collected for journal entries. A separate **Explore a photo** prototype demonstrates local, ephemeral photo selection and review of explicitly illustrative mock candidates.
 
 ## Status
-Early prototype — not yet connected to iNaturalist or a scientific review service.
-Add TERRA README
+Early local-first prototype — no iNaturalist, BOLD, GenBank, real AI or scientific review service is connected. See [the next-stage integration roadmap](ROADMAP.md) for review gates and deliberately deferred work.
+
+This branch builds on the local Projects implementation in **PR #11** (`feature/local-field-summary`); it is a stacked follow-up, not a replacement for that PR. Main and open PRs/issues were inspected; the independent photo-handoff PR #7 is untouched.
 
 ## Run locally
 
@@ -30,8 +31,8 @@ From your local TERRA repository folder, review this PR branch without merging:
 
 ```powershell
 git fetch origin
-git switch --track origin/feature/local-photo-identification
-# If you already have that local branch: git switch feature/local-photo-identification
+git switch --track origin/feature/local-discovery-project-roadmap
+# If you already have that local branch: git switch feature/local-discovery-project-roadmap
 py -m pip install -r requirements.txt
 py server.py
 ```
@@ -115,6 +116,38 @@ node test-browser.cjs
 ```
 
 The automated suite uses its own fresh browser profile; it does not touch your normal journal. Windows manual steps are documented but were not executed in this Linux workspace.
+
+## Add a discovery to a local TERRA project
+
+The **second green action under Record a discovery is Add to TERRA project**, not an iNaturalist button. It writes only local project membership references.
+
+1. Create an open project in **Projects / Field Summary** below. If there are none, the action is disabled with a create-project link; if all are complete, reopen one.
+2. In Record a discovery, choose **Observation to add**: the current draft, or a specific saved observation (name, date and ID shown). Choose a **TERRA project**.
+3. For a draft, Add validates it, saves one journal record, then adds that ID to the project. For a saved observation, Add reuses its exact ID without writing another journal record. Repeated Add is idempotent. Ordinary **Save to local journal** automatically selects the newly saved record for a subsequent Add; the project choice is retained.
+4. Day projects require the exact date; species projects require an exact case-sensitive, trimmed name. Site/custom projects permit explicit membership, not inferred geographic matching. Completed projects cannot accept records until reopened. Invalid/missing targets or scope mismatches do not create new journal entries.
+5. Review the saved membership/counts in Projects / Field Summary. An unsaved project-editor draft is preserved; if another view changed the project storage, use **Discard draft / refresh** and review before saving it. Never overwrite a stale draft blindly.
+
+**Failure semantics:** localStorage has no multi-key transaction. If the journal write fails, no project write is attempted. If the journal succeeds but the project write fails, the UI explicitly says the observation is already saved and keeps the discovery draft. Retrying the unchanged draft in that page reuses the same ID. After a reload, select the saved observation instead of recreating the draft. Editing a partially saved draft creates a new observation rather than silently editing the saved one. No rollback/delete of a successfully saved journal record is attempted. Truly simultaneous tabs are not transactional; prefer one editing tab. Project membership is still excluded from journal JSON backups.
+
+## Identification provenance (staged UI only)
+
+Every saved observation links to a staged provenance definition, not an assigned badge. The exact labels **AI-suggested**, **community-identified**, and **expert-confirmed** describe three independent future evidence tracks, not a progression. Definitions specify model/version/uncertainty for AI, attributed reviewers/evidence and explicit consensus policy for community review, and relevant expert identity/explicit confirmation/evidence for expert review. There are no status selectors, automatic labels, community consensus, expert validation or reward claims. Fixed photo mocks are not AI evidence.
+
+Assignment/persistence is deliberately deferred until reviewer trust and a separately versioned optional provenance store/import policy are designed. Nothing was added to the six fields (`id`, `type`, `name`, `notes`, `date`, `privacy`) or version-1 JSON export/restore. Do not append new metadata to old exports: the existing importer intentionally strips unknown fields.
+
+## Genetic Data: unconnected local plans
+
+Separate **BOLD lookup — future / local preview** and **GenBank lookup — future / local preview** paths show only a local plan, never fake matches. Enter an optional taxon/record identifier and/or temporary DNA. The sequence syntax checker accepts plain IUPAC DNA or one FASTA record, up to 10,000 total input characters; it rejects empty/header-only sequences, additional records, RNA U, gaps, digits and other symbols. Lowercase and whitespace are supported. Preview reports only base and ambiguity counts—not identity, biological validity, sequence quality, service compatibility or search results. FASTA headers and sequence contents are not echoed into the preview.
+
+Inputs/previews remain in page memory only: no local/session storage, files, journal, project, JSON or CSV persistence; no network APIs or service calls; no credentials. Clear explicitly with **Clear genetic inputs**; leaving/reloading the page also clears them. This is not a secure-memory erase guarantee, and browser/OS clipboard or extensions are outside app control. No sequence-saving action is provided. **GenBank submission is not search** and is not implemented. iNaturalist publishing remains a separate future authenticated, explicitly consented action, never implied by Add to TERRA project.
+
+### Manual review of the clarified integration scope
+
+- In a fresh profile, verify the no-project empty state. Create custom/day/name/site projects and a completed project. Add a new draft, repeat Add, then add a saved observation to another project. Confirm journal count/IDs do not duplicate, scope mismatches do not save, completion locks membership and reload preserves references/counts.
+- Save normally then Add; verify the saved observation is selected. Keep an unrelated discovery draft while adding an existing record; it must stay untouched. Keep an unsaved project-editor draft while adding; it must require refresh before a stale save.
+- Read all three provenance definitions. Verify no observation is labeled as AI-, community- or expert-validated and no status can be assigned.
+- Preview a taxon-only BOLD plan, then a GenBank plan. Try `>example` followed by `ACGTNN`, then `ACGU`, two FASTA records and a header without bases. Inspect syntax errors/counts and the unconnected/submission warnings. Clear/reload and confirm no sequence remains; export JSON and verify only the original six fields exist. In browser devtools, verify no requests occur on either preview or project action.
+- Use Tab/Shift+Tab, native select keyboard controls and Enter/Space on actions; review live statuses and error alerts with a screen reader, and test 320/390 px widths. Automated Linux Chromium checks pass; Windows, Firefox/Safari and a manual screen-reader audit remain human review items.
 
 ## Restore an exported backup
 
@@ -223,7 +256,8 @@ Basic checks (no browser-test tools needed):
 node --check app.js
 node --check test-browser.cjs
 node --check test-projects-browser.cjs
-node --test test-field-summary.cjs
+node --check test-discovery-browser.cjs
+node --test test-field-summary.cjs test-integration-plan.cjs
 python3 -m unittest test_server.py
 node -e "const fs=require('fs'),vm=require('vm'); for (const m of fs.readFileSync('index.html','utf8').matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(m[1]);"
 python3 -c "from server import app; c = app.test_client(); assert all(c.get(p).status_code == 200 for p in ['/', '/app.js', '/styles.css', '/api/health'])"
@@ -238,6 +272,7 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" npx playwright install chromium
 # npx playwright install-deps chromium
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-browser.cjs
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-projects-browser.cjs
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-discovery-browser.cjs
 ```
 
 PowerShell equivalents for the automated browser checks (server running in another terminal):
@@ -246,11 +281,14 @@ PowerShell equivalents for the automated browser checks (server running in anoth
 npm install --no-save --package-lock=false playwright
 $env:PLAYWRIGHT_BROWSERS_PATH = "$PWD/.browser-cache"
 npx playwright install chromium
-node --test test-field-summary.cjs
+node --test test-field-summary.cjs test-integration-plan.cjs
 python -m unittest test_server.py
 node test-browser.cjs
 node test-projects-browser.cjs
+node test-discovery-browser.cjs
 ```
+
+`test-integration-plan.cjs` adds pure membership idempotency/immutability/scope/completion and single-record IUPAC DNA validation tests. `test-discovery-browser.cjs` adds new/saved/ordinary-save project handoff, failed journal/project writes and retry identity, stale drafts and cross-tab completion, six-field version-1 export/restore, unassignable provenance definitions, distinct local genetic plans, literal-text safety, no sequence persistence, keyboard/mobile checks and zero outbound/network API calls. All three browser suites, nine JS unit tests, Flask unittests, syntax/manifest/whitespace checks were run successfully on Linux Chromium for this follow-up. Test-only missing Chromium libraries/fonts were extracted under ignored `.browser-cache`; they are not runtime dependencies.
 
 `test-field-summary.cjs` covers versioned JSON compatibility/validation, exact scopes, metric reconciliation, deterministic ordering, missing/unknown records, and CSV quoting/formula safety. `test-projects-browser.cjs` covers all group types, membership editing, complete/reopen/reload, source tables, CSV downloads, missing/restored IDs, unchanged journal bytes/schema, quota/read/version failures, concurrent drafts, labels/keyboard/mobile widths, and no remote or network API calls. The original full `test-browser.cjs` remains a required regression check; the Flask unittest checks routes, manifest, and HTML IDs/labels.
 
