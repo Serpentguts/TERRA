@@ -32,7 +32,7 @@
       <noscript><p class="error">Enable JavaScript to use the local photo prototype.</p></noscript>
       <div class="identify-layout">
         <form id="identification-form" novalidate aria-describedby="identify-privacy">
-          <div class="field"><label for="identify-group">1. Organism group</label><select id="identify-group" required aria-describedby="identify-error"><option value="">Choose a group…</option><option value="plant">Plant</option><option value="fungus">Fungus / mushroom</option><option value="animal">Insect / animal</option><option value="unsure">Unsure</option></select></div>
+          <div class="field"><label for="identify-group">1. Organism group</label><select id="identify-group" required aria-describedby="identify-error"><option value="">Choose a group…</option><option value="plant">Plant</option><option value="fungus">Mushroom</option><option value="insect">Insect</option><option value="mammal">Mammal</option><option value="bird">Bird</option><option value="fish">Fish</option><option value="reptile">Reptile</option><option value="unsure">Unsure</option></select></div>
           <div class="field">
             <label class="same-organism" for="identify-multiple"><input id="identify-multiple" type="checkbox"> Add multiple views of the same organism (optional)</label>
             <small id="identify-mode-help">One photo is enough. For different organisms, reset and start a separate review. Multiple views must show the same organism.</small>
@@ -67,7 +67,12 @@
           <fieldset><legend>What did you find?</legend>
             <div class="type-options">
               <label><input type="radio" name="type" value="plant" checked> <span>Plant</span></label>
-              <label><input type="radio" name="type" value="fungus"> <span>Fungus</span></label>
+              <label><input type="radio" name="type" value="fungus"> <span>Mushroom</span></label>
+              <label><input type="radio" name="type" value="insect"> <span>Insect</span></label>
+              <label><input type="radio" name="type" value="mammal"> <span>Mammal</span></label>
+              <label><input type="radio" name="type" value="bird"> <span>Bird</span></label>
+              <label><input type="radio" name="type" value="fish"> <span>Fish</span></label>
+              <label><input type="radio" name="type" value="reptile"> <span>Reptile</span></label>
               <label><input type="radio" name="type" value="other"> <span>Other</span></label>
             </div>
           </fieldset>
@@ -135,14 +140,17 @@
         <fieldset id="project-fields">
           <legend>Project details and included records</legend>
           <div class="project-grid">
-            <div class="field"><label for="project-title">Project title (required)</label><input id="project-title" maxlength="120" required></div>
+            <div class="field"><label for="project-title">Project title</label><input id="project-title" maxlength="120" required></div>
             <div class="field"><label for="project-type">Group by</label><select id="project-type"><option value="custom">Custom collection</option><option value="day">Project date / day</option><option value="species">Species / name</option><option value="site">Site / name</option></select></div>
-            <div class="field"><label for="project-date">Project date (required for day groups)</label><input id="project-date" type="text" placeholder="YYYY-MM-DD" maxlength="10" aria-describedby="project-scope-help"></div>
-            <div class="field"><label for="project-species">Species / name (required for species groups)</label><input id="project-species" maxlength="120" aria-describedby="project-scope-help"></div>
-            <div class="field"><label for="project-site">Site name (required for site groups)</label><input id="project-site" maxlength="120"></div>
+            <div class="field"><label for="project-date">Project date</label><input id="project-date" type="text" placeholder="YYYY-MM-DD" maxlength="10" aria-describedby="project-scope-help"></div>
+            <div class="project-site-species" role="group" aria-label="Site and species names" aria-describedby="project-names-help">
+              <div class="field"><label for="project-site">Site name</label><input id="project-site" maxlength="120" aria-describedby="project-names-help"></div>
+              <div class="field"><label for="project-species">Species / name</label><input id="project-species" maxlength="120" aria-describedby="project-scope-help project-names-help"></div>
+              <p id="project-names-help"><small>One shared column, two separate values: site is your manual project label; species is the recorded name used for species-group matching. Both are kept in the saved scope and CSV.</small></p>
+            </div>
           </div>
           <div class="field"><label for="project-notes">Project notes (optional)</label><textarea id="project-notes" rows="2" maxlength="3000"></textarea></div>
-          <p id="project-scope-help">Day groups allow only that exact observation date. Species groups allow only that exact, case-sensitive name after trimming. Site/custom groups allow any journal record. Changing scope deselects nonmatching records when saved.</p>
+          <p id="project-scope-help">Every project needs a title. Day groups need a date and allow only that exact observation date. Species groups need a name and allow only that exact, case-sensitive name after trimming. Site groups need a site label. Site/custom groups allow any journal record. Changing scope deselects nonmatching records when saved.</p>
           <fieldset><legend>Include existing observations</legend>
             <p id="project-candidate-message"></p>
             <div id="project-candidates" class="project-candidates"></div>
@@ -193,19 +201,31 @@
     const parts = {
       plant: ["Leaf", "Flower", "Fruit", "Bark", "Whole organism", "Other"],
       fungus: ["Cap", "Gills / underside", "Stem", "Whole organism", "Other"],
-      animal: ["Dorsal / top", "Ventral / underside", "Wing", "Leg", "Whole organism", "Other"],
+      insect: ["Dorsal / top", "Ventral / underside", "Wing", "Leg", "Whole organism", "Other"],
+      mammal: ["Head", "Body", "Tracks", "Whole organism", "Other"],
+      bird: ["Head", "Wing", "Plumage", "Whole organism", "Other"],
+      fish: ["Side", "Fin", "Head", "Whole organism", "Other"],
+      reptile: ["Head", "Scales", "Body", "Whole organism", "Other"],
       unsure: ["Whole organism", "Detail / close-up", "Other"]
     };
     const demos = {
       plant: ["Common dandelion (Taraxacum officinale)", "Daisy (Bellis perennis)", "Broadleaf plantain (Plantago major)"],
       fungus: ["Fly agaric (Amanita muscaria)", "Oyster mushroom (Pleurotus ostreatus)", "Turkey tail (Trametes versicolor)"],
-      animal: ["Seven-spot ladybird (Coccinella septempunctata)", "Monarch butterfly (Danaus plexippus)", "European honey bee (Apis mellifera)"],
+      insect: ["Seven-spot ladybird (Coccinella septempunctata)", "Monarch butterfly (Danaus plexippus)", "European honey bee (Apis mellifera)"],
+      mammal: ["Red fox (Vulpes vulpes)", "Red squirrel (Sciurus vulgaris)", "European hedgehog (Erinaceus europaeus)"],
+      bird: ["European robin (Erithacus rubecula)", "House sparrow (Passer domesticus)", "Mallard (Anas platyrhynchos)"],
+      fish: ["Atlantic salmon (Salmo salar)", "Rainbow trout (Oncorhynchus mykiss)", "European perch (Perca fluviatilis)"],
+      reptile: ["Green iguana (Iguana iguana)", "Grass snake (Natrix natrix)", "European pond turtle (Emys orbicularis)"],
       unsure: ["Unresolved plant — demo label", "Unresolved fungus — demo label", "Unresolved animal — demo label"]
     };
     const caveats = {
       plant: "Look-alike plants may require several features and expert review. Never use this demo to decide whether a plant is edible or medicinal.",
       fungus: "Mushroom look-alikes can be deadly. Never eat or handle a mushroom based on these examples; seek a qualified local expert.",
-      animal: "Similar animals may need scale, multiple views, or expert examination. Keep a safe distance and do not disturb wildlife for a photo.",
+      insect: "Similar insects may need scale, multiple views, or expert examination. Keep a safe distance and do not disturb wildlife for a photo.",
+      mammal: "Mammal look-alikes may need expert review. Keep a safe distance; never approach or disturb wildlife for a photo.",
+      bird: "Bird plumage varies by age and season. Keep a safe distance and do not disturb birds or nests for a photo.",
+      fish: "Similar fish may need expert review of several features. Do not capture or handle wildlife for this demo.",
+      reptile: "Reptile look-alikes can be dangerous. Keep a safe distance; never handle a reptile based on this demo.",
       unsure: "The organism group is unresolved. These examples are placeholders across groups, not evidence for choosing one. Leaving it uncertain is useful."
     };
     let images = [];

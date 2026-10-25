@@ -2,7 +2,8 @@
 
 // Only these text fields are saved. Photos and coordinates never enter storage.
 const STORAGE_KEY = "terra.observations.v1";
-const categories = { plant: "Plant", fungus: "Fungus", other: "Other" };
+// Keep legacy fungus/other keys readable in existing version-1 journals and backups.
+const categories = { plant: "Plant", fungus: "Mushroom", insect: "Insect", mammal: "Mammal", bird: "Bird", fish: "Fish", reptile: "Reptile", other: "Other" };
 const privacyLabels = { hidden: "Hidden", approximate: "Approximate", exact: "Exact" };
 const form = document.querySelector("#observation-form");
 const list = document.querySelector("#observation-list");
