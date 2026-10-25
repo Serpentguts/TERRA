@@ -134,6 +134,20 @@ const { chromium } = require('playwright');
     }
     await page.getByLabel('TERRA project', { exact: true }).focus(); await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement.id), 'add-project-button');
+    // New organism categories use the same local add/idempotency path as legacy records.
+    const beforeCategories = (await records()).length;
+    for (const [index, type] of ['plant', 'fungus', 'insect', 'mammal', 'bird', 'fish', 'reptile'].entries()) {
+      await page.selectOption('#project-observation', '');
+      await page.check(`#observation-form input[name="type"][value="${type}"]`);
+      await page.fill('#name', `Local ${type} discovery`); await select(customId); await add();
+      const record = (await records())[0];
+      assert.equal(record.type, type);
+      await add();
+      assert.equal((await records()).length, beforeCategories + index + 1);
+      assert.equal((await projects()).find(p => p.id === customId).observationIds.filter(id => id === record.id).length, 1);
+    }
+    await page.reload(); await page.selectOption('#project-select', customId);
+    assert.match(await page.locator('#project-report').textContent(), /Local reptile discovery/);
     const goodK = await raw(K);
     for (const bad of ['{broken', JSON.stringify({ format: 'terra-projects', version: 99, projects: [] })]) {
       await page.evaluate(({ K, bad }) => localStorage.setItem(K, bad), { K, bad }); await page.reload();
