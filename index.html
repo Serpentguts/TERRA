@@ -92,7 +92,12 @@
           <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">A preference only—not actual location storage. TERRA never requests your location or saves coordinates, whatever you choose.</small></div>
           <p id="form-error" class="error" role="alert" hidden></p>
           <button id="save-button" class="primary-button" type="submit" disabled>Save to local journal <span aria-hidden="true">↗</span></button>
-          <p class="form-footer">Local journal first. No uploads, no sharing.</p>
+          <div class="field"><label for="project-observation">Observation to add</label><select id="project-observation" aria-describedby="add-project-help"><option value="">Current discovery draft (save once, then add)</option></select></div>
+          <div class="field"><label for="discovery-project">TERRA project</label><select id="discovery-project" aria-describedby="add-project-help"></select><small id="add-project-help">Local references only. Choose an open project; day/name scope must match. A saved observation is reused, not copied.</small></div>
+          <button id="add-project-button" class="primary-button" type="button" disabled>Add to TERRA project</button>
+          <p id="add-project-state" class="status" role="status"></p>
+          <p><a href="#projects">Create or reopen a local project</a></p>
+          <p class="form-footer">Local journal first. No uploads, no sharing. iNaturalist publishing is a separate future, explicit authenticated integration—not connected here.</p>
           <p class="integration-note">iNaturalist publishing is a future integration only: review your saved observation and privacy, then explicitly approve publishing. No connection or publishing is available now.</p>
         </form>
       </section>
@@ -151,6 +156,25 @@
       </div>
       <div id="project-report" aria-labelledby="project-report-title"></div>
       <p><small>Projects stay in this browser. Completion locks editing until reopened; it is not a frozen snapshot. Deleting a journal record changes its summaries; missing references are shown, never counted. Journal JSON backups do not include projects. CSV is a readable report, not a project restore file.</small></p>
+    </section>
+    <section id="identification-plan" class="panel projects-panel" aria-labelledby="identification-title">
+      <h2 id="identification-title">Identification provenance — staged definition</h2>
+      <p>No review status is assigned to any observation. These are three independent evidence tracks, not a ladder or automatic checkmarks. The current photo tool uses fixed mock suggestions, not AI identification.</p>
+      <dl>
+        <dt><strong>AI-suggested</strong></dt><dd>Future record: model/source and version, suggested taxon, date, evidence and uncertainty. A suggestion is not a confirmed identification.</dd>
+        <dt><strong>community-identified</strong></dt><dd>Future record: attributed reviewers, identification evidence, date and an explicit agreement/disagreement policy. No community consensus exists in this prototype.</dd>
+        <dt><strong>expert-confirmed</strong></dt><dd>Future record: named reviewer with relevant expertise, explicit confirmation, date and inspectable supporting evidence. Never awarded by AI scores, a lookup match, or a user merely selecting a label.</dd>
+      </dl>
+      <p>Assignment is intentionally unavailable pending provenance/reviewer design. Journal records and version-1 JSON remain unchanged; no review metadata is saved or exported.</p>
+    </section>
+    <section id="genetic-data" class="panel projects-panel" aria-labelledby="genetic-title">
+      <h2 id="genetic-title">Genetic Data</h2>
+      <p>Unconnected planning preview only. BOLD identification/search and GenBank record search are separate paths. No results, network calls, credentials, sequence submission or outbound data. GenBank submission would be a separate reviewed workflow, not a lookup.</p>
+      <div class="field"><label for="genetic-query">Taxon name or record identifier (optional)</label><input id="genetic-query" maxlength="120" autocomplete="off"></div>
+      <div class="field"><label for="genetic-sequence">Temporary DNA sequence (optional; local validation only)</label><textarea id="genetic-sequence" rows="3" maxlength="10000" autocomplete="off" spellcheck="false" aria-describedby="genetic-help"></textarea><small id="genetic-help">Up to 10,000 input characters. Plain IUPAC DNA or one FASTA record; no RNA, gaps or multiple records. Validation checks syntax, not quality, identity, or biological meaning. Never saved in journal, projects or exports. Clear when finished.</small></div>
+      <div class="restore-actions"><button id="bold-preview" class="secondary-button" type="button">BOLD lookup — future / local preview</button><button id="genbank-preview" class="secondary-button" type="button">GenBank lookup — future / local preview</button><button id="genetic-clear" class="text-button" type="button">Clear genetic inputs</button></div>
+      <p id="genetic-error" class="error" role="alert" hidden></p>
+      <p id="genetic-preview" class="status" role="status" aria-live="polite"></p>
     </section>
     <footer> TERRA <span aria-hidden="true">/</span> A space for curiosity, not a species identification service.</footer>
   </main>
@@ -409,8 +433,29 @@
       if (!rows.length) rows.push([...prefix, "empty", "", "", "", "", "", ""]);
       return [heading, ...rows].map(row => row.map(cell).join(",")).join("\r\n") + "\r\n";
     }
-    return { KEY, valid, parse, encode, matches, summarize, scope, csv };
+    function addMember(projects, projectId, record) {
+      const project = projects.find(p => p.id === projectId);
+      if (!project) throw new Error("Choose an existing TERRA project. Create one below if none exist.");
+      if (project.complete) throw new Error("This project is complete. Reopen it in Projects / Field Summary first.");
+      if (!matches(project, record)) throw new Error("Observation does not match this project's exact day/name scope. Choose another project or edit its scope below.");
+      return projects.map(p => p.id === projectId ? { ...p, observationIds: [...new Set([...p.observationIds, record.id])] } : p);
+    }
+    return { KEY, valid, parse, encode, matches, summarize, scope, csv, addMember };
   })();
+  </script>
+  <script id="genetic-preview-logic">
+  "use strict";
+  function validateLocalDNA(input) {
+    if (input.length > 10000) throw new Error("Use at most 10,000 input characters.");
+    const lines = input.trim().split(/\r?\n/);
+    if (lines[0].startsWith(">")) {
+      if (!lines[0].slice(1).trim()) throw new Error("A FASTA record needs a header.");
+      lines.shift();
+    }
+    const sequence = lines.join("").replace(/\s/g, "").toUpperCase();
+    if (!sequence || !/^[ACGTRYSWKMBDHVN]+$/.test(sequence)) throw new Error("Enter one DNA record using IUPAC bases ACGTRYSWKMBDHVN only (no RNA, gaps, digits or additional FASTA headers).");
+    return { length: sequence.length, ambiguous: sequence.replace(/[ACGT]/g, "").length };
+  }
   </script>
   <script id="field-summary-ui">
   document.addEventListener("DOMContentLoaded", () => {
@@ -505,6 +550,7 @@
         error("");
       }
       candidates(); report();
+      document.dispatchEvent(new Event("terra:projects-rendered"));
     }
     function persist(next) {
       try { localStorage.setItem(FieldSummary.KEY, FieldSummary.encode(next)); return true; }
@@ -545,6 +591,7 @@
         $("project-status").textContent = "CSV export requested for the saved project, not unsaved edits. Contains notes and site labels; keep it private. Spreadsheet formula-like text is prefixed with an apostrophe.";
       } catch { error("CSV could not be created. Your saved data is unchanged; try again."); }
     });
+    document.addEventListener("terra:project-membership-changed", () => refresh());
     document.addEventListener("terra:journal-rendered", () => refresh());
     window.addEventListener("storage", event => { if (event.key === FieldSummary.KEY || event.key === null) refresh(); });
     refresh(true);

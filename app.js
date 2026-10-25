@@ -38,6 +38,43 @@ let activeChoice = -1;
 let observations = [];
 let storageReady = false;
 let previewUrl = null;
+// Retry identity is in memory only; never add fields to the six-field journal.
+let pendingDiscovery = null;
+const projectObservation = document.querySelector("#project-observation");
+const discoveryProject = document.querySelector("#discovery-project");
+const addProjectButton = document.querySelector("#add-project-button");
+
+function refreshProjectAction() {
+  const selectedRecord = projectObservation.value;
+  const selectedProject = discoveryProject.value;
+  projectObservation.replaceChildren(new Option("Current discovery draft (save once, then add)", ""));
+  for (const r of observations) projectObservation.add(new Option(`${r.name} · ${r.date} · ID: ${r.id}`, r.id));
+  projectObservation.value = observations.some(r => r.id === selectedRecord) ? selectedRecord : "";
+  try {
+    const projects = FieldSummary.parse(localStorage.getItem(FieldSummary.KEY));
+    discoveryProject.replaceChildren(new Option("Choose a project", ""));
+    for (const p of projects) {
+      const option = new Option(`${p.title} (${p.complete ? "complete — reopen first" : FieldSummary.scope(p)})`, p.id);
+      option.disabled = p.complete;
+      discoveryProject.add(option);
+    }
+    discoveryProject.value = projects.some(p => p.id === selectedProject) ? selectedProject : "";
+    addProjectButton.disabled = !storageReady || !projects.some(p => !p.complete);
+    document.querySelector("#add-project-state").textContent = !projects.length ? "No projects yet. Create a local project below, then return here to add your discovery." : projects.every(p => p.complete) ? "All projects are complete. Reopen one below to add observations." : "Select a project and a draft or saved observation. Nothing leaves this browser.";
+  } catch {
+    addProjectButton.disabled = true;
+    document.querySelector("#add-project-state").textContent = "Project data cannot be read. Add is paused; existing data is untouched. Do not clear browser storage.";
+  }
+}
+function projectMembership(record, write = false) {
+  const projects = FieldSummary.parse(localStorage.getItem(FieldSummary.KEY));
+  const next = FieldSummary.addMember(projects, discoveryProject.value, record);
+  if (write) {
+    localStorage.setItem(FieldSummary.KEY, FieldSummary.encode(next));
+    document.dispatchEvent(new Event("terra:project-membership-changed"));
+  }
+}
+document.addEventListener("terra:projects-rendered", refreshProjectAction);
 
 function today() {
   const date = new Date();
@@ -216,6 +253,9 @@ function render() {
     meta.append(element("span", "category", categories[observation.type]), date);
     card.append(meta, element("h3", "", observation.name));
     card.append(element("p", "card-notes", observation.notes || "No field notes added."));
+    const provenance = element("a", "", "Identification provenance: not recorded (staged definitions)");
+    provenance.href = "#identification-plan";
+    card.append(provenance);
     const bottom = element("div", "card-bottom");
     const remove = element("button", "text-button", "Delete");
     remove.type = "button";
@@ -236,6 +276,7 @@ function render() {
     card.append(bottom);
     list.append(card);
   }
+  refreshProjectAction();
 }
 
 function clearPreview() {
@@ -266,8 +307,7 @@ preview.addEventListener("error", () => {
 document.querySelector("#remove-photo").addEventListener("click", clearPreview);
 window.addEventListener("pagehide", clearPreview);
 
-form.addEventListener("submit", event => {
-  event.preventDefault();
+function saveDiscovery(withProject = false) {
   showError(formError, "");
   const data = new FormData(form);
   const observation = {
@@ -282,8 +322,31 @@ form.addEventListener("submit", event => {
     showError(formError, "Check the observation fields and enter a valid date (year 0001–9999).");
     return;
   }
+  // Check scope before creating a record, then recheck before writing membership.
+  if (withProject) {
+    try { projectMembership(observation); }
+    catch (error) { showError(formError, `Nothing added. ${error.message}`); return; }
+  }
   load();
-  if (!storageReady || !persist([observation, ...observations])) return;
+  if (!storageReady) return;
+  const fingerprintOf = ({ id, ...fields }) => JSON.stringify(fields);
+  const fingerprint = fingerprintOf(observation);
+  const previous = pendingDiscovery && observations.find(r => r.id === pendingDiscovery.id);
+  if (previous && pendingDiscovery.fingerprint === fingerprint && fingerprintOf(previous) === fingerprint) {
+    observation.id = previous.id;
+  } else {
+    if (!persist([observation, ...observations])) return;
+    pendingDiscovery = { id: observation.id, fingerprint };
+  }
+  if (withProject) {
+    try { projectMembership(observation, true); }
+    catch (error) {
+      render();
+      showError(formError, `Observation saved in the local journal, but project add failed. Retry Add with this unchanged draft to reuse the same record, or select it from saved observations. ${error.message}`);
+      return;
+    }
+  }
+  pendingDiscovery = null;
   form.reset();
   dateInput.value = today();
   syncDate();
@@ -291,8 +354,26 @@ form.addEventListener("submit", event => {
   nameStatus.textContent = "";
   clearPreview();
   render();
-  status.textContent = `Saved “${observation.name}” to the local journal in this browser. Nothing was published to iNaturalist. Image previews are not saved.`;
+  projectObservation.value = observation.id;
+  status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist. Image previews are not saved.`;
   document.querySelector("#name").focus();
+}
+form.addEventListener("submit", event => { event.preventDefault(); saveDiscovery(); });
+addProjectButton.addEventListener("click", () => {
+  showError(formError, "");
+  if (!projectObservation.value) {
+    if (form.reportValidity()) saveDiscovery(true);
+    return;
+  }
+  const id = projectObservation.value;
+  load();
+  if (!storageReady) return;
+  const record = observations.find(r => r.id === id);
+  if (!record) { showError(formError, "That saved observation no longer exists. Choose another record or the current draft."); return; }
+  try {
+    projectMembership(record, true);
+    status.textContent = `“${record.name}” is in the selected TERRA project. Existing journal record reused; no duplicates or uploads.`;
+  } catch (error) { showError(formError, `Project add failed; journal unchanged. ${error.message}`); }
 });
 
 exportButton.addEventListener("click", () => {
@@ -442,6 +523,38 @@ window.addEventListener("storage", event => {
     status.textContent = "Journal updated from another tab.";
   }
 });
+const geneticQuery = document.querySelector("#genetic-query");
+const geneticSequence = document.querySelector("#genetic-sequence");
+const geneticPreview = document.querySelector("#genetic-preview");
+const geneticError = document.querySelector("#genetic-error");
+function clearGeneticInputs() {
+  geneticQuery.value = "";
+  geneticSequence.value = "";
+  geneticPreview.textContent = "";
+  showError(geneticError, "");
+}
+for (const service of ["bold", "genbank"]) {
+  document.querySelector(`#${service}-preview`).addEventListener("click", () => {
+    geneticPreview.textContent = "";
+    showError(geneticError, "");
+    try {
+      const query = geneticQuery.value.trim();
+      const dna = geneticSequence.value.trim() ? validateLocalDNA(geneticSequence.value) : null;
+      if (!query && !dna) throw new Error("Enter a taxon/record identifier or a temporary DNA sequence to preview a lookup plan.");
+      if (query.length > 120) throw new Error("Use at most 120 characters for a taxon/record identifier.");
+      const source = service === "bold" ? "BOLD" : "GenBank";
+      geneticPreview.textContent = `${source} — UNCONNECTED local plan only. ${query ? `Search text: ${query}. ` : ""}${dna ? `DNA syntax valid: ${dna.length} bases, ${dna.ambiguous} ambiguous bases. ` : ""}${service === "bold" ? "Future barcode identification/record search needs a supported marker and reviewed service terms." : "Future record search/sequence comparison needs a separately designed search workflow; this is NOT GenBank submission."} No search ran, no matches or identification inferred, nothing sent or saved.`;
+    } catch (error) { showError(geneticError, error.message); }
+  });
+}
+for (const input of [geneticQuery, geneticSequence]) input.addEventListener("input", () => {
+  geneticPreview.textContent = "";
+  showError(geneticError, "");
+});
+document.querySelector("#genetic-clear").addEventListener("click", clearGeneticInputs);
+window.addEventListener("pagehide", clearGeneticInputs);
+window.addEventListener("pageshow", clearGeneticInputs);
+
 dateInput.value = today();
 syncDate();
 load();
