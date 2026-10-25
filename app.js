@@ -347,7 +347,9 @@ function saveDiscovery(withProject = false) {
     }
   }
   pendingDiscovery = null;
+  const targetProject = discoveryProject.value;
   form.reset();
+  discoveryProject.value = targetProject;
   dateInput.value = today();
   syncDate();
   closeSuggestions();
