@@ -46,12 +46,16 @@ const fs = require('node:fs/promises');
     await page.reload();
     await page.fill('#project-title', '=Field "day", test');
     await page.fill('#project-site', '<img src=x onerror="window.injected=1">');
+    await page.fill('#project-species', 'Oak');
     await page.fill('#project-notes', 'Notes\nsecond line');
     for (const id of ['a', 'b', 'c', 'd']) await choose(id);
     assert.match(await report(), /^$/); // Unsaved selection is not a report.
     await save();
     const custom = (await projects()).at(-1);
     assert.deepEqual(custom.observationIds, ['a', 'b', 'c', 'd']);
+    assert.equal(custom.site, '<img src=x onerror="window.injected=1">');
+    assert.equal(custom.species, 'Oak');
+    assert.match(await report(), /species\/name: Oak; site label: <img/);
     assert.equal(Object.hasOwn(custom, 'observations'), false);
     assert.match(await report(), /4 included observations · 2 unique taxa labels/);
     assert.equal(await page.locator('#project-report table').count(), 3);
@@ -62,6 +66,7 @@ const fs = require('node:fs/promises');
     const csv = await fs.readFile(await (await download).path(), 'utf8');
     assert.match(csv, /"'=Field ""day"", test"/); assert.match(csv, /"'=CMD\(\)"/);
     assert.match(csv, /<img src=x/); assert.match(csv, /"4","4","2","0"/);
+    assert.match(csv, /species\/name: Oak; site label: <img/);
     // Membership edits and completion/reopening persist, without altering observations.
     await page.locator('#project-candidates input[value="b"]').uncheck(); await save();
     assert.match(await report(), /3 included observations/);
@@ -122,12 +127,23 @@ const fs = require('node:fs/promises');
     // Populated responsive tables, keyboard checkbox interaction and accessible labels.
     await page.selectOption('#project-select', custom.id);
     const checkbox = page.locator('#project-candidates input').first(); await checkbox.focus(); await page.keyboard.press('Space'); assert.equal(await checkbox.isChecked(), false);
-    assert.equal(await page.getByLabel('Project title (required)', { exact: true }).count(), 1);
+    assert.equal(await page.getByLabel('Project title', { exact: true }).count(), 1);
+    assert.equal(await page.locator('#project-title').getAttribute('required'), '');
+    assert.equal(await page.locator('#projects label').evaluateAll(labels => labels.some(label => /\(required/i.test(label.textContent))), false);
+    assert.equal(await page.getByRole('group', { name: 'Site and species names', exact: true }).count(), 1);
+    assert.equal(await page.locator('.project-site-species #project-site, .project-site-species #project-species').count(), 2);
+    assert.equal(await page.locator('#project-site').inputValue(), custom.site);
+    assert.equal(await page.locator('#project-species').inputValue(), custom.species);
     assert.equal(await page.locator('#project-status').getAttribute('role'), 'status');
     assert.equal(await page.locator('#project-error').getAttribute('role'), 'alert');
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 850 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `project overflow at ${width}`);
+      const siteBox = await page.locator('#project-site').boundingBox();
+      const speciesBox = await page.locator('#project-species').boundingBox();
+      assert.equal(siteBox.x, speciesBox.x, `shared column at ${width}`);
+      assert.equal(siteBox.width, speciesBox.width);
+      assert.ok(speciesBox.y > siteBox.y, 'both values remain visible in one column');
     }
     // Malformed, duplicate and future versions are never overwritten; the journal remains usable.
     const good = await raw(K);
