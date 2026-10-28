@@ -146,6 +146,63 @@ const { chromium } = require('playwright');
       assert.equal((await records()).length, beforeCategories + index + 1);
       assert.equal((await projects()).find(p => p.id === customId).observationIds.filter(id => id === record.id).length, 1);
     }
+    // Integration: photo review targets a new draft, preserving every organism category.
+    const photo = { name: 'local.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6ioAAAAASUVORK5CYII=', 'base64') };
+    const transfer = async () => {
+      const dialogPromise = page.waitForEvent('dialog');
+      const click = page.click('#identify-record');
+      await (await dialogPromise).accept(); await click;
+      await page.waitForFunction(() => [...document.querySelectorAll('#discovery-previews img')].every(img => img.complete && img.naturalWidth));
+    };
+    const beforePhotos = (await records()).length;
+    for (const [index, type] of ['plant', 'fungus', 'insect', 'mammal', 'bird', 'fish', 'reptile', 'unsure'].entries()) {
+      const previousId = (await records())[0].id;
+      await page.selectOption('#project-observation', previousId);
+      await page.click('#identify-reset'); await page.selectOption('#identify-group', type);
+      await page.setInputFiles('#identify-files', photo);
+      await page.waitForFunction(() => [...document.querySelectorAll('#identify-previews img')].every(img => img.complete && img.naturalWidth));
+      await page.locator('#identify-previews select').selectOption('Whole organism');
+      await page.fill('#identify-date', '2024-02-29');
+      await page.selectOption('#identify-region', 'North America'); await page.selectOption('#identify-precision', 'city');
+      await page.fill('#identify-city', 'Temporary site');
+      await page.locator('#identification-form button[type=submit]').click();
+      assert.equal(await page.locator('#identify-candidates > li').count(), 3);
+      assert.equal(await page.locator('#identify-remaining > li').count(), 3);
+      await page.locator('#identify-more summary').click();
+      await page.locator('#identify-remaining button').last().click();
+      const selectedName = await page.locator('#identify-remaining h4').last().textContent();
+      const beforeTransfer = await raw(J);
+      await transfer();
+      assert.equal(await raw(J), beforeTransfer, 'Photo confirmation must not save');
+      assert.equal(await page.locator('#project-observation').inputValue(), '', 'New photo draft must not add a previously selected saved record');
+      assert.equal(await page.locator('input[name=type]:checked').inputValue(), type === 'unsure' ? 'other' : type);
+      await select(customId);
+      if (type === 'plant') {
+        // Project-write failure keeps independent previews/context and reuses the journal ID.
+        await page.evaluate(K => {
+          const set = Storage.prototype.setItem; window.photoSet = set;
+          Storage.prototype.setItem = function (key, value) { if (key === K) throw Error('Photo project quota'); return set.call(this, key, value); };
+        }, K);
+        await add(); const partialPhotoId = (await records())[0].id;
+        assert.match(await page.locator('#form-error').textContent(), /Observation saved.*project add failed/);
+        assert.equal(await page.locator('#discovery-previews img').count(), 1);
+        assert.equal(await page.locator('#discovery-city').inputValue(), 'Temporary site');
+        await page.click('#identify-reset');
+        assert.equal(await page.locator('#discovery-previews img').count(), 1);
+        await add(); assert.equal((await records()).length, beforePhotos + 1);
+        await page.evaluate(() => { Storage.prototype.setItem = window.photoSet; });
+        await add(); assert.equal((await records())[0].id, partialPhotoId);
+      } else { await add(); }
+      const record = (await records())[0];
+      assert.notEqual(record.id, previousId);
+      assert.equal(record.name, selectedName);
+      assert.equal(record.type, type === 'unsure' ? 'other' : type);
+      assert.deepEqual(Object.keys(record).sort(), ['date', 'id', 'name', 'notes', 'privacy', 'type']);
+      await add(); assert.equal((await records()).length, beforePhotos + index + 1);
+      assert.equal((await projects()).find(p => p.id === customId).observationIds.filter(id => id === record.id).length, 1);
+      assert.equal(await page.locator('#discovery-previews img').count(), 0);
+      assert.equal(await page.locator('#discovery-city').inputValue(), '');
+    }
     await page.reload(); await page.selectOption('#project-select', customId);
     assert.match(await page.locator('#project-report').textContent(), /Local reptile discovery/);
     const goodK = await raw(K);
@@ -159,6 +216,6 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#add-project-button').isDisabled(), true);
     assert.deepEqual(errors, []); assert.deepEqual(network, []);
     await context.close();
-    console.log('PASS: discovery project creation/reuse/idempotency, scope/completion, retries/partial failures, stale drafts/cross-tab, unchanged JSON, staged provenance, separate no-network genetic previews/DNA validation/nonpersistence, labels/keyboard/mobile.');
+    console.log('PASS: all-group photo-to-project draft targeting and partial-write preview/context retry, discovery project creation/reuse/idempotency, scope/completion, retries/partial failures, stale drafts/cross-tab, unchanged JSON, staged provenance, separate no-network genetic previews/DNA validation/nonpersistence, labels/keyboard/mobile.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

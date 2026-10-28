@@ -21,7 +21,7 @@ pip install -r requirements.txt
 python3 server.py
 ```
 
-Open **http://localhost:8080**. The Flask development server listens on `0.0.0.0`, using `PORT` if set (default `8080`). Stop it with Ctrl+C. This is a local development server, not a production hosting setup.
+Open **http://localhost:8080**. The Flask development server listens only on loopback `127.0.0.1`, using `PORT` if set (default `8080`). It is not exposed to the LAN or publicly deployed. Stop it with Ctrl+C. This is a local development server, not a production hosting setup.
 
 There is no frontend build step, framework, CDN, external service, account, or database. The frontend is plain `index.html`, `styles.css`, and `app.js`. Flask only serves files and `/api/health`; it does not receive observations. Use the server rather than opening `index.html` directly, because `file://` storage behavior varies between browsers.
 
@@ -101,7 +101,7 @@ Open **http://localhost:8080** (not the file directly). If `py` is unavailable, 
 
 - **Baseline:** export a backup if you have real entries. Note the count/names. Do not clear browser site data. Confirm the familiar journal still saves, reloads, exports, and restores with a preview/confirmation.
 - **Validation:** in Explore a photo, analyze empty; expect a focused group error. Choose a group and analyze without a file; expect an image error. Select a `.txt`, an empty or corrupt image, or an image over 10 MB; expect an error without lost journal data. Select a valid JPEG/PNG, then analyze before choosing its part; expect the missing-part control to receive focus.
-- **Parts/context:** check all four groups and their part choices. Changing group must clear the old part and results. Test a blank date/region and a valid optional date/continent. No location permission should appear.
+- **Parts/context:** check all seven groups plus Unsure and their part choices. Changing group must clear the old part and results. Test a blank date/region and a valid optional date/continent. No location permission should appear.
 - **Location precision:** with no broad region, finer controls are hidden. Select North America; keep broad only, then try manual state/province and manual city/locality (e.g. Canada / Ontario / Ottawa). Leave fields blank too. Switch city → state: city clears. Switch continent or Prefer not to say: finer values clear. Check the privacy note and confirm no permission prompt or external lookup.
 - **Single/multi:** preview and remove a photo. Enable multi-view and choose 2 photos of the same organism (Ctrl+click in the Windows file picker), then add another selection. Choose a part per view. Try a seventh photo; expect the six-view limit. Try turning multi-view off while extras remain; expect a clear remove-extra-views error.
 - **Mock/review:** analyze. Verify top three stay visible while All remaining MOCK candidates expands/collapses by keyboard (Tab, then Enter/Space). Check all six names, descending scores 72/48/26/19/12/5, MOCK/Demo data/non-calibrated labels and caveat. Select in either list, try empty/corrected names, then leave uncertain. These are not verified IDs. Change context and confirm stale results disappear.
@@ -310,7 +310,7 @@ Playwright and Chromium are test tools only; the app itself needs no npm depende
 ### Manual review: Trevor’s organism and project layout refinements
 
 - In **Record a discovery → What did you find?**, check Plant, Mushroom, Insect, Mammal, Bird, Fish, and Reptile. Save one of each, reload, export JSON, then restore in a fresh profile; confirm categories and six-field records survive. Other remains supported. Existing `fungus` records now display **Mushroom** without rewriting saved data; the storage/backup key remains `fungus` for compatibility.
-- In **Explore a photo → Organism group**, check the same seven labels plus Unsure. With a local image, switch through every group: old parts/results must clear, part choices must fit the group, and Analyze must show three matching-group **MOCK** examples and a safety caveat, not pixel-based identification. Nothing uploads or persists.
+- In **Explore a photo → Organism group**, check the same seven labels plus Unsure. With a local image, switch through every group: old parts/results must clear, part choices must fit the group, and Analyze must show three matching-group **MOCK** examples, three additional ranked demo rows in the disclosure, and a safety caveat, not pixel-based identification. Nothing uploads or persists.
 - With each discovery category selected, type `Trich`: both starter names should still appear. Category never filters the manual name suggestions. Names remain free text; group-specific filtering applies only to photo demo examples/parts.
 - In **Projects / Field Summary**, check that Site name and Species / name appear vertically in one shared column at desktop and 320px widths. Fill both, save, reload, and export CSV: confirm both labeled values survive in the project scope. Species-group eligibility still matches the species field, not the site label.
 - Check that no feature label contains “(required…)”. Blank title and missing day/species/site scope values must still fail validation without saving. Add a new-category discovery to a project, repeat Add, and confirm one journal record/reference; complete/reopen must still work.

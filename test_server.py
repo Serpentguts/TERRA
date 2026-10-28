@@ -1,6 +1,9 @@
 """Local smoke/markup checks; no reporting backend or journal writes."""
 import json
+import os
+import runpy
 import unittest
+from unittest.mock import patch
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -39,6 +42,23 @@ class LocalAppChecks(unittest.TestCase):
         self.assertEqual(self.client.get("/api/health").json, {"status": "ok"})
         self.assertEqual(self.client.get("/does-not-exist").status_code, 404)
         self.assertEqual(self.client.post("/api/projects", json={}).status_code, 405)
+
+    def test_combined_panels_are_served(self):
+        response = self.client.get("/")
+        try:
+            html = response.get_data(as_text=True)
+            for control in ["identify-record", "identify-more", "discovery-previews",
+                            "discovery-location", "add-project-button", "project-form",
+                            "identification-plan", "genetic-data"]:
+                with self.subTest(control=control):
+                    self.assertIn(f'id="{control}"', html)
+        finally:
+            response.close()
+
+    def test_startup_is_loopback_only_and_honors_port(self):
+        with patch.dict(os.environ, {"PORT": "8091"}), patch("flask.Flask.run") as run:
+            runpy.run_path("server.py", run_name="__main__")
+        run.assert_called_once_with(host="127.0.0.1", port=8091)
 
     def test_manifest_and_markup(self):
         manifest = json.loads(Path("ditto.json").read_text())
