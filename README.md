@@ -8,8 +8,9 @@ TERRA is a project exploring tools for recording and reviewing nature observatio
 The browser-only journal records plant, fungus, or other observations with a name (or “Unknown”), notes, a date, and a location-privacy preference. An optional photo is previewed temporarily; it is not saved. No location is collected for journal entries. A separate **Explore a photo** prototype demonstrates local, ephemeral photo selection and review of explicitly illustrative mock candidates.
 
 ## Status
-Early prototype — not yet connected to iNaturalist or a scientific review service.
-Add TERRA README
+Early local-first prototype — no iNaturalist, BOLD, GenBank, real AI or scientific review service is connected. See [the next-stage integration roadmap](ROADMAP.md) for review gates and deliberately deferred work.
+
+This branch builds on the local Projects implementation in **PR #11** (`feature/local-field-summary`); it is a stacked follow-up, not a replacement for that PR. Main and open PRs/issues were inspected; the independent photo-handoff PR #7 is untouched.
 
 ## Run locally
 
@@ -30,8 +31,8 @@ From your local TERRA repository folder, review this PR branch without merging:
 
 ```powershell
 git fetch origin
-git switch --track origin/feature/local-photo-identification
-# If you already have that local branch: git switch feature/local-photo-identification
+git switch --track origin/feature/local-discovery-project-roadmap
+# If you already have that local branch: git switch feature/local-discovery-project-roadmap
 py -m pip install -r requirements.txt
 py server.py
 ```
@@ -55,7 +56,7 @@ These Windows steps are provided for local review; automated tests here run on L
 
 ## Use the journal
 
-1. Choose **Plant**, **Fungus**, or **Other**.
+1. Choose **Plant**, **Mushroom**, **Insect**, **Mammal**, **Bird**, **Fish**, or **Reptile**. **Other** remains available for unlisted groups and existing records.
 2. Enter a species/common name, choose a starter suggestion, keep a custom/manual name, or leave it blank to save as **Unknown**.
 3. Type the observation date as **YYYY-MM-DD**, or use the calendar icon **inside the same date bar**; both stay in sync. It defaults to today's local date. Optionally add notes.
 4. Optionally select an image up to 10 MB to preview. You can remove the preview; it is also cleared after a successful save or reload.
@@ -69,9 +70,9 @@ These Windows steps are provided for local review; automated tests here run on L
 
 This is a UI/interaction prototype, **not AI identification**. It has no model, comparison database, API, image upload, or scientific verification. The browser decodes photos only to display previews. The Analyze button returns a fixed set of three examples for the chosen organism group; it does not inspect pixels. Parts, date, region, and additional views do not influence candidates or scores.
 
-1. Choose **Plant**, **Fungus / mushroom**, **Insect / animal**, or **Unsure**.
+1. Choose **Plant**, **Mushroom**, **Insect**, **Mammal**, **Bird**, **Fish**, **Reptile**, or **Unsure**.
 2. Choose one local image, or first enable **Add multiple views of the same organism** to add up to **6** photos in one selection or across selections. For another organism, reset and start a separate review. The prototype cannot verify that the photos show the same organism. To turn multi-view mode off, remove extra views first.
-3. Each preview has **Remove photo** and a required **Photographed part** selector. Plants offer leaf, flower, fruit, bark, whole organism, other; fungi cap, gills/underside, stem, whole, other; animals dorsal/top, ventral/underside, wing, leg, whole, other; Unsure offers whole, detail/close-up, other. Changing the group clears part choices so incompatible context is never silently reused.
+3. Each preview has **Remove photo** and a required **Photographed part** selector. Plants offer leaf, flower, fruit, bark, whole organism, other; mushrooms cap, gills/underside, stem, whole, other; insects dorsal/top, ventral/underside, wing, leg, whole, other; mammals head, body, tracks, whole, other; birds head, wing, plumage, whole, other; fish side, fin, head, whole, other; reptiles head, scales, body, whole, other. Unsure offers whole, detail/close-up, other. Changing the group clears part choices so incompatible context is never silently reused.
 4. Optionally choose an observation date and a **continent-level coarse region**, or keep **Prefer not to say**. No GPS permission is requested; there is no coordinates/address field, EXIF parser, or metadata-based autofill. Context stays temporary and does not affect the mock.
 5. Select **Analyze — show MOCK suggestions**. Required fields and readable previews are checked first. Each candidate has a name, **Demo data** source, and arbitrary **Illustrative confidence** (72/48/26 out of 100). These numbers are **not calibrated probabilities**, similarity scores, or evidence for a match. The results include group-specific safety/review caveats; never use this demo for edibility, medical, or wildlife safety decisions.
 6. Accept a demo candidate, use a corrected name (1–120 characters), or leave uncertain. A live status confirms the temporary, unverified review. No choice changes or creates a journal entry. Changing photo/context inputs hides stale results and clears the previous review; analyze again.
@@ -116,6 +117,38 @@ node test-browser.cjs
 
 The automated suite uses its own fresh browser profile; it does not touch your normal journal. Windows manual steps are documented but were not executed in this Linux workspace.
 
+## Add a discovery to a local TERRA project
+
+The **second green action under Record a discovery is Add to TERRA project**, not an iNaturalist button. It writes only local project membership references.
+
+1. Create an open project in **Projects / Field Summary** below. If there are none, the action is disabled with a create-project link; if all are complete, reopen one.
+2. In Record a discovery, choose **Observation to add**: the current draft, or a specific saved observation (name, date and ID shown). Choose a **TERRA project**.
+3. For a draft, Add validates it, saves one journal record, then adds that ID to the project. For a saved observation, Add reuses its exact ID without writing another journal record. Repeated Add is idempotent. Ordinary **Save to local journal** automatically selects the newly saved record for a subsequent Add; the project choice is retained.
+4. Day projects require the exact date; species projects require an exact case-sensitive, trimmed name. Site/custom projects permit explicit membership, not inferred geographic matching. Completed projects cannot accept records until reopened. Invalid/missing targets or scope mismatches do not create new journal entries.
+5. Review the saved membership/counts in Projects / Field Summary. An unsaved project-editor draft is preserved; if another view changed the project storage, use **Discard draft / refresh** and review before saving it. Never overwrite a stale draft blindly.
+
+**Failure semantics:** localStorage has no multi-key transaction. If the journal write fails, no project write is attempted. If the journal succeeds but the project write fails, the UI explicitly says the observation is already saved and keeps the discovery draft. Retrying the unchanged draft in that page reuses the same ID. After a reload, select the saved observation instead of recreating the draft. Editing a partially saved draft creates a new observation rather than silently editing the saved one. No rollback/delete of a successfully saved journal record is attempted. Truly simultaneous tabs are not transactional; prefer one editing tab. Project membership is still excluded from journal JSON backups.
+
+## Identification provenance (staged UI only)
+
+Every saved observation links to a staged provenance definition, not an assigned badge. The exact labels **AI-suggested**, **community-identified**, and **expert-confirmed** describe three independent future evidence tracks, not a progression. Definitions specify model/version/uncertainty for AI, attributed reviewers/evidence and explicit consensus policy for community review, and relevant expert identity/explicit confirmation/evidence for expert review. There are no status selectors, automatic labels, community consensus, expert validation or reward claims. Fixed photo mocks are not AI evidence.
+
+Assignment/persistence is deliberately deferred until reviewer trust and a separately versioned optional provenance store/import policy are designed. Nothing was added to the six fields (`id`, `type`, `name`, `notes`, `date`, `privacy`) or version-1 JSON export/restore. Do not append new metadata to old exports: the existing importer intentionally strips unknown fields.
+
+## Genetic Data: unconnected local plans
+
+Separate **BOLD lookup — future / local preview** and **GenBank lookup — future / local preview** paths show only a local plan, never fake matches. Enter an optional taxon/record identifier and/or temporary DNA. The sequence syntax checker accepts plain IUPAC DNA or one FASTA record, up to 10,000 total input characters; it rejects empty/header-only sequences, additional records, RNA U, gaps, digits and other symbols. Lowercase and whitespace are supported. Preview reports only base and ambiguity counts—not identity, biological validity, sequence quality, service compatibility or search results. FASTA headers and sequence contents are not echoed into the preview.
+
+Inputs/previews remain in page memory only: no local/session storage, files, journal, project, JSON or CSV persistence; no network APIs or service calls; no credentials. Clear explicitly with **Clear genetic inputs**; leaving/reloading the page also clears them. This is not a secure-memory erase guarantee, and browser/OS clipboard or extensions are outside app control. No sequence-saving action is provided. **GenBank submission is not search** and is not implemented. iNaturalist publishing remains a separate future authenticated, explicitly consented action, never implied by Add to TERRA project.
+
+### Manual review of the clarified integration scope
+
+- In a fresh profile, verify the no-project empty state. Create custom/day/name/site projects and a completed project. Add a new draft, repeat Add, then add a saved observation to another project. Confirm journal count/IDs do not duplicate, scope mismatches do not save, completion locks membership and reload preserves references/counts.
+- Save normally then Add; verify the saved observation is selected. Keep an unrelated discovery draft while adding an existing record; it must stay untouched. Keep an unsaved project-editor draft while adding; it must require refresh before a stale save.
+- Read all three provenance definitions. Verify no observation is labeled as AI-, community- or expert-validated and no status can be assigned.
+- Preview a taxon-only BOLD plan, then a GenBank plan. Try `>example` followed by `ACGTNN`, then `ACGU`, two FASTA records and a header without bases. Inspect syntax errors/counts and the unconnected/submission warnings. Clear/reload and confirm no sequence remains; export JSON and verify only the original six fields exist. In browser devtools, verify no requests occur on either preview or project action.
+- Use Tab/Shift+Tab, native select keyboard controls and Enter/Space on actions; review live statuses and error alerts with a screen reader, and test 320/390 px widths. Automated Linux Chromium checks pass; Windows, Firefox/Safari and a manual screen-reader audit remain human review items.
+
 ## Restore an exported backup
 
 1. Keep your original backup. If the current journal is readable, **Export JSON** first for an extra safety copy.
@@ -135,7 +168,7 @@ The automated suite uses its own fresh browser profile; it does not touch your n
 
 ## Starter name suggestions and dates
 
-No curated taxonomy dataset exists in the current repository. `STARTER_SPECIES` in `app.js` is a transparent, hand-written two-name starter list: **Trichocereus bridgesii** and **Trichoderma harzianum**. These are examples, not verified identifications, an authoritative taxonomy, or a complete species catalog. Matching trims the search text and shows **every local name that starts with or contains it**, case-insensitively, without filtering by Plant/Fungus/Other. Nothing is queried or downloaded.
+No curated taxonomy dataset exists in the current repository. `STARTER_SPECIES` in `app.js` is a transparent, hand-written two-name starter list: **Trichocereus bridgesii** and **Trichoderma harzianum**. These are examples, not verified identifications, an authoritative taxonomy, or a complete species catalog. Matching trims the search text and shows **every local name that starts with or contains it**, case-insensitively, without filtering by discovery category (including the seven organism choices and Other). Nothing is queried or downloaded.
 
 Type `Trich` to see both; `Trichoc`, `bridgesii`, or `harz` narrows the list. Arrow Up/Down moves through suggestions and an explicit **Keep … as my manual name** option; Enter chooses the active option without submitting. Click/tap also selects. Escape closes, and Tab leaves without changing the text. Merely typing or blurring never forces a suggestion. Custom names are always allowed and saved as text (trimmed as before); a blank saves as Unknown. To extend the examples, edit `STARTER_SPECIES`, update the visible two-example description, and extend the tests. Any larger curated dataset needs separate provenance, licensing, and maintenance review.
 
@@ -146,7 +179,7 @@ One integrated date bar accepts keyboard input in strict `YYYY-MM-DD` format and
 This small prototype is a step toward Trevor's reporting idea, **not an AI summary, ecological inference, mapping tool, trend analysis, or species verification**. It does not call an API or add a reporting backend. Existing journal saving, starter suggestions, dates, JSON export/restore, and the explicitly mock photo-review flow remain unchanged. No mock review rewards or camera-roll permissions have been added.
 
 1. Scroll to **Projects / Field Summary** and choose **New project**.
-2. Enter a title (required, 1–120 characters), group type, optional date/site/species and notes (up to 3,000 characters).
+2. Enter a title of 1–120 characters, group type, optional date/site/species and notes (up to 3,000 characters). Every project needs a title. Site and species are stacked in **one shared column**, with two independently labeled inputs: **Site name** is a manual project label, **Species / name** is the exact recorded name for species grouping. Neither value is replaced or merged; both remain in saved project scope and CSV. Labels omit parenthetical “required” wording; existing title/day/species/site validation still applies.
    - **Project date / day:** requires a valid `YYYY-MM-DD` date, year 0001–9999; only records on that exact day are eligible.
    - **Species / name:** requires a recorded name, up to 120 characters; exact, case-sensitive matching after trimming. This is not a taxonomy lookup.
    - **Site / name:** requires a site label, up to 120 characters. Sites are manually assigned at the **project** level, not inferred from observations. The existing journal has no site/coordinate fields, so any journal record can be selected.
@@ -223,7 +256,8 @@ Basic checks (no browser-test tools needed):
 node --check app.js
 node --check test-browser.cjs
 node --check test-projects-browser.cjs
-node --test test-field-summary.cjs
+node --check test-discovery-browser.cjs
+node --test test-field-summary.cjs test-integration-plan.cjs
 python3 -m unittest test_server.py
 node -e "const fs=require('fs'),vm=require('vm'); for (const m of fs.readFileSync('index.html','utf8').matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(m[1]);"
 python3 -c "from server import app; c = app.test_client(); assert all(c.get(p).status_code == 200 for p in ['/', '/app.js', '/styles.css', '/api/health'])"
@@ -238,6 +272,7 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" npx playwright install chromium
 # npx playwright install-deps chromium
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-browser.cjs
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-projects-browser.cjs
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.browser-cache" node test-discovery-browser.cjs
 ```
 
 PowerShell equivalents for the automated browser checks (server running in another terminal):
@@ -246,20 +281,32 @@ PowerShell equivalents for the automated browser checks (server running in anoth
 npm install --no-save --package-lock=false playwright
 $env:PLAYWRIGHT_BROWSERS_PATH = "$PWD/.browser-cache"
 npx playwright install chromium
-node --test test-field-summary.cjs
+node --test test-field-summary.cjs test-integration-plan.cjs
 python -m unittest test_server.py
 node test-browser.cjs
 node test-projects-browser.cjs
+node test-discovery-browser.cjs
 ```
+
+`test-integration-plan.cjs` adds pure membership idempotency/immutability/scope/completion and single-record IUPAC DNA validation tests. `test-discovery-browser.cjs` adds new/saved/ordinary-save project handoff, failed journal/project writes and retry identity, stale drafts and cross-tab completion, six-field version-1 export/restore, unassignable provenance definitions, distinct local genetic plans, literal-text safety, no sequence persistence, keyboard/mobile checks and zero outbound/network API calls. All three browser suites, nine JS unit tests, Flask unittests, syntax/manifest/whitespace checks were run successfully on Linux Chromium for this follow-up. Test-only missing Chromium libraries/fonts were extracted under ignored `.browser-cache`; they are not runtime dependencies.
 
 `test-field-summary.cjs` covers versioned JSON compatibility/validation, exact scopes, metric reconciliation, deterministic ordering, missing/unknown records, and CSV quoting/formula safety. `test-projects-browser.cjs` covers all group types, membership editing, complete/reopen/reload, source tables, CSV downloads, missing/restored IDs, unchanged journal bytes/schema, quota/read/version failures, concurrent drafts, labels/keyboard/mobile widths, and no remote or network API calls. The original full `test-browser.cjs` remains a required regression check; the Flask unittest checks routes, manifest, and HTML IDs/labels.
 
 ### Manual review: JSON export and restore
 
-The same suite now also exercises the mock photo flow: all four organism groups/part resets and caveats, required fields, unsupported/empty/oversize/undecodable photos, single/multi-image limits, preview removal and object-URL cleanup, mock labels/source/confidence, accept/correct/uncertain controls, literal text safety, context invalidation, reset/reload, unchanged local/session storage and journal schema, populated mobile widths, and no HTTP requests during the flow. `test-browser.cjs` is the current regression entry point. There is no configured linter/build system; checks are JavaScript parse checks, Flask route smoke checks, and browser regressions.
+The same suite now also exercises the mock photo flow: all seven organism groups plus Unsure/part resets and caveats, required fields, unsupported/empty/oversize/undecodable photos, single/multi-image limits, preview removal and object-URL cleanup, mock labels/source/confidence, accept/correct/uncertain controls, literal text safety, context invalidation, reset/reload, unchanged local/session storage and journal schema, populated mobile widths, and no HTTP requests during the flow. `test-browser.cjs` is the current regression entry point. There is no configured linter/build system; checks are JavaScript parse checks, Flask route smoke checks, and browser regressions.
 
 For a manual review, use Tab/Shift+Tab and the skip link, submit an empty name, reload to verify persistence, preview an image then save/reload to verify it is not retained, cancel and confirm deletion, and inspect the exported JSON. Restore it once to preview duplicates (no additions), cancel, then delete one entry and restore again to preview and confirm its recovery. Try an invalid JSON file and verify that nothing changes. Resize to a narrow mobile viewport. No merge or deployment is required to review this feature branch.
 Playwright and Chromium are test tools only; the app itself needs no npm dependencies or external network requests. The check uses a fresh, isolated browser profile and tests both starter names, prefix/substring/case matching, custom names, keyboard selection/dismissal, safe suggestion rendering, one-bar layout, Enter/Space native-picker activation, typed invalid dates and leap days (including century rules), calendar/text input and change synchronization, unchanged date storage, local-only messaging, saving/reloading, Unknown names, safe text rendering, image preview/non-persistence, JSON export/restore round-trips, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, restore write-failure preservation/retry and changed-journal reconfirmation, confirm/cancel deletion, cross-tab updates, corrupt/blocked/full storage, labels, and overflow at 320, 390, 768, and 1280 pixels. Remote requests are blocked and asserted absent; fetch, XMLHttpRequest, WebSocket, EventSource, and sendBeacon calls are trapped and asserted absent across page loads. These checks do not establish behavior for a future integration. The suite has passed in Chromium, including touch selection and open-dropdown mobile overflow checks. Firefox/Safari and a **manual screen-reader audit remain necessary**, especially combobox announcements and native calendar operation.
+
+### Manual review: Trevor’s organism and project layout refinements
+
+- In **Record a discovery → What did you find?**, check Plant, Mushroom, Insect, Mammal, Bird, Fish, and Reptile. Save one of each, reload, export JSON, then restore in a fresh profile; confirm categories and six-field records survive. Other remains supported. Existing `fungus` records now display **Mushroom** without rewriting saved data; the storage/backup key remains `fungus` for compatibility.
+- In **Explore a photo → Organism group**, check the same seven labels plus Unsure. With a local image, switch through every group: old parts/results must clear, part choices must fit the group, and Analyze must show three matching-group **MOCK** examples and a safety caveat, not pixel-based identification. Nothing uploads or persists.
+- With each discovery category selected, type `Trich`: both starter names should still appear. Category never filters the manual name suggestions. Names remain free text; group-specific filtering applies only to photo demo examples/parts.
+- In **Projects / Field Summary**, check that Site name and Species / name appear vertically in one shared column at desktop and 320px widths. Fill both, save, reload, and export CSV: confirm both labeled values survive in the project scope. Species-group eligibility still matches the species field, not the site label.
+- Check that no feature label contains “(required…)”. Blank title and missing day/species/site scope values must still fail validation without saving. Add a new-category discovery to a project, repeat Add, and confirm one journal record/reference; complete/reopen must still work.
+- Keep browser network tools open: no iNaturalist, BOLD, GenBank, image upload, or application API request should occur. These remain unconnected plans, not integrations.
 
 ### Manual review: Species suggestions and typed dates
 

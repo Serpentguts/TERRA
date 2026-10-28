@@ -1,6 +1,6 @@
 {
   "name": "terra-observation-logger",
-  "description": "A browser-only nature journal with local Projects / Field Summary collections, ID-referenced observations, transparent descriptive counts and source tables, completion/reopening, and safe CSV reports. Preserves starter-name/date tools, JSON journal restore, and the existing explicitly mock photo-review prototype. No live AI, ecological inference, external APIs, GPS, uploads, or publishing.",
+  "description": "A local-first nature journal with seven organism choices, group-specific mock photo examples, and Projects / Field Summary with a shared site/species column. Add to TERRA project reuses observation IDs. Preserves legacy categories and six-field JSON. Includes staged provenance definitions and separate unconnected BOLD/GenBank plans with temporary DNA syntax previews. No remote calls, sequence persistence, uploads or publishing; documented staged integration roadmap.",
   "type": "app",
   "entrypoint": "index.html",
   "created": "2026-10-20"

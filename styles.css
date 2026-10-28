@@ -31,11 +31,16 @@ h2 { font-size: 20px; font-family: Georgia, serif; font-weight: 400; margin-bott
 .section-heading p { color: var(--muted); font-size: 12px; margin-bottom: 0; }
 fieldset { margin: 0 0 20px; padding: 0; border: 0; }
 legend, .field > label { font-size: 12px; font-weight: 650; margin-bottom: 8px; display: block; }
-.type-options { display: flex; gap: 10px; }
-.type-options label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 4px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 12px; }
+.type-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.type-options label { flex: 1 0 90px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 4px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 12px; }
 .type-options label:has(input:checked) { background: #edf2e8; border-color: #68816c; color: var(--green); }
 input[type=radio] { accent-color: var(--green); }
-.field { margin-bottom: 20px; }
+.field { margin-bottom: 20px; min-width: 0; }
+.journal-layout > * { min-width: 0; }
+#discovery-project, #project-observation { max-width: 100%; }
+#add-project-button { margin-top: 8px; }
+#identification-plan dd { margin: 6px 0 16px; }
+#genetic-data button { white-space: normal; max-width: 100%; text-align: left; }
 .name-picker { position: relative; }
 .name-suggestions { position: absolute; top: 100%; left: 0; right: 0; z-index: 2; background: #fff; list-style: none; margin: 4px 0; padding: 4px; border: 1px solid #68816c; border-radius: 5px; font-size: 13px; overflow-wrap: anywhere; }
 .name-suggestions [role=option] { padding: 10px; cursor: pointer; }
@@ -122,6 +127,7 @@ h3 { font: 20px/1.4 Georgia, serif; margin-bottom: 12px; }
 .projects-panel { margin-top: 32px; min-width: 0; overflow-wrap: anywhere; }
 .projects-panel p { font-size: 14px; }
 .projects-panel input, .projects-panel select, .projects-panel textarea { min-width: 0; max-width: 100%; }
+.project-site-species { min-width: 0; }
 .project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
 .project-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 18px 0; }
 .project-toolbar .field { flex: 1 1 220px; min-width: 0; margin: 0; }
