@@ -1,0 +1,56 @@
+"""Local smoke/markup checks; no reporting backend or journal writes."""
+import json
+import unittest
+from html.parser import HTMLParser
+from pathlib import Path
+
+from server import app
+
+
+class Markup(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.ids = []
+        self.labels = []
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if "id" in attrs:
+            self.ids.append(attrs["id"])
+        if tag == "label" and "for" in attrs:
+            self.labels.append(attrs["for"])
+
+
+class LocalAppChecks(unittest.TestCase):
+    def setUp(self):
+        self.client = app.test_client()
+
+    def test_existing_file_and_health_routes(self):
+        for path, content_type in [
+            ("/", "text/html"), ("/index.html", "text/html"),
+            ("/app.js", "javascript"), ("/styles.css", "text/css"),
+            ("/ditto.json", "application/json"),
+        ]:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(content_type, response.content_type)
+                response.close()
+        self.assertEqual(self.client.get("/api/health").json, {"status": "ok"})
+        self.assertEqual(self.client.get("/does-not-exist").status_code, 404)
+        self.assertEqual(self.client.post("/api/projects", json={}).status_code, 405)
+
+    def test_manifest_and_markup(self):
+        manifest = json.loads(Path("ditto.json").read_text())
+        self.assertEqual(manifest["entrypoint"], "index.html")
+        self.assertIn("Field Summary", manifest["description"])
+        parser = Markup()
+        parser.feed(Path("index.html").read_text())
+        self.assertEqual(len(parser.ids), len(set(parser.ids)), "Duplicate HTML IDs")
+        self.assertTrue(set(parser.labels).issubset(parser.ids), "Orphaned labels")
+        for required in ["observation-form", "identification-form", "import-preview", "project-form", "project-report", "project-error"]:
+            self.assertIn(required, parser.ids)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -201,6 +201,7 @@ function element(tag, className, text) {
 }
 
 function render() {
+  document.dispatchEvent(new Event("terra:journal-rendered"));
   list.replaceChildren();
   document.querySelector("#count").textContent = String(observations.length);
   document.querySelector("#empty-state").hidden = observations.length > 0 || !storageReady;
