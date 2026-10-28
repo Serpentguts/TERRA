@@ -77,6 +77,68 @@ function projectMembership(record, write = false) {
 }
 document.addEventListener("terra:projects-rendered", refreshProjectAction);
 
+let discoveryImages = [];
+const discoveryPreviews = document.querySelector("#discovery-previews");
+const discoveryImageWrap = document.querySelector("#discovery-images");
+const transferStatus = document.querySelector("#discovery-transfer-status");
+
+function clearDiscoveryImages() {
+  for (const image of discoveryImages) {
+    image.img.onerror = null;
+    image.img.removeAttribute("src");
+    URL.revokeObjectURL(image.url);
+  }
+  discoveryImages = [];
+  discoveryPreviews.replaceChildren();
+  discoveryImageWrap.hidden = true;
+}
+document.querySelector("#discovery-clear-images").addEventListener("click", clearDiscoveryImages);
+// Independent File-backed previews: never borrow URLs owned by Explore a photo.
+// Resetting either area cannot revoke the other area's live previews.
+document.addEventListener("terra:prefill-discovery", event => {
+  const draft = event.detail;
+  if (!draft || typeof draft.name !== "string" || !draft.name.trim() || draft.name.length > 120 ||
+      !Object.hasOwn(categories, draft.type) || (draft.date && !validDate(draft.date)) ||
+      !Array.isArray(draft.files) || !draft.files.length || draft.files.length > 6 ||
+      draft.files.some(file => !(file instanceof File) || !file.type.startsWith("image/") || !file.size || file.size > 10 * 1024 * 1024)) return;
+  clearPreview();
+  // A confirmed transfer targets the new draft, not a previously selected saved record.
+  projectObservation.value = "";
+  pendingDiscovery = null;
+  nameInput.value = draft.name.trim();
+  closeSuggestions();
+  nameStatus.textContent = "Unverified photo-review name. Review before saving.";
+  form.querySelector(`input[name=type][value="${draft.type}"]`).checked = true;
+  dateInput.value = draft.date; // Missing dates stay blank; never invent an observation date.
+  syncDate();
+  for (const key of ["region", "precision", "country", "state", "city"]) {
+    document.querySelector(`#discovery-${key}`).value = draft.location?.[key] || "";
+  }
+  for (const file of draft.files) {
+    const card = element("li", "identify-photo");
+    const img = element("img");
+    const url = URL.createObjectURL(file);
+    const image = { img, url };
+    img.alt = `Temporary discovery preview: ${file.name}`;
+    img.onerror = () => {
+      img.onerror = null;
+      img.removeAttribute("src");
+      URL.revokeObjectURL(url);
+      discoveryImages = discoveryImages.filter(item => item !== image);
+      card.remove();
+      discoveryImageWrap.hidden = !discoveryImages.length;
+      showError(photoError, "A transferred preview could not be displayed. No image will be saved; choose a supported image to retry.");
+    };
+    discoveryImages.push(image);
+    card.append(img, element("p", "identify-filename", file.name));
+    discoveryPreviews.append(card);
+    img.src = url;
+  }
+  discoveryImageWrap.hidden = false;
+  transferStatus.textContent = "Draft prefilled only. Review name, date, group, temporary images/location, notes and privacy, then Save separately. Images and location detail are not saved or exported. Nothing sent to iNaturalist.";
+  nameInput.focus();
+});
+
 function today() {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -281,6 +343,7 @@ function render() {
 }
 
 function clearPreview() {
+  clearDiscoveryImages();
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = null;
   preview.removeAttribute("src");
@@ -356,6 +419,7 @@ function saveDiscovery(withProject = false) {
   closeSuggestions();
   nameStatus.textContent = "";
   clearPreview();
+  transferStatus.textContent = "";
   render();
   projectObservation.value = observation.id;
   status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist. Image previews are not saved.`;

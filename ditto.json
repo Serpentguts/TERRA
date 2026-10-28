@@ -1,6 +1,6 @@
 {
   "name": "terra-observation-logger",
-  "description": "A local-first nature journal with seven organism choices, group-specific mock photo examples, and Projects / Field Summary with a shared site/species column. Add to TERRA project reuses observation IDs. Preserves legacy categories and six-field JSON. Includes staged provenance definitions and separate unconnected BOLD/GenBank plans with temporary DNA syntax previews. No remote calls, sequence persistence, uploads or publishing; documented staged integration roadmap.",
+  "description": "A local-first nature journal with seven organism choices, integrated dates, starter names, JSON restore, and ID-referenced Projects / Field Summary. Photo-review MOCK includes temporary multi-view images/manual location, ranked demo disclosure and confirmed discovery draft prefill without saving. Includes staged provenance and separate unconnected BOLD/GenBank plans with temporary DNA syntax previews. Preserves legacy categories and six-field JSON. No real AI, GPS, geocoding, persistent images/location/sequences, remote calls, uploads or publishing.",
   "type": "app",
   "entrypoint": "index.html",
   "created": "2026-10-20"

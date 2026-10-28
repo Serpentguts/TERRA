@@ -28,7 +28,7 @@
     </aside>
     <section class="panel identification-panel" aria-labelledby="identify-title">
       <div class="identify-heading"><div><p class="eyebrow">A CLOSER LOOK · LOCAL PROTOTYPE</p><h2 id="identify-title">Explore a photo</h2><p>Practice an identification review, without uploading a thing.</p></div><span class="demo-badge">MOCK · Not real AI</span></div>
-      <p id="identify-privacy" class="identify-notice">Images are not uploaded. Previews, context, and review choices stay in this page only and disappear on reset or reload. Nothing is added to your journal or exports.</p>
+      <p id="identify-privacy" class="identify-notice">Images are not uploaded. Previews and location detail stay temporary. Only after your explicit confirmation can a name, photos, date, and location context prefill Record a discovery for review; nothing is automatically saved or sent to iNaturalist.</p>
       <noscript><p class="error">Enable JavaScript to use the local photo prototype.</p></noscript>
       <div class="identify-layout">
         <form id="identification-form" novalidate aria-describedby="identify-privacy">
@@ -40,9 +40,18 @@
           <div class="field"><label for="identify-files">2. Choose local photo(s)</label><input id="identify-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-describedby="identify-file-help identify-mode-help identify-error"><small id="identify-file-help">JPEG, PNG, WebP, GIF, or AVIF · up to 10 MB each · at most 6 views. Choose again to add a view in multi-image mode. Select the photographed part for each preview.</small></div>
           <ul id="identify-previews" class="identify-previews" aria-label="Temporary photo previews"></ul>
           <div class="identify-context">
-            <div class="field"><label for="identify-date">Observation date <span class="optional">(optional, not saved)</span></label><input id="identify-date" type="date" aria-describedby="identify-error"></div>
-            <div class="field"><label for="identify-region">Coarse region <span class="optional">(optional, not saved)</span></label><select id="identify-region" aria-describedby="identify-region-help"><option value="">Prefer not to say</option><option>Africa</option><option>Antarctica</option><option>Asia</option><option>Europe</option><option>North America</option><option>Oceania</option><option>South America</option></select><small id="identify-region-help">Broad region only. No GPS, coordinates, address, or photo metadata is read by TERRA. Context does not affect this mock.</small></div>
+            <div class="field"><label for="identify-date">Observation date <span class="optional">(optional; temporary until transfer)</span></label><input id="identify-date" type="date" aria-describedby="identify-error"></div>
+            <div class="field"><label for="identify-region">Coarse region <span class="optional">(optional, not saved)</span></label><select id="identify-region" aria-describedby="identify-region-help"><option value="">Prefer not to say</option><option>Africa</option><option>Antarctica</option><option>Asia</option><option>Europe</option><option>North America</option><option>Oceania</option><option>South America</option></select><small id="identify-region-help">Broad region first; optional finer detail is manual only. No GPS, coordinates, address, or photo metadata is read by TERRA. No geocoding or external lookup. Context does not affect this mock.</small></div>
           </div>
+          <fieldset id="identify-location-detail" hidden aria-describedby="identify-location-help"><legend>Optional finer location · enter manually</legend>
+            <p id="identify-location-help"><small>Keep broad region only, or choose a manual administrative level. Names vary by country; nothing is validated or looked up. Avoid addresses and sensitive sites. These details are temporary and are not saved/exported, even after saving a discovery.</small></p>
+            <div class="field"><label for="identify-precision">Location precision</label><select id="identify-precision"><option value="">Broad region only · no finer detail</option><option value="state">Enter state / province manually</option><option value="city">Enter city / locality manually</option></select></div>
+            <div id="identify-manual-location" hidden>
+              <div class="field"><label for="identify-country">Country / territory (optional, manual)</label><input id="identify-country" type="text" maxlength="120"></div>
+              <div class="field"><label for="identify-state">State / province (optional, manual)</label><input id="identify-state" type="text" maxlength="120"></div>
+              <div id="identify-city-field" class="field" hidden><label for="identify-city">City / locality (optional, manual)</label><input id="identify-city" type="text" maxlength="120"></div>
+            </div>
+          </fieldset>
           <p id="identify-error" class="error" role="alert" hidden></p>
           <div class="identify-actions"><button class="primary-button" type="submit">Analyze — show MOCK suggestions <span aria-hidden="true">↗</span></button><button id="identify-reset" class="text-button" type="button">Reset photos &amp; review</button></div>
         </form>
@@ -53,7 +62,10 @@
             <p class="identify-warning"><strong>Illustrative MOCK suggestions — not an identification.</strong> These fixed examples depend only on your selected group, not the image, part, date, or region. Source: Demo data. Confidence scores are arbitrary illustrations, not calibrated probabilities or evidence of a match.</p>
             <p id="identify-caveat"></p>
             <ol id="identify-candidates" class="identify-candidates" aria-label="Illustrative mock candidates"></ol>
+            <details id="identify-more"><summary>All remaining MOCK candidates · descending scores · Demo data · non-calibrated</summary><ol id="identify-remaining" class="identify-candidates" start="4" aria-label="Remaining mock candidates in descending score order"></ol></details>
             <div class="identify-review"><h4>Your review · temporary only</h4><p>Accept a demo candidate above, enter your own label, or leave this uncertain. No choice is verified or saved.</p><div class="field"><label for="identify-correction">Your corrected name</label><input id="identify-correction" type="text" maxlength="120" placeholder="Common or scientific name" aria-describedby="identify-review-error"></div><p id="identify-review-error" class="error" role="alert" hidden></p><div class="restore-actions"><button id="identify-correct" class="secondary-button" type="button">Use corrected name</button><button id="identify-uncertain" class="secondary-button" type="button">Leave uncertain</button></div></div>
+            <button id="identify-record" class="primary-button" type="button" aria-describedby="identify-transfer-help">Use selected organism to record a discovery</button>
+            <p id="identify-transfer-help">Select a candidate (including in the remaining list) or use your corrected name first. Next, confirm the transfer. This replaces the discovery draft’s name, group, photos, date, and temporary location fields, but keeps notes and privacy preference. Review there, then save separately. Images and location detail are never saved or exported.</p>
             <p id="identify-review-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
         </section>
@@ -94,6 +106,15 @@
           </div>
           <div class="field"><label for="notes">Field notes <span class="optional">(optional)</span></label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Colors, textures, habitat… what caught your eye?" aria-describedby="notes-help"></textarea><small id="notes-help">Avoid sensitive details or exact locations in names and notes.</small></div>
           <div class="field"><label for="photo">Take a closer look <span class="optional">(optional)</span></label><input id="photo" type="file" accept="image/*" aria-describedby="photo-help"><small id="photo-help">Image preview only, up to 10 MB. Images are never uploaded, saved, or included in exports.</small><p id="photo-error" class="error" role="alert" hidden></p><div id="preview-wrap" hidden><img id="photo-preview" alt="Preview of your selected observation image"><button id="remove-photo" class="text-button" type="button">Remove preview</button></div></div>
+          <fieldset id="discovery-location"><legend>Temporary location context · review only</legend><small>No GPS or lookup. These fields are not saved to the journal or exports. Avoid sensitive locations.</small>
+            <div class="field"><label for="discovery-region">Broad region (temporary)</label><input id="discovery-region" type="text" maxlength="120"></div>
+            <div class="field"><label for="discovery-precision">Administrative level (temporary)</label><input id="discovery-precision" type="text" maxlength="120"></div>
+            <div class="field"><label for="discovery-country">Country / territory (temporary)</label><input id="discovery-country" type="text" maxlength="120"></div>
+            <div class="field"><label for="discovery-state">State / province (temporary)</label><input id="discovery-state" type="text" maxlength="120"></div>
+            <div class="field"><label for="discovery-city">City / locality (temporary)</label><input id="discovery-city" type="text" maxlength="120"></div>
+          </fieldset>
+          <div id="discovery-images" hidden><p>Transferred photo previews · temporary only. Choosing a new journal photo replaces all transferred views. Resetting Explore a photo does not clear this independent draft; remove here, save, or reload to clear.</p><ul id="discovery-previews" class="identify-previews" aria-label="Temporary discovery photo previews"></ul><button id="discovery-clear-images" class="text-button" type="button">Remove all transferred previews</button></div>
+          <p id="discovery-transfer-status" class="status" role="status" aria-live="polite"></p>
           <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">A preference only—not actual location storage. TERRA never requests your location or saves coordinates, whatever you choose.</small></div>
           <p id="form-error" class="error" role="alert" hidden></p>
           <button id="save-button" class="primary-button" type="submit" disabled>Save to local journal <span aria-hidden="true">↗</span></button>
@@ -188,7 +209,8 @@
   </main>
   <script>
   "use strict";
-  // Isolated, ephemeral prototype: no storage, network, metadata reads, or journal writes.
+  // Ephemeral prototype: no storage, network, metadata reads, or journal writes.
+  // A confirmed local event prefills a separate review draft; it never submits it.
   (() => {
     const $ = id => document.getElementById(id);
     const form = $("identification-form");
@@ -209,14 +231,14 @@
       unsure: ["Whole organism", "Detail / close-up", "Other"]
     };
     const demos = {
-      plant: ["Common dandelion (Taraxacum officinale)", "Daisy (Bellis perennis)", "Broadleaf plantain (Plantago major)"],
-      fungus: ["Fly agaric (Amanita muscaria)", "Oyster mushroom (Pleurotus ostreatus)", "Turkey tail (Trametes versicolor)"],
-      insect: ["Seven-spot ladybird (Coccinella septempunctata)", "Monarch butterfly (Danaus plexippus)", "European honey bee (Apis mellifera)"],
-      mammal: ["Red fox (Vulpes vulpes)", "Red squirrel (Sciurus vulgaris)", "European hedgehog (Erinaceus europaeus)"],
-      bird: ["European robin (Erithacus rubecula)", "House sparrow (Passer domesticus)", "Mallard (Anas platyrhynchos)"],
-      fish: ["Atlantic salmon (Salmo salar)", "Rainbow trout (Oncorhynchus mykiss)", "European perch (Perca fluviatilis)"],
-      reptile: ["Green iguana (Iguana iguana)", "Grass snake (Natrix natrix)", "European pond turtle (Emys orbicularis)"],
-      unsure: ["Unresolved plant — demo label", "Unresolved fungus — demo label", "Unresolved animal — demo label"]
+      plant: ["Common dandelion (Taraxacum officinale)", "Daisy (Bellis perennis)", "Broadleaf plantain (Plantago major)", "Cat's ear (Hypochaeris radicata)", "Rough hawkbit (Leontodon hispidus)", "Autumn hawkbit (Scorzoneroides autumnalis)"],
+      fungus: ["Fly agaric (Amanita muscaria)", "Oyster mushroom (Pleurotus ostreatus)", "Turkey tail (Trametes versicolor)", "False turkey tail (Stereum ostrea)", "Panther cap (Amanita pantherina)", "Jack-o'-lantern (Omphalotus olearius)"],
+      insect: ["Seven-spot ladybird (Coccinella septempunctata)", "Monarch butterfly (Danaus plexippus)", "European honey bee (Apis mellifera)", "Viceroy butterfly (Limenitis archippus)", "Harlequin ladybird (Harmonia axyridis)", "Common drone fly (Eristalis tenax)"],
+      mammal: ["Red fox (Vulpes vulpes)", "Red squirrel (Sciurus vulgaris)", "European hedgehog (Erinaceus europaeus)", "Unresolved mammal — demo label A", "Unresolved mammal — demo label B", "Unresolved mammal — demo label C"],
+      bird: ["European robin (Erithacus rubecula)", "House sparrow (Passer domesticus)", "Mallard (Anas platyrhynchos)", "Unresolved bird — demo label A", "Unresolved bird — demo label B", "Unresolved bird — demo label C"],
+      fish: ["Atlantic salmon (Salmo salar)", "Rainbow trout (Oncorhynchus mykiss)", "European perch (Perca fluviatilis)", "Unresolved fish — demo label A", "Unresolved fish — demo label B", "Unresolved fish — demo label C"],
+      reptile: ["Green iguana (Iguana iguana)", "Grass snake (Natrix natrix)", "European pond turtle (Emys orbicularis)", "Unresolved reptile — demo label A", "Unresolved reptile — demo label B", "Unresolved reptile — demo label C"],
+      unsure: ["Unresolved plant — demo label", "Unresolved fungus — demo label", "Unresolved animal — demo label", "Unresolved moss — demo label", "Unresolved lichen — demo label", "Unresolved organism — demo label"]
     };
     const caveats = {
       plant: "Look-alike plants may require several features and expert review. Never use this demo to decide whether a plant is edible or medicinal.",
@@ -229,6 +251,7 @@
       unsure: "The organism group is unresolved. These examples are placeholders across groups, not evidence for choosing one. Leaving it uncertain is useful."
     };
     let images = [];
+    let selectedName = "";
     let nextId = 0;
     function node(tag, text, className) {
       const el = document.createElement(tag);
@@ -244,6 +267,9 @@
     }
     function invalidate(message = "Inputs changed. Analyze again to review fresh MOCK examples.") {
       output.hidden = true;
+      selectedName = "";
+      $("identify-more").open = false;
+      $("identify-remaining").replaceChildren();
       $("identify-candidates").replaceChildren();
       $("identify-review-status").textContent = "";
       $("identify-correction").value = "";
@@ -320,7 +346,7 @@
         const remove = node("button", "Remove photo", "text-button");
         remove.type = "button";
         remove.setAttribute("aria-label", `Remove ${file.name}, view ${id}`);
-        const image = { card, img, select, url: URL.createObjectURL(file), ready: false };
+        const image = { file, card, img, select, url: URL.createObjectURL(file), ready: false };
         fillParts(image);
         select.addEventListener("change", () => { select.removeAttribute("aria-invalid"); error(""); invalidate(); });
         remove.addEventListener("click", () => removeImage(image));
@@ -335,10 +361,34 @@
         img.src = image.url;
       }
     });
-    for (const id of ["identify-date", "identify-region"]) {
-      $(id).addEventListener("input", () => { $(id).removeAttribute("aria-invalid"); error(""); invalidate(); });
+    function syncLocation() {
+      const region = $("identify-region").value;
+      const precision = $("identify-precision");
+      $("identify-location-detail").hidden = !region;
+      if (!region) precision.value = "";
+      $("identify-manual-location").hidden = !precision.value;
+      $("identify-city-field").hidden = precision.value !== "city";
+      if (!precision.value) {
+        $("identify-country").value = "";
+        $("identify-state").value = "";
+      }
+      if (precision.value !== "city") $("identify-city").value = "";
     }
-    function review(message) {
+    for (const id of ["identify-date", "identify-region", "identify-precision", "identify-country", "identify-state", "identify-city"]) {
+      $(id).addEventListener("input", () => {
+        // A different broad region must not silently reuse its previous locality.
+        if (id === "identify-region") $("identify-precision").value = "";
+        syncLocation();
+        $(id).removeAttribute("aria-invalid");
+        error("");
+        invalidate();
+      });
+    }
+    function review(message, name = "") {
+      selectedName = name;
+      document.querySelectorAll("#identify-candidates button, #identify-remaining button").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.dataset.name === name));
+      });
       $("identify-review-error").hidden = true;
       $("identify-correction").removeAttribute("aria-invalid");
       $("identify-review-status").textContent = `${message} Temporary review only; not verified and not saved to observations.`;
@@ -363,10 +413,12 @@
         const card = node("li");
         const accept = node("button", "Accept demo candidate", "secondary-button");
         accept.type = "button";
+        accept.dataset.name = name;
+        accept.setAttribute("aria-pressed", "false");
         accept.setAttribute("aria-label", `Accept demo candidate: ${name}`);
-        accept.addEventListener("click", () => review(`Accepted MOCK candidate: ${name}.`));
-        card.append(node("h4", name), node("p", `Demo data · Illustrative confidence: ${[72, 48, 26][index]}/100 — arbitrary, not a probability.`), accept);
-        $("identify-candidates").append(card);
+        accept.addEventListener("click", () => review(`Accepted MOCK candidate: ${name}.`, name));
+        card.append(node("h4", name), node("p", `MOCK · Demo data · Illustrative confidence / score: ${[72, 48, 26, 19, 12, 5][index]}/100 — non-calibrated, arbitrary, not a probability.`), accept);
+        $(index < 3 ? "identify-candidates" : "identify-remaining").append(card);
       });
       output.hidden = false;
       status.textContent = `MOCK examples ready for ${images.length} local photo(s). No image analysis was performed. Review below.`;
@@ -382,14 +434,35 @@
         input.focus();
         return;
       }
-      review(`Your corrected label: ${value}.`);
+      review(`Your corrected label: ${value}.`, value);
     });
     $("identify-uncertain").addEventListener("click", () => review("Left uncertain. No identification chosen."));
+    $("identify-correction").addEventListener("input", () => {
+      review("Name edited. Use corrected name to select it before transfer.");
+    });
+    $("identify-record").addEventListener("click", () => {
+      if (output.hidden || !selectedName.trim() || selectedName.length > 120 || !images.length || images.some(image => !image.ready)) {
+        $("identify-review-error").textContent = "Select a candidate or use a non-empty corrected name before transferring.";
+        $("identify-review-error").hidden = false;
+        $("identify-correction").focus();
+        return;
+      }
+      const location = Object.fromEntries(["region", "precision", "country", "state", "city"].map(key => [key, $("identify-" + key).value.trim()]));
+      const date = $("identify-date").value;
+      const summary = `Name: ${selectedName}\nPhotos: ${images.length} temporary preview(s)\nDate: ${date || "Not supplied — required before save"}\nRegion / administrative level / country / state / locality: ${Object.values(location).filter(Boolean).join(" / ") || "Not supplied"}`;
+      if (!window.confirm(`Review unverified selection:\n${summary}\n\nReplace these fields in the discovery draft? Notes and privacy stay unchanged. Photos and location are not saved/exported. This only prefills; nothing is saved or sent to iNaturalist.`)) return;
+      document.dispatchEvent(new CustomEvent("terra:prefill-discovery", { detail: {
+        name: selectedName, type: group.value === "unsure" ? "other" : group.value,
+        date, location, files: images.map(image => image.file)
+      } }));
+      review(`Transferred ${selectedName} for review in Record a discovery.`, selectedName);
+    });
     function reset() {
       images.forEach(release);
       images = [];
       previews.replaceChildren();
       form.reset();
+      syncLocation();
       files.multiple = false;
       form.querySelectorAll("[aria-invalid]").forEach(el => el.removeAttribute("aria-invalid"));
       error("");
