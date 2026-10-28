@@ -12,6 +12,8 @@ Early local-first prototype — no iNaturalist, BOLD, GenBank, real AI or scient
 
 `integration/pr7-pr11-pr12` combines PR #11, its stacked follow-up #12, and independent PR #7 on main `d82d733`, preserving all three histories. Photo review transfers each of the seven organism groups to the matching discovery category (Unsure maps to Other), and explicitly targets the current draft for project add rather than a previously selected saved record. All groups retain the top three mock examples and three additional ranked examples; added mammal/bird/fish/reptile rows are explicitly unresolved demo placeholders, not a vetted look-alike dataset. Existing PRs are not merged or modified; this is local review only.
 
+See [the combined integration verification record](INTEGRATION.md) for exact input commits, conflict decisions, test results, and complete PowerShell checkout/startup/test commands.
+
 ## Run locally
 
 Use Python 3.9+ and a modern browser with JavaScript and localStorage enabled. From the repository folder:
