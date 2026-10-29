@@ -163,6 +163,7 @@ const { chromium } = require('playwright');
       await page.waitForFunction(() => [...document.querySelectorAll('#identify-previews img')].every(img => img.complete && img.naturalWidth));
       await page.locator('#identify-previews select').selectOption('Whole organism');
       await page.fill('#identify-date', '2024-02-29');
+      await page.selectOption('#identify-context', 'broad');
       await page.selectOption('#identify-region', 'North America'); await page.selectOption('#identify-precision', 'city');
       await page.fill('#identify-city', 'Temporary site');
       await page.locator('#identification-form button[type=submit]').click();

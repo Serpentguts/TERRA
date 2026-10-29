@@ -31,7 +31,8 @@ class LocalAppChecks(unittest.TestCase):
     def test_existing_file_and_health_routes(self):
         for path, content_type in [
             ("/", "text/html"), ("/index.html", "text/html"),
-            ("/app.js", "javascript"), ("/styles.css", "text/css"),
+            ("/app.js", "javascript"), ("/ui.js", "javascript"),
+            ("/styles.css", "text/css"),
             ("/ditto.json", "application/json"),
         ]:
             with self.subTest(path=path):
@@ -49,7 +50,9 @@ class LocalAppChecks(unittest.TestCase):
             html = response.get_data(as_text=True)
             for control in ["identify-record", "identify-more", "discovery-previews",
                             "discovery-location", "add-project-button", "project-form",
-                            "identification-plan", "genetic-data"]:
+                            "identification-plan", "genetic-data", "navigation-toggle",
+                            "site-navigation", "feed-tab", "map-tab", "feed", "map",
+                            "identify-location", "demo-map", "demo-listings"]:
                 with self.subTest(control=control):
                     self.assertIn(f'id="{control}"', html)
         finally:

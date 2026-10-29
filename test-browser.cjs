@@ -249,6 +249,7 @@ async function testIdentification(page, key) {
   await analyze();
   await error(/valid optional date/);
   await page.fill('#identify-date', '2024-02-29');
+  await page.selectOption('#identify-context', 'broad');
   await page.selectOption('#identify-region', 'North America');
   await analyze();
   assert.equal(await page.locator('#identify-output').isVisible(), true);
@@ -400,6 +401,7 @@ async function testDiscoveryHandoff(page, key) {
     await click;
   };
   assert.equal(await page.locator('#identify-location-detail').isVisible(), false);
+  await page.selectOption('#identify-context', 'broad');
   await page.selectOption('#identify-region', 'North America');
   assert.equal(await page.locator('#identify-location-detail').isVisible(), true);
   assert.equal(await page.locator('#identify-manual-location').isVisible(), false);
