@@ -111,9 +111,7 @@ document.addEventListener("terra:prefill-discovery", event => {
   form.querySelector(`input[name=type][value="${draft.type}"]`).checked = true;
   dateInput.value = draft.date; // Missing dates stay blank; never invent an observation date.
   syncDate();
-  for (const key of ["region", "precision", "country", "state", "city"]) {
-    document.querySelector(`#discovery-${key}`).value = draft.location?.[key] || "";
-  }
+  TerraLocation.set("discovery", draft.location);
   for (const file of draft.files) {
     const card = element("li", "identify-photo");
     const img = element("img");
@@ -413,6 +411,7 @@ function saveDiscovery(withProject = false) {
   pendingDiscovery = null;
   const targetProject = discoveryProject.value;
   form.reset();
+  TerraLocation.sync("discovery");
   discoveryProject.value = targetProject;
   dateInput.value = today();
   syncDate();

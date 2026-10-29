@@ -10,7 +10,36 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .site-header { max-width: 1200px; margin: auto; padding: 24px 36px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .brand { color: var(--green); text-decoration: none; font-size: 23px; font-weight: 750; letter-spacing: 4px; display: flex; align-items: center; gap: 10px; }
 .brand-mark { font-size: 34px; line-height: 1; }
-.header-note { color: var(--muted); font-size: 13px; }
+.header-note { color: var(--muted); font-size: 13px; margin-left: auto; margin-right: 20px; }
+.site-navigation { position: relative; }
+#navigation-toggle { min-width: 44px; min-height: 44px; font-size: 22px; padding: 2px 10px; }
+#site-navigation { position: absolute; right: 0; top: calc(100% + 8px); z-index: 5; width: min(280px, calc(100vw - 40px)); padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px #243c3126; }
+#site-navigation a { display: block; color: var(--green); padding: 10px 12px; border-radius: 4px; text-decoration: none; }
+#site-navigation a:hover, #site-navigation a:focus-visible { background: #edf0e6; }
+.demo-discovery { margin-bottom: 32px; }
+.discovery-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px; }
+.discovery-tabs button { min-height: 44px; padding: 8px 24px; border: 1px solid var(--green); border-radius: 6px; background: #fff; color: var(--green); }
+.discovery-tabs [aria-selected=true] { background: var(--green); color: #fff; }
+.demo-feed, .schematic-map { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; list-style: none; padding: 0; }
+.demo-card { border: 1px solid var(--line); border-left: 6px solid var(--marker); border-radius: 8px; padding: 16px; background: #fff; overflow-wrap: anywhere; }
+.demo-card h4 { margin: 8px 0; }
+.demo-card p { font-size: 12px; margin-bottom: 8px; }
+.demo-purpose { font-weight: 700; }
+.organism-icon { display: inline-grid; place-items: center; font-size: 28px; width: 48px; height: 48px; border: 2px solid #243c31; border-radius: 50%; background: var(--marker); }
+.natural { --marker: #378447; }
+.cultivated { --marker: #f2cc4d; }
+.sale { --marker: #c13d3d; }
+.sale .organism-icon { border-radius: 4px; }
+.schematic-map { padding: 20px; border: 2px dashed #87997e; border-radius: 10px; background: repeating-linear-gradient(0deg, transparent, transparent 39px, #dce1d5 40px), repeating-linear-gradient(90deg, #f0f4e9, #f0f4e9 39px, #dce1d5 40px); }
+.map-legend { list-style: none; padding: 0; }
+.map-legend li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+.legend-swatch { display: inline-block; width: 18px; height: 18px; border: 1px solid #243c31; border-radius: 50%; background: var(--marker); }
+.legend-swatch.sale { border-radius: 2px; }
+.location-context { border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
+.location-context > legend { padding: 0 4px; }
+.location-context .field:last-child { margin-bottom: 0; }
+@media (max-width: 760px) { .demo-feed, .schematic-map { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .demo-feed, .schematic-map { grid-template-columns: minmax(0, 1fr); } .schematic-map { padding: 12px; } }
 main { max-width: 1128px; margin: auto; padding: 0 28px; }
 .intro { padding: 46px 0 30px; max-width: 670px; }
 .eyebrow { font-size: 10px; font-weight: 750; letter-spacing: 2px; color: var(--muted); margin: 0 0 12px; }
