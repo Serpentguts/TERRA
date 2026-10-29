@@ -47,6 +47,17 @@ Browser suites use isolated profiles and assert no external requests/application
 
 Not executed: Windows/Edge/Excel manual review, Firefox/Safari, or manual screen-reader audit. These are human-review follow-ups, not automated failures.
 
+## Next UI iteration on the combined branch
+
+Continues from `19d6909e201bbf4e54d415e3c707ba323aeb0723`, not from main or an individual feature branch. Existing review-only draft PR #13 is the review destination; no merge, deployment, publishing, or main-branch changes.
+
+- `ui.js` adds one native location-context dropdown per form, conditional habitat/garden and optional region/locality fields, clearing/disabling hidden or stale values, sanitized explicit photo-to-draft handoff, and pagehide cleanup. The six-field journal/export and privacy preferences are unchanged; all context remains temporary even with Exact selected.
+- `index.html` / `styles.css` add top-right disclosure navigation to all existing areas, keyboard-accessible Feed/Map tabs, fictional observation cards, and a local schematic. Six labeled icons distinguish mushroom, plant, bird, snake/reptile, mouse/mammal and bug/insect.
+- Green means natural-setting observation; yellow means cultivated-setting observation. Red means a fictional for-sale listing, never an observation: a separate listing area, square icon and explicit text distinguish it. No journal locations, real social features, remote maps, sellers, transactions, or external posts.
+- `test-ui-browser.cjs` covers new controls, focus/keyboard/hash behavior, hidden/stale clearing in both forms, setting handoff and independent reset, unchanged save/export privacy, demo isolation/legend/icons/sale separation, unique labels/IDs, and populated widths 320/390/768/1280. Existing photo tests select the new broad-only context before entering regions; all previous assertions are retained. Flask checks include `ui.js` and the new panels.
+
+Reverified on Linux Chromium 156: all **four** browser suites, **9** JS unit tests, **4** Flask tests, JS/inline syntax, Python compilation, manifest parse, local routes including `/ui.js`, and whitespace checks pass. Browser-only libraries/fonts are extracted inside ignored `.browser-cache`; venv and Playwright are local test tools, not runtime additions. Windows/Edge, Firefox/Safari and a manual screen-reader review remain unverified. Emoji appearance depends on platform; visible organism/purpose labels do not.
+
 ## VS Code / PowerShell local review
 
 In a clean existing TERRA checkout, export your browser journal backup before testing. Keep the same browser profile and `localhost:8080` origin to retain access to existing journal data.
@@ -81,4 +92,5 @@ node --test test-field-summary.cjs test-integration-plan.cjs
 node test-browser.cjs
 node test-projects-browser.cjs
 node test-discovery-browser.cjs
+node test-ui-browser.cjs
 ```

@@ -128,7 +128,7 @@ const TerraLocation = (() => {
     const id = link.hash.slice(1);
     if (["feed", "map"].includes(id)) selectTab(id);
     const target = document.getElementById(id);
-    target.tabIndex = -1;
+    if (target.getAttribute("role") !== "tabpanel") target.tabIndex = -1;
     target.focus();
     closeNavigation();
   });
