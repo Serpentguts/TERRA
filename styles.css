@@ -9,6 +9,10 @@ body { margin: 0; padding-bottom: calc(var(--bottom-nav-height, 170px) + 16px); 
 #bottom-navigation a[aria-current] { background: #edf0e6; border-color: var(--green); font-weight: 750; }
 #bottom-navigation a:focus-visible { outline-offset: -4px; }
 @media (max-width: 600px) { #bottom-navigation { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.view-controls { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.close-view { min-width: 44px; min-height: 44px; }
+.identification-history { margin: 12px 0; }
+.identification-history summary { cursor: pointer; min-height: 44px; padding: 10px 0; font-weight: 650; }
 button, input, textarea, select { font: inherit; }
 button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }

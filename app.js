@@ -314,8 +314,11 @@ function render() {
     meta.append(element("span", "category", categories[observation.type]), date);
     card.append(meta, element("h3", "", observation.name));
     card.append(element("p", "card-notes", observation.notes || "No field notes added."));
-    const provenance = element("a", "", "Identification provenance: not recorded (staged definitions)");
-    provenance.href = "#identification-plan";
+    // Version-1 records contain no identification evidence. A manual name or
+    // fixed photo-demo selection must never imply AI, community or expert review.
+    const provenance = element("details", "identification-history");
+    provenance.append(element("summary", "", "Identification provenance"));
+    provenance.append(element("p", "", "No identification history yet"));
     card.append(provenance);
     const bottom = element("div", "card-bottom");
     const remove = element("button", "text-button", "Delete");

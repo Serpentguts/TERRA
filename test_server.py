@@ -50,7 +50,7 @@ class LocalAppChecks(unittest.TestCase):
             html = response.get_data(as_text=True)
             for control in ["identify-record", "identify-more", "discovery-previews",
                             "discovery-location", "add-project-button", "project-form",
-                            "identification-plan", "genetic-data", "navigation-toggle",
+                            "view-stack-help", "genetic-data", "navigation-toggle",
                             "site-navigation", "bottom-navigation", "home", "map", "feed",
                             "profile", "profile-form",
                             "profile-photos", "profile-observations", "profile-reset",

@@ -61,12 +61,13 @@ const { chromium } = require('playwright');
     await page.keyboard.press('Space');
     await page.locator('#site-navigation').getByRole('link', { name: 'Map', exact: true }).click();
     assert.equal(await page.locator('#map').isVisible(), true);
-    assert.equal(await page.locator('#home').isVisible(), false);
+    assert.equal(await page.locator('#home').isVisible(), true); // Opened views coexist until closed.
     assert.equal(await page.locator('#map').evaluate(el => el === document.activeElement), true);
     assert.equal(await page.locator('#map').getAttribute('tabindex'), '-1');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
     await toggle.click(); await page.locator('#discover-title').click();
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+    await page.getByRole('button', { name: 'Close Map view', exact: true }).click();
     await toggle.click(); await page.getByRole('link', { name: 'Record a discovery', exact: true }).click();
     assert.equal(await page.locator('#form-title').evaluate(el => el === document.activeElement), true);
     await toggle.click(); await page.locator('#site-navigation a').last().focus();
@@ -81,6 +82,9 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#profile').isVisible(), true);
     assert.equal(await page.locator('.map-legend').isVisible(), false);
     for (const id of destinations) {
+      if (id !== 'map' && await page.locator('#map').isVisible()) {
+        await page.getByRole('button', { name: 'Close Map view', exact: true }).click();
+      }
       await bottom.locator(`a[href="#${id}"]`).click();
       assert.equal(await page.locator(`#${id}`).evaluate(el => el === document.activeElement), true);
       assert.equal(await bottom.locator('[aria-current="location"]').count(), 1);
@@ -140,6 +144,7 @@ const { chromium } = require('playwright');
     await page.keyboard.press('Home'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');
     assert.equal(await page.locator('#map-purpose').inputValue(), 'natural');
     await page.locator('#map-reset').click();
+    await page.getByRole('button', { name: 'Close Map view', exact: true }).click();
     await page.evaluate(() => { location.hash = 'home'; });
     await page.waitForFunction(() => !document.getElementById('home').hidden);
     assert.equal(await page.locator('.map-legend').isVisible(), false);

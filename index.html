@@ -20,7 +20,7 @@
         <a href="#home">Home</a><a href="#map">Map</a><a href="#profile">Profile · local demo</a>
         <a href="#identify-title">Explore a photo</a><a href="#form-title">Record a discovery</a>
         <a href="#saved-title">Your observations</a><a href="#projects-title">Projects / Field Summary</a>
-        <a href="#identification-title">Identification provenance</a><a href="#genetic-title">Genetic Data</a>
+        <a href="#feed">Feed · not connected</a><a href="#genetic-title">Genetic Data</a>
       </nav>
     </div>
   </header>
@@ -44,11 +44,13 @@
       <div><strong id="privacy-title">Your journal stays with you.</strong>
       <p>Saved only in this browser on this device. Nothing is synced, backed up, or submitted to iNaturalist. Clearing browser data can erase your journal—export a copy to keep it.</p></div>
     </aside>
+    <p id="view-stack-help">Opened views stay in the main screen stack until closed. Close view only hides a section; it does not delete saved data or clear drafts. Reopen any view from the menu or persistent bottom navigation. Observation opens photo review and the discovery draft; Projects / Journal opens projects and saved observations.</p>
+    <p id="view-stack-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
     <section id="discover" class="panel demo-discovery" aria-labelledby="discover-title">
       <p class="eyebrow">EXPLORE · NOTICE · RECORD</p>
       <h2 id="discover-title">Discover TERRA</h2>
       <div id="home" tabindex="-1">
-        <p>Explore a photo, record what you notice, and grow your private journal below. Use the bottom bar to move between areas. Nothing is shared.</p>
+        <p>Explore a photo, record what you notice, and grow your private journal below. Use the menu or bottom bar to open views; close individual views when finished. Nothing is shared.</p>
       </div>
     </section>
       <section id="map" class="panel demo-discovery" aria-labelledby="map-title" tabindex="-1" hidden>
@@ -257,16 +259,6 @@
       </div>
       <div id="project-report" aria-labelledby="project-report-title"></div>
       <p><small>Projects stay in this browser. Completion locks editing until reopened; it is not a frozen snapshot. Deleting a journal record changes its summaries; missing references are shown, never counted. Journal JSON backups do not include projects. CSV is a readable report, not a project restore file.</small></p>
-    </section>
-    <section id="identification-plan" class="panel projects-panel" aria-labelledby="identification-title">
-      <h2 id="identification-title">Identification provenance — staged definition</h2>
-      <p>No review status is assigned to any observation. These are three independent evidence tracks, not a ladder or automatic checkmarks. The current photo tool uses fixed mock suggestions, not AI identification.</p>
-      <dl>
-        <dt><strong>AI-suggested</strong></dt><dd>Future record: model/source and version, suggested taxon, date, evidence and uncertainty. A suggestion is not a confirmed identification.</dd>
-        <dt><strong>community-identified</strong></dt><dd>Future record: attributed reviewers, identification evidence, date and an explicit agreement/disagreement policy. No community consensus exists in this prototype.</dd>
-        <dt><strong>expert-confirmed</strong></dt><dd>Future record: named reviewer with relevant expertise, explicit confirmation, date and inspectable supporting evidence. Never awarded by AI scores, a lookup match, or a user merely selecting a label.</dd>
-      </dl>
-      <p>Assignment is intentionally unavailable pending provenance/reviewer design. Journal records and version-1 JSON remain unchanged; no review metadata is saved or exported.</p>
     </section>
     <section id="genetic-data" class="panel projects-panel" aria-labelledby="genetic-title">
       <h2 id="genetic-title">Genetic Data</h2>

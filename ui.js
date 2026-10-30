@@ -84,19 +84,55 @@ const TerraLocation = (() => {
   const reserveNavigationSpace = () => document.documentElement.style.setProperty("--bottom-nav-height", `${bottomNav.getBoundingClientRect().height}px`);
   new ResizeObserver(reserveNavigationSpace).observe(bottomNav);
   reserveNavigationSpace();
-  const previews = ["home", "map", "profile", "feed"];
-  function selectArea(id) {
-    for (const preview of previews) {
-      document.getElementById(preview).hidden = preview !== (previews.includes(id) ? id : "home");
-    }
-    const destination = {
-      home: "identify-title", "form-title": "identify-title", "saved-title": "projects-title",
-      projects: "projects-title", "identification-title": "genetic-title", "genetic-data": "genetic-title"
-    }[id] || id || "identify-title";
+  const views = [
+    ["home", "Home"], ["map", "Map"], ["profile", "Profile"], ["feed", "Feed"],
+    ["identify-title", "Explore a photo"], ["form-title", "Record a discovery"],
+    ["saved-title", "Your observations"], ["projects-title", "Projects / Field Summary"],
+    ["genetic-title", "Genetic Data"]
+  ].map(([id, label]) => ({ id, label, section: document.getElementById(id).closest("section") }));
+  const aliases = { projects: "projects-title", "genetic-data": "genetic-title", discover: "home" };
+  const destinationFor = id => ({ "form-title": "identify-title", "saved-title": "projects-title" }[id] || id);
+  const stackStatus = document.getElementById("view-stack-status");
+  function markCurrent(id) {
     for (const link of bottomNav.querySelectorAll("a")) {
-      if (link.hash === `#${destination}`) link.setAttribute("aria-current", "location");
+      if (link.hash === `#${destinationFor(id)}`) link.setAttribute("aria-current", "location");
       else link.removeAttribute("aria-current");
     }
+  }
+  function selectArea(id, grouped = false) {
+    id = aliases[id] || id;
+    const view = views.find(view => view.id === id);
+    if (!view) return;
+    view.section.hidden = false;
+    // The two persistent destinations open their related sections together.
+    // Menu links and direct hashes can still open each section independently.
+    if (grouped && id === "identify-title") views.find(view => view.id === "form-title").section.hidden = false;
+    if (grouped && id === "projects-title") views.find(view => view.id === "saved-title").section.hidden = false;
+    markCurrent(id);
+  }
+  for (const view of views) {
+    if (!view.section.id) view.section.id = `${view.id}-view`;
+    const controls = document.createElement("div");
+    controls.className = "view-controls";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "secondary-button close-view";
+    close.textContent = "Close view";
+    close.setAttribute("aria-label", `Close ${view.label} view`);
+    close.setAttribute("aria-controls", view.section.id);
+    close.setAttribute("aria-describedby", "view-stack-help");
+    close.addEventListener("click", () => {
+      // Visibility only: do not reset forms, remove nodes, revoke images or write storage.
+      view.section.hidden = true;
+      // Clear the closed location without a hashchange that could reopen it.
+      history.replaceState(null, "", `${location.pathname}${location.search}`);
+      markCurrent("");
+      stackStatus.textContent = `${view.label} view closed. No data deleted. Reopen from the menu or bottom navigation.`;
+      const reopen = bottomNav.querySelector(`a[href="#${destinationFor(view.id)}"]`) || toggle;
+      reopen.focus();
+    });
+    controls.append(close);
+    view.section.prepend(controls);
   }
   function closeNavigation() {
     nav.hidden = true;
@@ -125,17 +161,19 @@ const TerraLocation = (() => {
     const id = link.hash.slice(1);
     const target = document.getElementById(id);
     if (!target) return;
-    selectArea(id);
+    selectArea(id, bottomNav.contains(link));
     target.tabIndex = -1;
     target.focus();
     closeNavigation();
   }
-  nav.addEventListener("click", followLink);
-  bottomNav.addEventListener("click", followLink);
+  // Include in-content project links, including repeated links to a closed view.
+  document.addEventListener("click", followLink);
   function followHash() {
     selectArea(window.location.hash.slice(1));
   }
   window.addEventListener("hashchange", followHash);
+  // A confirmed photo handoff must also reveal a previously closed draft.
+  document.addEventListener("terra:prefill-discovery", () => selectArea("form-title"));
   followHash();
 
   // Fictional observations are deliberately separate from the private journal.

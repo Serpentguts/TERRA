@@ -95,12 +95,12 @@ const { chromium } = require('playwright');
     assert.match(await page.locator('#form-error').textContent(), /complete/);
     assert.equal(await raw(J), lockedJ); assert.equal(await raw(K), lockedK);
     await tab.close();
-    // Exact labels, no assignable/automatic statuses or fake validation.
-    const definitions = await page.locator('#identification-plan').textContent();
-    for (const label of ['AI-suggested', 'community-identified', 'expert-confirmed']) assert.ok(definitions.includes(label));
-    assert.equal(await page.locator('#identification-plan select, #identification-plan input').count(), 0);
-    assert.equal(await page.locator('#observation-list a[href="#identification-plan"]').count(), 4);
-    assert.match(await page.locator('#observation-list').textContent(), /not recorded/);
+    // Provenance belongs to each saved discovery, never navigation or the draft.
+    assert.equal(await page.locator('#identification-plan, #identification-title').count(), 0);
+    assert.equal(await page.locator('#observation-list .identification-history').count(), 4);
+    assert.match(await page.locator('#observation-list').textContent(), /No identification history yet/);
+    assert.doesNotMatch(await page.locator('#observation-list').textContent(), /AI-suggested|community-identified|expert-confirmed/);
+    assert.equal(await page.locator('#observation-form .identification-history').count(), 0);
     // Genetic paths produce plans, never results, persistence or outbound calls.
     const journalBeforeDNA = await raw(J), projectsBeforeDNA = await raw(K);
     await page.click('#bold-preview'); assert.match(await page.locator('#genetic-error').textContent(), /Enter a taxon/);
@@ -217,6 +217,6 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#add-project-button').isDisabled(), true);
     assert.deepEqual(errors, []); assert.deepEqual(network, []);
     await context.close();
-    console.log('PASS: all-group photo-to-project draft targeting and partial-write preview/context retry, discovery project creation/reuse/idempotency, scope/completion, retries/partial failures, stale drafts/cross-tab, unchanged JSON, staged provenance, separate no-network genetic previews/DNA validation/nonpersistence, labels/keyboard/mobile.');
+    console.log('PASS: all-group photo-to-project draft targeting and partial-write preview/context retry, discovery project creation/reuse/idempotency, scope/completion, retries/partial failures, stale drafts/cross-tab, unchanged JSON, saved-discovery unknown provenance, separate no-network genetic previews/DNA validation/nonpersistence, labels/keyboard/mobile.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
