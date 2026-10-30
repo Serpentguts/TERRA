@@ -2,7 +2,51 @@
 
 Branch: `integration/pr7-pr11-pr12`.
 
-## Current navigation redesign (after `fec372f`)
+## Latest consolidated request: discovery provenance + closable view stack
+
+Review artifact: existing **draft PR #13 only**, <https://github.com/Serpentguts/TERRA/pull/13>. Implementation commits: `2d8f3bc`, `81ca3af`. This supersedes the older staged-provenance page and exclusive-preview visibility described in historical notes below. No separate provenance branch/proposal/PR is being implemented.
+
+- Identification provenance is a native expandable subsection of each saved discovery. The standalone navigation/page is removed; no draft status control exists. Version-1 records carry no identification history, so they show **No identification history yet**, including after a fixed MOCK photo selection. No fabricated AI/community/expert label or consensus. The six-field journal, version-1 backups and importer are unchanged; no migration or new metadata store.
+- All nine openable views have native, named **Close view** buttons with 44px minimum targets, explicit controlled-section relationships, shared explanatory help and polite close feedback. Opened sections coexist in the main screen stack; closing only sets visibility. It never deletes journal/project data, resets draft fields/follows/filters, discards images or submits a form. Focus returns to a visible reopen control. Reload restores normal initial visibility.
+- The six persistent bottom destinations remain reachable even with every view closed. Observation reopens photo review + discovery draft; Projects / Journal reopens projects + saved observations. Menu links reopen individual sections. Direct hashes, Back/Forward and confirmed photo-to-draft handoffs reveal their destination. Delete observation remains separate and confirmation-gated.
+
+Verification: **all five full Chromium 156 suites PASS**, including new `test-view-stack-browser.cjs`; **9 JS unit tests PASS**, **4 Flask tests PASS**. Regressions cover all-section menu close/reopen, keyboard Enter/Space, accessible names/help/targets, visible focus after closing, all-closed persistent reopening, coexisting Map/Profile, hash history, mobile control bounds, unchanged journal/project/local/session storage, retained drafts/images/follows, saved-discovery unknown provenance and all-group MOCK transfers reopening a closed draft. Existing JSON export/restore/failure-retry suites pass unchanged in schema. Syntax, Python compile, manifest and whitespace checks also pass. Test-only browser libraries/fonts are ignored under `.browser-cache`; no runtime dependencies added. Manual Windows/Edge, Firefox/Safari, screen-reader and physical safe-area reviews remain outstanding.
+
+### Trevor's existing Windows clone
+
+Export a journal backup and stop the old server with Ctrl+C. Do not reset/force through local Git changes or conflicts:
+
+```powershell
+Set-Location "$HOME\TERRA-combined-test"
+git status --short
+git fetch origin integration/pr7-pr11-pr12:refs/remotes/origin/integration/pr7-pr11-pr12
+git switch integration/pr7-pr11-pr12
+git pull --ff-only origin integration/pr7-pr11-pr12
+git log -1 --oneline
+python -m pip install -r requirements.txt
+python server.py
+```
+
+Open **http://localhost:8080**, press **Ctrl+F5**, and keep the same browser profile/hostname/port for existing data. Open Profile and Map; close each, then reopen. Close Record a discovery with an unsaved draft and reopen via Observation; the draft remains. Close Your observations and reopen via Projects / Journal; saved data remains. Expand Identification provenance under a saved discovery: the neutral unknown message belongs there, not in the menu or form. Closing views is not deleting data.
+
+Optional full tests in a second PowerShell terminal with the server still running (Node.js 18+):
+
+```powershell
+npm install --no-save --package-lock=false playwright
+$env:PLAYWRIGHT_BROWSERS_PATH = "$PWD/.browser-cache"
+npx playwright install chromium
+node test-browser.cjs
+node test-projects-browser.cjs
+node test-discovery-browser.cjs
+node test-ui-browser.cjs
+node test-view-stack-browser.cjs
+node --test test-field-summary.cjs test-integration-plan.cjs
+python -m unittest -v test_server.py
+```
+
+No merge, main modification, deployment, public service, or release is authorized.
+
+## Previous navigation redesign (after `fec372f`)
 
 This supersedes the historical Home/Map/Profile-tab and legacy Feed-redirect descriptions below.
 
