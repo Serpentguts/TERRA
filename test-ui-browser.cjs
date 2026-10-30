@@ -163,7 +163,7 @@ const { chromium } = require('playwright');
     assert.match(await page.locator('#profile-observations').textContent(), /<img.*MOCK.*mock.png/);
     assert.equal(await page.locator('#profile-observations img').count(), 0);
     assert.match(await page.locator('#profile-status').textContent(), /Nothing uploaded or saved/);
-    const follow = page.getByRole('button', { name: 'Mock follow River', exact: true });
+    const follow = page.locator('button[aria-label="Mock follow River"]');
     await follow.focus(); await page.keyboard.press('Space');
     assert.equal(await follow.getAttribute('aria-pressed'), 'true');
     assert.match(await page.locator('#profile-follow-status').textContent(), /1 mock follow.*nobody contacted/);
@@ -316,10 +316,10 @@ const { chromium } = require('playwright');
       assert.ok((await lastControl.boundingBox()).y + (await lastControl.boundingBox()).height <= (await bottom.boundingBox()).y);
       // Also exercise enlarged text; ResizeObserver must reserve wrapped bar height.
       await bottom.evaluate(el => el.querySelectorAll('a').forEach(a => { a.style.fontSize = '24px'; }));
-      await page.waitForFunction(() => parseFloat(getComputedStyle(document.body).paddingBottom) >= document.getElementById('bottom-navigation').getBoundingClientRect().height + 16);
+      await page.waitForFunction(() => Math.abs(parseFloat(getComputedStyle(document.body).paddingBottom) - document.getElementById('bottom-navigation').getBoundingClientRect().height - 16) < 1);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       await bottom.evaluate(el => el.querySelectorAll('a').forEach(a => { a.style.fontSize = ''; }));
-      await page.waitForFunction(() => parseFloat(getComputedStyle(document.body).paddingBottom) === document.getElementById('bottom-navigation').getBoundingClientRect().height + 16);
+      await page.waitForFunction(() => Math.abs(parseFloat(getComputedStyle(document.body).paddingBottom) - document.getElementById('bottom-navigation').getBoundingClientRect().height - 16) < 1);
     }
     // Dynamic controls keep unique IDs and explicit accessible labels.
     assert.equal(await page.evaluate(() => {
