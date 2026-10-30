@@ -58,6 +58,17 @@ Continues from `19d6909e201bbf4e54d415e3c707ba323aeb0723`, not from main or an i
 
 Reverified on Linux Chromium 156: all **four** browser suites, **9** JS unit tests, **4** Flask tests, JS/inline syntax, Python compilation, manifest parse, local routes including `/ui.js`, and whitespace checks pass. Browser-only libraries/fonts are extracted inside ignored `.browser-cache`; venv and Playwright are local test tools, not runtime additions. Windows/Edge, Firefox/Safari and a manual screen-reader review remain unverified. Emoji appearance depends on platform; visible organism/purpose labels do not.
 
+## Map/Profile feedback follow-up (after `9f9c707`)
+
+- Removed the duplicate fictional Feed/sample-observations view and navigation link. Home/Map/Profile are mutually exclusive tab panels; Map opens its schematic directly. Legacy `#feed` URLs now select Map. The private **Your observations** journal and all other app areas remain intact.
+- Legend and both native filters live only inside Map, hidden on Home and Profile. Purpose/color (all, natural green, cultivated yellow, for-sale red) and organism (all plus each of the six labeled icons) combine with AND across the six observation markers and separate sale listing. Result counts, no-match guidance and reset are accessible and local only.
+- Top-right Profile link and menu/tab entry open an explicitly MOCK, unsigned-in profile scaffold. Observation labels and selected image **file names only** can be displayed in memory; no file contents are read or uploaded. Mock follows target only fictional people and make no social/network actions. Reset/reload/pagehide discard everything; journal/storage/export are untouched.
+- Three-tab arrow navigation now wraps correctly in either direction. Hamburger disclosure, location dropdowns and all existing privacy/accessibility behavior are preserved.
+
+Validation: all four Chromium browser suites pass, including extended `test-ui-browser.cjs`; 9 JS unit tests and 4 Flask tests pass. The UI suite covers Map-only visibility, every dropdown option, combined/empty/reset/count results, direct/hash/menu/profile navigation, Profile invalid-file/literal-text/add/follow/reset/nonpersistence, unchanged journal/export, populated responsive layouts, no GPS/network calls. No runtime dependency added. Browser libraries/fonts stay in ignored `.browser-cache`. Windows/Edge, Firefox/Safari and manual screen-reader review remain outstanding.
+
+Only `integration/pr7-pr11-pr12` is updated; existing draft PR #13 remains the review destination. No merge, deployment, publishing or main changes.
+
 ## VS Code / PowerShell local review
 
 In a clean existing TERRA checkout, export your browser journal backup before testing. Keep the same browser profile and `localhost:8080` origin to retain access to existing journal data.
@@ -65,7 +76,10 @@ In a clean existing TERRA checkout, export your browser journal backup before te
 ```powershell
 git fetch origin integration/pr7-pr11-pr12:refs/remotes/origin/integration/pr7-pr11-pr12
 git switch --track origin/integration/pr7-pr11-pr12
-# If the local branch already exists instead: git switch integration/pr7-pr11-pr12
+# If the local branch already exists, use these INSTEAD of --track:
+# git switch integration/pr7-pr11-pr12
+# git pull --ff-only origin integration/pr7-pr11-pr12
+# If fast-forward is refused, stop and review local work; do not reset/force it.
 code .
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt

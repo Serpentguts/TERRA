@@ -152,8 +152,12 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#profile').isVisible(), true);
     assert.equal(await page.locator('#profile-observations li').count(), 0);
     assert.equal(await follow.getAttribute('aria-pressed'), 'false');
+    await page.locator('#profile-observation').fill('Temporary reset check');
+    await page.setInputFiles('#profile-photos', photo);
+    await page.getByRole('button', { name: 'Add to mock profile · local only', exact: true }).click();
     await follow.click(); await page.locator('#profile-reset').click();
     assert.equal(await follow.getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('#profile-observations li').count(), 0);
     await toggle.click(); await page.getByRole('link', { name: 'Profile · local demo', exact: true }).click();
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
     await page.goto(origin + '/#home');
@@ -246,7 +250,17 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#demo-map .demo-card').count(), 6);
     assert.doesNotMatch((await page.locator('#demo-map, #profile').allTextContents()).join(' '), /Keep my notes/);
 
-    // Populated conditional fields, both panels and the open menu fit narrow screens.
+    // Populated Profile never copies or changes an existing private journal.
+    const savedStorage = await storage();
+    await page.locator('#profile-tab').click();
+    await page.locator('#profile-observation').fill('A'.repeat(120));
+    await page.setInputFiles('#profile-photos', { ...photo, name: 'long-private-filename-'.repeat(8) + '.png' });
+    await page.getByRole('button', { name: 'Add to mock profile · local only', exact: true }).click();
+    await follow.click();
+    assert.deepEqual(await storage(), savedStorage);
+    assert.doesNotMatch(await page.locator('#profile-observations').textContent(), /Keep my notes/);
+
+    // Populated conditional fields, all panels and the open menu fit narrow screens.
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       await page.selectOption('#discovery-context', 'natural');
@@ -268,6 +282,9 @@ const { chromium } = require('playwright');
     await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
     assert.equal(await page.locator('#discovery-context').inputValue(), '');
     assert.equal(await page.locator('#discovery-city').inputValue(), '');
+    assert.equal(await page.locator('#profile-observations li').count(), 0);
+    assert.equal(await follow.getAttribute('aria-pressed'), 'false');
+    assert.deepEqual(await storage(), savedStorage);
     await page.reload();
     assert.equal(await page.locator('#discovery-context-fields').isVisible(), false);
     assert.deepEqual(await page.evaluate(() => window.outbound), []);
