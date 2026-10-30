@@ -14,10 +14,11 @@
   <header class="site-header">
     <a class="brand" href="./" aria-label="TERRA home"><span class="brand-mark" aria-hidden="true">❧</span> TERRA</a>
     <span class="header-note">A little closer to nature.</span>
+    <a id="profile-link" class="profile-link" href="#profile">Profile</a>
     <div class="site-navigation">
       <button id="navigation-toggle" class="secondary-button" type="button" aria-label="Navigation" aria-expanded="false" aria-controls="site-navigation"><span aria-hidden="true">☰</span></button>
       <nav id="site-navigation" aria-label="TERRA areas" hidden>
-        <a href="#feed">Feed · demo</a><a href="#map">Map · demo</a>
+        <a href="#home">Home</a><a href="#map">Map</a><a href="#profile">Profile · local demo</a>
         <a href="#identify-title">Explore a photo</a><a href="#form-title">Record a discovery</a>
         <a href="#saved-title">Your observations</a><a href="#projects-title">Projects / Field Summary</a>
         <a href="#identification-title">Identification provenance</a><a href="#genetic-title">Genetic Data</a>
@@ -39,19 +40,38 @@
     <section id="discover" class="panel demo-discovery" aria-labelledby="discover-title">
       <p class="eyebrow">LOCAL UI PREVIEW · FICTIONAL EXAMPLES</p>
       <h2 id="discover-title">Discover TERRA</h2>
-      <p>Feed and Map are demo foundations, not live community activity. No accounts, following, posting, transactions, or remote map service. Your private journal is not shown here.</p>
-      <div role="tablist" aria-label="Discovery views" class="discovery-tabs">
-        <button id="feed-tab" type="button" role="tab" aria-selected="true" aria-controls="feed">Feed</button>
+      <p>Map and Profile are local demo foundations, not live community activity. No accounts, uploads, real following, posting, transactions, or remote map service. Your private journal is not shown here.</p>
+      <div role="tablist" aria-label="TERRA views" class="discovery-tabs">
+        <button id="home-tab" type="button" role="tab" aria-selected="true" aria-controls="home">Home</button>
         <button id="map-tab" type="button" role="tab" aria-selected="false" aria-controls="map" tabindex="-1">Map</button>
+        <button id="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profile" tabindex="-1">Profile</button>
       </div>
-      <section id="feed" role="tabpanel" aria-labelledby="feed-tab" tabindex="0">
-        <h3>Feed · sample observations</h3>
-        <p>Fixed fictional observation cards, not people you follow or verified identifications. Nothing here is published.</p>
-        <ul id="demo-feed" class="demo-feed" aria-label="Sample observation cards"></ul>
+      <section id="home" role="tabpanel" aria-labelledby="home-tab" tabindex="0">
+        <h3>Your local field journal</h3>
+        <p>Explore a photo or record a discovery below. Choose Map for fictional organism markers, or Profile to try a temporary profile scaffold. Nothing is shared.</p>
       </section>
       <section id="map" role="tabpanel" aria-labelledby="map-tab" tabindex="0" hidden>
         <h3>Map · local schematic</h3>
         <p id="map-help">Imaginary layout only — not geography, coordinates, distances, or organism ranges. No GPS, tiles, geocoding, or journal locations are used.</p>
+        <fieldset class="map-filters" aria-describedby="map-filter-help">
+          <legend>Refine Map results</legend>
+          <p id="map-filter-help">Both filters apply together to these fictional markers and listings only, never your journal.</p>
+          <div class="field"><label for="map-purpose">Color / entry purpose</label><select id="map-purpose">
+            <option value="all">All colors / purposes</option>
+            <option value="natural">Green · natural observations</option>
+            <option value="cultivated">Yellow · cultivated observations</option>
+            <option value="sale">Red · for-sale listings (not observations)</option>
+          </select></div>
+          <div class="field"><label for="map-organism">Organism icon / category</label><select id="map-organism">
+            <option value="all">All organisms</option>
+            <option value="fungus">🍄 Mushroom</option><option value="plant">🌿 Plant</option>
+            <option value="bird">🐦 Bird</option><option value="reptile">🐍 Snake / reptile</option>
+            <option value="mammal">🐁 Mouse / mammal</option><option value="insect">🐞 Bug / insect</option>
+          </select></div>
+          <button id="map-reset" class="secondary-button" type="button">Reset Map filters</button>
+        </fieldset>
+        <p id="map-results" role="status" aria-live="polite" aria-atomic="true"></p>
+        <p id="map-empty" hidden>No matching Map results. Try another category or reset the filters.</p>
         <h4>Color legend · entry purpose</h4>
         <ul class="map-legend" aria-label="Map color meanings">
           <li><span class="legend-swatch natural" aria-hidden="true"></span><strong>Green:</strong> observation in a natural setting</li>
@@ -59,13 +79,35 @@
           <li><span class="legend-swatch sale" aria-hidden="true"></span><strong>Red:</strong> for-sale listing, never an observation</li>
         </ul>
         <p>Organism icons: <span aria-hidden="true">🍄</span> Mushroom · <span aria-hidden="true">🌿</span> Plant · <span aria-hidden="true">🐦</span> Bird · <span aria-hidden="true">🐍</span> Snake / reptile · <span aria-hidden="true">🐁</span> Mouse / mammal · <span aria-hidden="true">🐞</span> Bug / insect. Every marker also has a text label.</p>
-        <h4>Demo observations</h4>
+        <h4>Observation markers · fictional</h4>
         <ul id="demo-map" class="schematic-map" aria-label="Fictional observation schematic" aria-describedby="map-help"></ul>
         <h4>Demo for-sale listings · not observations</h4>
         <p>Separate illustration only. No seller, ordering, payment, contact, or external posting.</p>
         <ul id="demo-listings" class="demo-feed" aria-label="Fictional for-sale listings"></ul>
       </section>
-      <noscript><p>Enable JavaScript to switch these local demo views and display sample cards.</p></noscript>
+      <section id="profile" role="tabpanel" aria-labelledby="profile-tab" tabindex="0" hidden>
+        <h3>Profile · local demo scaffold</h3>
+        <p id="profile-help"><strong>MOCK profile — not an account.</strong> There is no authentication, upload backend, public profile, or social network. Photos are not read or uploaded; only their file names appear in this temporary demo. Mock observations and follow choices disappear on reload or when you leave the page. Your private journal is never copied here.</p>
+        <h4>Your demo profile</h4>
+        <p>Local explorer · unsigned in · visible only in this page</p>
+        <form id="profile-form" aria-describedby="profile-help">
+          <h4>Add an observation to your mock profile</h4>
+          <div class="field"><label for="profile-observation">Observation label (local mock)</label><input id="profile-observation" maxlength="120" required autocomplete="off"></div>
+          <div class="field"><label for="profile-photos">Choose observation photos · local mock, not an upload</label><input id="profile-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple required aria-describedby="profile-photo-help"><small id="profile-photo-help">1–6 JPEG, PNG, WebP, GIF or AVIF files, up to 10 MB each. File names only; no image analysis, storage or upload.</small></div>
+          <button class="secondary-button" type="submit">Add to mock profile · local only</button>
+        </form>
+        <p id="profile-status" role="status" aria-live="polite" aria-atomic="true">No mock observations added.</p>
+        <ul id="profile-observations" aria-label="Temporary mock profile observations"></ul>
+        <h4>Following · fictional people</h4>
+        <p>These toggles change this demo only. They do not contact, notify, or follow anyone on a network.</p>
+        <ul class="mock-people">
+          <li>River · fictional botanist <button type="button" class="secondary-button mock-follow" aria-pressed="false" aria-label="Mock follow River">Mock follow River</button></li>
+          <li>Moss · fictional fungi enthusiast <button type="button" class="secondary-button mock-follow" aria-pressed="false" aria-label="Mock follow Moss">Mock follow Moss</button></li>
+        </ul>
+        <p id="profile-follow-status" role="status" aria-live="polite" aria-atomic="true">No mock follows selected.</p>
+        <button id="profile-reset" class="text-button" type="button">Clear mock profile observations and follows</button>
+      </section>
+      <noscript><p>Enable JavaScript to switch these local demo views and display Map or Profile.</p></noscript>
     </section>
     <section class="panel identification-panel" aria-labelledby="identify-title">
       <div class="identify-heading"><div><p class="eyebrow">A CLOSER LOOK · LOCAL PROTOTYPE</p><h2 id="identify-title">Explore a photo</h2><p>Practice an identification review, without uploading a thing.</p></div><span class="demo-badge">MOCK · Not real AI</span></div>

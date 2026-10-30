@@ -27,21 +27,25 @@ const { chromium } = require('playwright');
     await page.goto(origin);
     const storage = () => page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }));
     const initial = await storage();
+    assert.equal(await page.locator('#home').isVisible(), true);
+    assert.equal(await page.locator('.map-legend').isVisible(), false);
+    assert.equal(await page.locator('.map-filters').isVisible(), false);
+    assert.equal(await page.locator('#feed, #demo-feed, #feed-tab').count(), 0);
 
     // Disclosure navigation uses native buttons/links, not an incomplete ARIA menu.
     const toggle = page.getByRole('button', { name: 'Navigation', exact: true });
     await toggle.focus(); await page.keyboard.press('Enter');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
-    assert.equal(await page.locator('#site-navigation a').count(), 8);
+    assert.equal(await page.locator('#site-navigation a').count(), 9);
     await page.keyboard.press('Tab');
     assert.equal(await page.locator('#site-navigation a').first().evaluate(el => el === document.activeElement), true);
     await page.keyboard.press('Escape');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
     assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
     await page.keyboard.press('Space');
-    await page.getByRole('link', { name: 'Map · demo', exact: true }).click();
+    await page.getByRole('link', { name: 'Map', exact: true }).click();
     assert.equal(await page.locator('#map').isVisible(), true);
-    assert.equal(await page.locator('#feed').isVisible(), false);
+    assert.equal(await page.locator('#home').isVisible(), false);
     assert.equal(await page.locator('#map').evaluate(el => el === document.activeElement), true);
     assert.equal(await page.locator('#map').getAttribute('tabindex'), '0');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
@@ -55,18 +59,22 @@ const { chromium } = require('playwright');
 
     // Tabs support arrows, Home/End, selected state and a single Tab stop.
     await page.locator('#map-tab').focus(); await page.keyboard.press('ArrowLeft');
-    assert.equal(await page.locator('#feed-tab').getAttribute('aria-selected'), 'true');
+    assert.equal(await page.locator('#home-tab').getAttribute('aria-selected'), 'true');
     await page.keyboard.press('End');
-    assert.equal(await page.locator('#map-tab').getAttribute('tabindex'), '0');
-    assert.equal(await page.locator('#feed-tab').getAttribute('tabindex'), '-1');
+    assert.equal(await page.locator('#profile-tab').getAttribute('tabindex'), '0');
+    assert.equal(await page.locator('#home-tab').getAttribute('tabindex'), '-1');
+    assert.equal(await page.locator('.map-legend').isVisible(), false);
+    assert.equal(await page.locator('.map-filters').isVisible(), false);
     await page.keyboard.press('ArrowRight');
-    assert.equal(await page.locator('#feed').isVisible(), true);
+    assert.equal(await page.locator('#home').isVisible(), true);
+    await page.keyboard.press('ArrowLeft');
+    assert.equal(await page.locator('#profile').isVisible(), true);
     await page.keyboard.press('Home');
     await page.locator('#map-tab').click();
     assert.match(await page.locator('.map-legend').textContent(), /Green:.*natural setting.*Yellow:.*cultivated setting.*Red:.*for-sale listing, never an observation/s);
-    assert.equal(await page.locator('#demo-feed .demo-card').count(), 6);
+    assert.equal(await page.locator('.map-legend').isVisible(), true);
     assert.equal(await page.locator('#demo-map .demo-card').count(), 6);
-    assert.equal(await page.locator('#demo-map .sale, #demo-feed .sale').count(), 0);
+    assert.equal(await page.locator('#demo-map .sale').count(), 0);
     const icons = await page.locator('#demo-map .organism-icon').allTextContents();
     assert.deepEqual(icons, ['🍄', '🌿', '🐦', '🐍', '🐁', '🐞']);
     for (const marker of await page.locator('#demo-map .demo-card').all()) {
@@ -80,8 +88,75 @@ const { chromium } = require('playwright');
     assert.deepEqual(await page.evaluate(() => window.outbound), []);
     await page.goto(origin + '/#map');
     assert.equal(await page.locator('#map').isVisible(), true);
-    await page.evaluate(() => { location.hash = 'feed'; });
-    await page.waitForFunction(() => !document.getElementById('feed').hidden);
+    // Both native dropdowns combine with AND, for observations AND sale listings.
+    for (const [purpose, observations, listings] of [['natural', 4, 0], ['cultivated', 2, 0], ['sale', 0, 1], ['all', 6, 1]]) {
+      await page.selectOption('#map-purpose', purpose);
+      assert.equal(await page.locator('#demo-map .demo-card:visible').count(), observations);
+      assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), listings);
+    }
+    for (const category of ['fungus', 'plant', 'bird', 'reptile', 'mammal', 'insect']) {
+      await page.selectOption('#map-organism', category);
+      assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 1);
+      assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), category === 'plant' ? 1 : 0);
+    }
+    await page.selectOption('#map-purpose', 'sale');
+    assert.equal(await page.locator('#map-empty').isVisible(), true);
+    assert.match(await page.locator('#map-results').textContent(), /0 observation markers and 0 for-sale listings/);
+    await page.selectOption('#map-organism', 'plant');
+    assert.equal(await page.locator('#map-empty').isVisible(), false);
+    assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), 1);
+    await page.selectOption('#map-purpose', 'natural');
+    assert.equal(await page.locator('#map-empty').isVisible(), true);
+    await page.locator('#map-reset').click();
+    assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 6);
+    assert.equal(await page.locator('#map-purpose').inputValue(), 'all');
+    assert.equal(await page.locator('#map-organism').inputValue(), 'all');
+    await page.locator('#map-purpose').focus();
+    await page.keyboard.press('Home'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#map-purpose').inputValue(), 'natural');
+    await page.locator('#map-reset').click();
+    await page.evaluate(() => { location.hash = 'home'; });
+    await page.waitForFunction(() => !document.getElementById('home').hidden);
+    assert.equal(await page.locator('.map-legend').isVisible(), false);
+    assert.equal(await page.locator('.map-filters').isVisible(), false);
+    await page.goto(origin + '/#feed'); // Legacy URL now opens Map, never a demo feed.
+    assert.equal(await page.locator('#map').isVisible(), true);
+
+    // Profile is temporary local UI: no auth/upload/follow backend or storage.
+    await page.locator('#profile-link').click();
+    assert.equal(await page.locator('#profile').isVisible(), true);
+    assert.equal(await page.locator('#profile').evaluate(el => el === document.activeElement), true);
+    assert.match(await page.locator('#profile-help').textContent(), /MOCK profile.*no authentication, upload backend/s);
+    assert.equal(await page.locator('.map-legend').isVisible(), false);
+    assert.equal(await page.locator('.map-filters').isVisible(), false);
+    await page.locator('#profile-observation').fill('<img src=x onerror=alert(1)>');
+    const photo = { name: 'mock.png', mimeType: 'image/png', buffer: Buffer.from('local file name demo') };
+    await page.setInputFiles('#profile-photos', { name: 'bad.txt', mimeType: 'text/plain', buffer: Buffer.from('no') });
+    await page.getByRole('button', { name: 'Add to mock profile · local only', exact: true }).click();
+    assert.equal(await page.locator('#profile-observations li').count(), 0);
+    assert.equal(await page.locator('#profile-photos').evaluate(el => el.checkValidity()), false);
+    await page.setInputFiles('#profile-photos', photo);
+    await page.getByRole('button', { name: 'Add to mock profile · local only', exact: true }).click();
+    assert.equal(await page.locator('#profile-observations li').count(), 1);
+    assert.match(await page.locator('#profile-observations').textContent(), /<img.*MOCK.*mock.png/);
+    assert.equal(await page.locator('#profile-observations img').count(), 0);
+    assert.match(await page.locator('#profile-status').textContent(), /Nothing uploaded or saved/);
+    const follow = page.getByRole('button', { name: 'Mock follow River', exact: true });
+    await follow.focus(); await page.keyboard.press('Space');
+    assert.equal(await follow.getAttribute('aria-pressed'), 'true');
+    assert.match(await page.locator('#profile-follow-status').textContent(), /1 mock follow.*nobody contacted/);
+    await follow.click(); assert.equal(await follow.getAttribute('aria-pressed'), 'false');
+    await follow.click();
+    assert.deepEqual(await storage(), initial);
+    await page.reload();
+    assert.equal(await page.locator('#profile').isVisible(), true);
+    assert.equal(await page.locator('#profile-observations li').count(), 0);
+    assert.equal(await follow.getAttribute('aria-pressed'), 'false');
+    await follow.click(); await page.locator('#profile-reset').click();
+    assert.equal(await follow.getAttribute('aria-pressed'), 'false');
+    await toggle.click(); await page.getByRole('link', { name: 'Profile · local demo', exact: true }).click();
+    assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+    await page.goto(origin + '/#home');
 
     // Both forms start with a single native dropdown. All other location fields
     // are hidden, disabled, unnamed (absent from FormData), and empty.
@@ -168,8 +243,8 @@ const { chromium } = require('playwright');
     const fs = require('node:fs/promises');
     const exported = await fs.readFile(await download.path(), 'utf8');
     assert.doesNotMatch(exported, /Temporary greenhouse|Temporary locality|cultivated|"context"|"city"/);
-    assert.equal(await page.locator('#demo-feed .demo-card').count(), 6);
-    assert.doesNotMatch(await page.locator('#demo-feed').textContent(), /Keep my notes/);
+    assert.equal(await page.locator('#demo-map .demo-card').count(), 6);
+    assert.doesNotMatch((await page.locator('#demo-map, #profile').allTextContents()).join(' '), /Keep my notes/);
 
     // Populated conditional fields, both panels and the open menu fit narrow screens.
     for (const width of [320, 390, 768, 1280]) {
@@ -178,7 +253,7 @@ const { chromium } = require('playwright');
       await page.selectOption('#discovery-region', 'North America');
       await page.selectOption('#discovery-precision', 'city');
       await page.fill('#discovery-city', 'A long temporary locality label');
-      for (const id of ['map', 'feed']) {
+      for (const id of ['map', 'home', 'profile']) {
         await page.click(`#${id}-tab`); await toggle.click();
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}px ${id}`);
         await page.keyboard.press('Escape');
@@ -198,6 +273,6 @@ const { chromium } = require('playwright');
     assert.deepEqual(await page.evaluate(() => window.outbound), []);
     assert.deepEqual(errors, []); assert.deepEqual(network, []);
     await context.close();
-    console.log('PASS: native context disclosure/clearing, setting handoff/nonpersistence/export/reset, keyboard navigation/tabs/hash/focus, demo isolation/icons/legend/sale separation, labels/mobile, no GPS or network.');
+    console.log('PASS: native context disclosure/clearing, setting handoff/nonpersistence/export/reset, keyboard navigation/tabs/hash/focus, Map-only legend/combined filters/empty/reset, mock Profile add/follow/reset/nonpersistence, icons/sale separation, labels/mobile, no GPS or network.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

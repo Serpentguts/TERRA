@@ -12,12 +12,19 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .brand-mark { font-size: 34px; line-height: 1; }
 .header-note { color: var(--muted); font-size: 13px; margin-left: auto; margin-right: 20px; }
 .site-navigation { position: relative; }
+.profile-link { color: var(--green); padding: 8px; margin-right: 8px; min-height: 44px; display: inline-flex; align-items: center; }
+#profile { overflow-wrap: anywhere; }
+.mock-people { padding-left: 20px; }
+.mock-people li { margin: 12px 0; }
+.mock-follow { margin: 4px; }
+.map-filters { padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
+.map-filters select { max-width: 100%; }
 #navigation-toggle { min-width: 44px; min-height: 44px; font-size: 22px; padding: 2px 10px; }
 #site-navigation { position: absolute; right: 0; top: calc(100% + 8px); z-index: 5; width: min(280px, calc(100vw - 40px)); padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px #243c3126; }
 #site-navigation a { display: block; color: var(--green); padding: 10px 12px; border-radius: 4px; text-decoration: none; }
 #site-navigation a:hover, #site-navigation a:focus-visible { background: #edf0e6; }
 .demo-discovery { margin-bottom: 32px; }
-.discovery-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px; }
+.discovery-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px; }
 .discovery-tabs button { min-height: 44px; padding: 8px 24px; border: 1px solid var(--green); border-radius: 6px; background: #fff; color: var(--green); }
 .discovery-tabs [aria-selected=true] { background: var(--green); color: #fff; }
 .demo-feed, .schematic-map { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; list-style: none; padding: 0; }

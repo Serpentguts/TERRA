@@ -97,7 +97,8 @@ const TerraLocation = (() => {
     tab.addEventListener("click", () => selectTab(tab.getAttribute("aria-controls")));
     tab.addEventListener("keydown", event => {
       let next;
-      if (["ArrowRight", "ArrowLeft"].includes(event.key)) next = (index + 1) % tabs.length;
+      if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+      if (event.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
       if (event.key === "Home") next = 0;
       if (event.key === "End") next = tabs.length - 1;
       if (next === undefined) return;
@@ -122,35 +123,42 @@ const TerraLocation = (() => {
   document.querySelector(".site-navigation").addEventListener("focusout", event => {
     if (!event.currentTarget.contains(event.relatedTarget)) closeNavigation();
   });
-  nav.addEventListener("click", event => {
+  function followLink(event) {
     const link = event.target.closest("a");
     if (!link) return;
     const id = link.hash.slice(1);
-    if (["feed", "map"].includes(id)) selectTab(id);
+    if (["home", "map", "profile"].includes(id)) selectTab(id);
     const target = document.getElementById(id);
+    if (!target) return;
     if (target.getAttribute("role") !== "tabpanel") target.tabIndex = -1;
     target.focus();
     closeNavigation();
-  });
+  }
+  nav.addEventListener("click", followLink);
+  document.getElementById("profile-link").addEventListener("click", followLink);
   function followHash() {
+    // Old demo Feed bookmarks now lead directly to Map, not a duplicate feed.
     const id = window.location.hash.slice(1);
-    if (["feed", "map"].includes(id)) selectTab(id);
+    if (["home", "map", "profile"].includes(id)) selectTab(id);
+    if (id === "feed") selectTab("map");
   }
   window.addEventListener("hashchange", followHash);
   followHash();
 
   // Fictional observations are deliberately separate from the private journal.
   const samples = [
-    { icon: "🍄", type: "Mushroom", name: "Woodland mushroom", setting: "natural", note: "A cap among fallen leaves." },
-    { icon: "🌿", type: "Plant", name: "Garden seedling", setting: "cultivated", note: "New leaves in an imaginary garden bed." },
-    { icon: "🐦", type: "Bird", name: "Woodland bird", setting: "natural", note: "A small bird resting on a branch." },
-    { icon: "🐍", type: "Snake / reptile", name: "Grass snake", setting: "natural", note: "Observed from a safe distance in a fictional meadow." },
-    { icon: "🐁", type: "Mouse / mammal", name: "Field mouse", setting: "natural", note: "A brief glimpse near a fictional hedgerow." },
-    { icon: "🐞", type: "Bug / insect", name: "Garden ladybird", setting: "cultivated", note: "A bug on a cultivated plant." }
+    { category: "fungus", icon: "🍄", type: "Mushroom", name: "Woodland mushroom", setting: "natural", note: "A cap among fallen leaves." },
+    { category: "plant", icon: "🌿", type: "Plant", name: "Garden seedling", setting: "cultivated", note: "New leaves in an imaginary garden bed." },
+    { category: "bird", icon: "🐦", type: "Bird", name: "Woodland bird", setting: "natural", note: "A small bird resting on a branch." },
+    { category: "reptile", icon: "🐍", type: "Snake / reptile", name: "Grass snake", setting: "natural", note: "Observed from a safe distance in a fictional meadow." },
+    { category: "mammal", icon: "🐁", type: "Mouse / mammal", name: "Field mouse", setting: "natural", note: "A brief glimpse near a fictional hedgerow." },
+    { category: "insect", icon: "🐞", type: "Bug / insect", name: "Garden ladybird", setting: "cultivated", note: "A bug on a cultivated plant." }
   ];
   function card(sample, sale = false) {
     const li = document.createElement("li");
     li.className = `demo-card ${sale ? "sale" : sample.setting}`;
+    li.dataset.purpose = sale ? "sale" : sample.setting;
+    li.dataset.category = sample.category;
     const icon = document.createElement("span");
     icon.className = "organism-icon";
     icon.setAttribute("aria-hidden", "true");
@@ -165,9 +173,80 @@ const TerraLocation = (() => {
     li.append(icon, title, purpose, note);
     return li;
   }
-  for (const sample of samples) {
-    document.getElementById("demo-feed").append(card(sample));
-    document.getElementById("demo-map").append(card(sample));
+  for (const sample of samples) document.getElementById("demo-map").append(card(sample));
+  document.getElementById("demo-listings").append(card({ category: "plant", icon: "🌿", type: "Plant", name: "Seed packet example", note: "Fictional seeds listing. Not available to buy; no transaction or posting." }, true));
+  const purpose = document.getElementById("map-purpose");
+  const organism = document.getElementById("map-organism");
+  function filterMap() {
+    let observations = 0, listings = 0;
+    for (const marker of document.querySelectorAll("#map .demo-card")) {
+      marker.hidden = (purpose.value !== "all" && purpose.value !== marker.dataset.purpose)
+        || (organism.value !== "all" && organism.value !== marker.dataset.category);
+      if (!marker.hidden) {
+        if (marker.dataset.purpose === "sale") listings++;
+        else observations++;
+      }
+    }
+    document.getElementById("map-results").textContent = `${observations} observation markers and ${listings} for-sale listings shown · fictional results only.`;
+    document.getElementById("map-empty").hidden = observations + listings > 0;
   }
-  document.getElementById("demo-listings").append(card({ icon: "🌿", type: "Plant", name: "Seed packet example", note: "Fictional seeds listing. Not available to buy; no transaction or posting." }, true));
+  purpose.addEventListener("change", filterMap);
+  organism.addEventListener("change", filterMap);
+  document.getElementById("map-reset").addEventListener("click", () => {
+    purpose.value = organism.value = "all";
+    filterMap();
+  });
+  filterMap();
+
+  // Mock profile state lives only in the DOM. Never read/copy the private journal.
+  const profileForm = document.getElementById("profile-form");
+  const photos = document.getElementById("profile-photos");
+  const profileStatus = document.getElementById("profile-status");
+  const mockObservations = document.getElementById("profile-observations");
+  const follows = [...document.querySelectorAll(".mock-follow")];
+  function validatePhotos() {
+    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
+    const files = [...photos.files];
+    const valid = files.length <= 6 && files.every(file => validTypes.includes(file.type) && file.size > 0 && file.size <= 10 * 1024 * 1024);
+    photos.setCustomValidity(valid ? "" : "Choose 1–6 supported, nonempty image files up to 10 MB each.");
+  }
+  photos.addEventListener("change", validatePhotos);
+  profileForm.addEventListener("submit", event => {
+    event.preventDefault();
+    const label = document.getElementById("profile-observation");
+    if (!label.value.trim()) {
+      profileStatus.textContent = "Enter an observation label for this local mock.";
+      label.focus();
+      return;
+    }
+    const item = document.createElement("li");
+    item.textContent = `${label.value.trim()} · MOCK · file names only: ${[...photos.files].map(file => file.name).join(", ")}`;
+    mockObservations.append(item);
+    profileForm.reset();
+    photos.setCustomValidity("");
+    profileStatus.textContent = `${mockObservations.children.length} mock profile observation(s). Nothing uploaded or saved; cleared when you leave this page.`;
+  });
+  function updateFollows() {
+    const count = follows.filter(button => button.getAttribute("aria-pressed") === "true").length;
+    document.getElementById("profile-follow-status").textContent = `${count} mock follow(s) selected · local demo only; nobody contacted or notified.`;
+  }
+  for (const button of follows) button.addEventListener("click", () => {
+    const pressed = button.getAttribute("aria-pressed") === "true";
+    button.setAttribute("aria-pressed", String(!pressed));
+    button.textContent = `${button.getAttribute("aria-label")}${pressed ? "" : " · selected"}`;
+    updateFollows();
+  });
+  function clearProfile() {
+    profileForm.reset();
+    photos.setCustomValidity("");
+    mockObservations.replaceChildren();
+    profileStatus.textContent = "No mock observations added. Nothing uploaded or saved.";
+    for (const button of follows) {
+      button.setAttribute("aria-pressed", "false");
+      button.textContent = button.getAttribute("aria-label");
+    }
+    updateFollows();
+  }
+  document.getElementById("profile-reset").addEventListener("click", clearProfile);
+  window.addEventListener("pagehide", clearProfile);
 })();
