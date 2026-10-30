@@ -51,8 +51,8 @@ class LocalAppChecks(unittest.TestCase):
             for control in ["identify-record", "identify-more", "discovery-previews",
                             "discovery-location", "add-project-button", "project-form",
                             "identification-plan", "genetic-data", "navigation-toggle",
-                            "site-navigation", "home-tab", "map-tab", "home", "map",
-                            "profile-link", "profile-tab", "profile", "profile-form",
+                            "site-navigation", "bottom-navigation", "home", "map", "feed",
+                            "profile", "profile-form",
                             "profile-photos", "profile-observations", "profile-reset",
                             "map-purpose", "map-organism", "map-results", "map-reset",
                             "identify-location", "demo-map", "demo-listings"]:

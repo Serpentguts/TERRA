@@ -30,7 +30,16 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#home').isVisible(), true);
     assert.equal(await page.locator('.map-legend').isVisible(), false);
     assert.equal(await page.locator('.map-filters').isVisible(), false);
-    assert.equal(await page.locator('#feed, #demo-feed, #feed-tab').count(), 0);
+    assert.equal(await page.locator('#demo-feed, #feed-tab, #profile-tab, #profile-link, .discovery-tabs').count(), 0);
+    assert.equal(await page.locator('#discover #profile, #discover a, #discover [role=tab]').count(), 0);
+    assert.doesNotMatch(await page.locator('#discover').textContent(), /Profile/);
+    assert.equal(await page.locator('#profile').evaluate(el => !el.closest('#discover')), true);
+    assert.equal(await page.locator('.site-header a[href="#profile"]').count(), 1);
+    const bottom = page.getByRole('navigation', { name: 'Primary', exact: true });
+    const destinations = ['map', 'profile', 'feed', 'identify-title', 'genetic-title', 'projects-title'];
+    assert.deepEqual(await bottom.locator('a span').allTextContents(), ['Map', 'Profile', 'Feed', 'Observation', 'Genetics', 'Projects / Journal']);
+    assert.deepEqual(await bottom.locator('a').evaluateAll(links => links.map(link => link.hash.slice(1))), destinations);
+    assert.equal(await bottom.locator('svg[aria-hidden="true"][focusable="false"]').count(), 6);
 
     // Disclosure navigation uses native buttons/links, not an incomplete ARIA menu.
     const toggle = page.getByRole('button', { name: 'Navigation', exact: true });
@@ -43,11 +52,11 @@ const { chromium } = require('playwright');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
     assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
     await page.keyboard.press('Space');
-    await page.getByRole('link', { name: 'Map', exact: true }).click();
+    await page.locator('#site-navigation').getByRole('link', { name: 'Map', exact: true }).click();
     assert.equal(await page.locator('#map').isVisible(), true);
     assert.equal(await page.locator('#home').isVisible(), false);
     assert.equal(await page.locator('#map').evaluate(el => el === document.activeElement), true);
-    assert.equal(await page.locator('#map').getAttribute('tabindex'), '0');
+    assert.equal(await page.locator('#map').getAttribute('tabindex'), '-1');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
     await toggle.click(); await page.locator('#discover-title').click();
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
@@ -57,20 +66,29 @@ const { chromium } = require('playwright');
     await page.keyboard.press('Tab');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
 
-    // Tabs support arrows, Home/End, selected state and a single Tab stop.
-    await page.locator('#map-tab').focus(); await page.keyboard.press('ArrowLeft');
-    assert.equal(await page.locator('#home-tab').getAttribute('aria-selected'), 'true');
-    await page.keyboard.press('End');
-    assert.equal(await page.locator('#profile-tab').getAttribute('tabindex'), '0');
-    assert.equal(await page.locator('#home-tab').getAttribute('tabindex'), '-1');
-    assert.equal(await page.locator('.map-legend').isVisible(), false);
-    assert.equal(await page.locator('.map-filters').isVisible(), false);
-    await page.keyboard.press('ArrowRight');
-    assert.equal(await page.locator('#home').isVisible(), true);
-    await page.keyboard.press('ArrowLeft');
+    // Native bottom links have visible labels, keyboard activation and one current destination.
+    await bottom.locator('a').first().focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await bottom.locator('a').nth(1).evaluate(el => el === document.activeElement), true);
+    await page.keyboard.press('Enter');
     assert.equal(await page.locator('#profile').isVisible(), true);
-    await page.keyboard.press('Home');
-    await page.locator('#map-tab').click();
+    assert.equal(await page.locator('.map-legend').isVisible(), false);
+    for (const id of destinations) {
+      await bottom.locator(`a[href="#${id}"]`).click();
+      assert.equal(await page.locator(`#${id}`).evaluate(el => el === document.activeElement), true);
+      assert.equal(await bottom.locator('[aria-current="location"]').count(), 1);
+      assert.equal(await bottom.locator(`a[href="#${id}"]`).getAttribute('aria-current'), 'location');
+      if (id !== 'map') {
+        assert.equal(await page.locator('.map-legend').isVisible(), false);
+        assert.equal(await page.locator('.map-filters').isVisible(), false);
+      }
+    }
+    // Back/forward and direct links retain the right area and current indicator.
+    await page.goBack();
+    assert.equal(await bottom.locator('a[href="#genetic-title"]').getAttribute('aria-current'), 'location');
+    await page.goForward();
+    assert.equal(await bottom.locator('a[href="#projects-title"]').getAttribute('aria-current'), 'location');
+    await bottom.locator('a[href="#map"]').click();
     assert.match(await page.locator('.map-legend').textContent(), /Green:.*natural setting.*Yellow:.*cultivated setting.*Red:.*for-sale listing, never an observation/s);
     assert.equal(await page.locator('.map-legend').isVisible(), true);
     assert.equal(await page.locator('#demo-map .demo-card').count(), 6);
@@ -119,11 +137,15 @@ const { chromium } = require('playwright');
     await page.waitForFunction(() => !document.getElementById('home').hidden);
     assert.equal(await page.locator('.map-legend').isVisible(), false);
     assert.equal(await page.locator('.map-filters').isVisible(), false);
-    await page.goto(origin + '/#feed'); // Legacy URL now opens Map, never a demo feed.
-    assert.equal(await page.locator('#map').isVisible(), true);
+    await page.goto(origin + '/#feed');
+    assert.equal(await page.locator('#feed').isVisible(), true);
+    assert.equal(await page.locator('#map').isVisible(), false);
+    assert.match(await page.locator('#feed').textContent(), /not connected.*no posts, real follows, uploads, or external services/is);
+    assert.equal(await bottom.locator('a[href="#feed"]').getAttribute('aria-current'), 'location');
 
     // Profile is temporary local UI: no auth/upload/follow backend or storage.
-    await page.locator('#profile-link').click();
+    await toggle.click();
+    await page.locator('#site-navigation a[href="#profile"]').click();
     assert.equal(await page.locator('#profile').isVisible(), true);
     assert.equal(await page.locator('#profile').evaluate(el => el === document.activeElement), true);
     assert.match(await page.locator('#profile-help').textContent(), /MOCK profile.*no authentication, upload backend/s);
@@ -252,7 +274,7 @@ const { chromium } = require('playwright');
 
     // Populated Profile never copies or changes an existing private journal.
     const savedStorage = await storage();
-    await page.locator('#profile-tab').click();
+    await bottom.locator('a[href="#profile"]').click();
     await page.locator('#profile-observation').fill('A'.repeat(120));
     await page.setInputFiles('#profile-photos', { ...photo, name: 'long-private-filename-'.repeat(8) + '.png' });
     await page.getByRole('button', { name: 'Add to mock profile · local only', exact: true }).click();
@@ -267,11 +289,37 @@ const { chromium } = require('playwright');
       await page.selectOption('#discovery-region', 'North America');
       await page.selectOption('#discovery-precision', 'city');
       await page.fill('#discovery-city', 'A long temporary locality label');
-      for (const id of ['map', 'home', 'profile']) {
-        await page.click(`#${id}-tab`); await toggle.click();
+      for (const id of destinations) {
+        await bottom.locator(`a[href="#${id}"]`).click(); await toggle.click();
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}px ${id}`);
         await page.keyboard.press('Escape');
+        const layout = await bottom.evaluate(el => {
+          const rect = el.getBoundingClientRect();
+          return { bottom: rect.bottom, height: rect.height, position: getComputedStyle(el).position,
+            padding: parseFloat(getComputedStyle(document.body).paddingBottom),
+            scrollPadding: parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom),
+            links: [...el.querySelectorAll('a')].map(a => { const r = a.getBoundingClientRect(); return { width: r.width, height: r.height, left: r.left, right: r.right, top: r.top, bottom: r.bottom }; }) };
+        });
+        assert.equal(layout.position, 'fixed');
+        assert.equal(layout.bottom, 900);
+        assert.ok(layout.padding >= layout.height + 16);
+        assert.ok(layout.scrollPadding >= layout.height + 16);
+        for (const link of layout.links) {
+          assert.ok(link.width >= 44 && link.height >= 44);
+          assert.ok(link.left >= 0 && link.right <= width && link.top >= 0 && link.bottom <= 900);
+        }
       }
+      // The last control can scroll completely above the persistent bar.
+      const lastControl = page.locator('#genetic-data button').last();
+      await lastControl.focus();
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      assert.ok((await lastControl.boundingBox()).y + (await lastControl.boundingBox()).height <= (await bottom.boundingBox()).y);
+      // Also exercise enlarged text; ResizeObserver must reserve wrapped bar height.
+      await bottom.evaluate(el => el.querySelectorAll('a').forEach(a => { a.style.fontSize = '24px'; }));
+      await page.waitForFunction(() => parseFloat(getComputedStyle(document.body).paddingBottom) >= document.getElementById('bottom-navigation').getBoundingClientRect().height + 16);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await bottom.evaluate(el => el.querySelectorAll('a').forEach(a => { a.style.fontSize = ''; }));
+      await page.waitForFunction(() => parseFloat(getComputedStyle(document.body).paddingBottom) === document.getElementById('bottom-navigation').getBoundingClientRect().height + 16);
     }
     // Dynamic controls keep unique IDs and explicit accessible labels.
     assert.equal(await page.evaluate(() => {
@@ -290,6 +338,6 @@ const { chromium } = require('playwright');
     assert.deepEqual(await page.evaluate(() => window.outbound), []);
     assert.deepEqual(errors, []); assert.deepEqual(network, []);
     await context.close();
-    console.log('PASS: native context disclosure/clearing, setting handoff/nonpersistence/export/reset, keyboard navigation/tabs/hash/focus, Map-only legend/combined filters/empty/reset, mock Profile add/follow/reset/nonpersistence, icons/sale separation, labels/mobile, no GPS or network.');
+    console.log('PASS: native context disclosure/clearing, setting handoff/nonpersistence/export/reset, six-destination persistent navigation/hash/history/focus/spacing, Map-only legend/combined filters/empty/reset, mock Profile add/follow/reset/nonpersistence, icons/sale separation, labels/mobile, no GPS or network.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

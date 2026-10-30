@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#214c3c">
   <title>TERRA · Your field journal</title>
   <link rel="stylesheet" href="styles.css">
@@ -14,7 +14,6 @@
   <header class="site-header">
     <a class="brand" href="./" aria-label="TERRA home"><span class="brand-mark" aria-hidden="true">❧</span> TERRA</a>
     <span class="header-note">A little closer to nature.</span>
-    <a id="profile-link" class="profile-link" href="#profile">Profile</a>
     <div class="site-navigation">
       <button id="navigation-toggle" class="secondary-button" type="button" aria-label="Navigation" aria-expanded="false" aria-controls="site-navigation"><span aria-hidden="true">☰</span></button>
       <nav id="site-navigation" aria-label="TERRA areas" hidden>
@@ -25,6 +24,14 @@
       </nav>
     </div>
   </header>
+  <nav id="bottom-navigation" aria-label="Primary">
+    <a href="#map"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Z M9 3v16 M15 5v16"/></svg><span>Map</span></a>
+    <a href="#profile"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="7" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3"/></svg><span>Profile</span></a>
+    <a href="#feed"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10 M7 12h10 M7 17h10"/></svg><span>Feed</span></a>
+    <a href="#identify-title" aria-current="location"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h4l2-3h6l2 3h4v14H3Z"/><circle cx="12" cy="13" r="4"/></svg><span>Observation</span></a>
+    <a href="#genetic-title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 2c0 10 12 10 12 20 M18 2C18 12 6 12 6 22 M7 5h10 M9 9h6 M9 15h6 M7 19h10"/></svg><span>Genetics</span></a>
+    <a href="#projects-title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5C9 3 5 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z M12 5v16"/></svg><span>Projects / Journal</span></a>
+  </nav>
   <main id="main">
     <section class="intro" aria-labelledby="page-title">
       <p class="eyebrow">YOUR PERSONAL FIELD JOURNAL</p>
@@ -40,18 +47,12 @@
     <section id="discover" class="panel demo-discovery" aria-labelledby="discover-title">
       <p class="eyebrow">LOCAL UI PREVIEW · FICTIONAL EXAMPLES</p>
       <h2 id="discover-title">Discover TERRA</h2>
-      <p>Map and Profile are local demo foundations, not live community activity. No accounts, uploads, real following, posting, transactions, or remote map service. Your private journal is not shown here.</p>
-      <div role="tablist" aria-label="TERRA views" class="discovery-tabs">
-        <button id="home-tab" type="button" role="tab" aria-selected="true" aria-controls="home">Home</button>
-        <button id="map-tab" type="button" role="tab" aria-selected="false" aria-controls="map" tabindex="-1">Map</button>
-        <button id="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profile" tabindex="-1">Profile</button>
+      <div id="home" tabindex="-1">
+        <p>Explore a photo, record what you notice, and grow your private journal below. Use the bottom bar to move between areas. Nothing is shared.</p>
       </div>
-      <section id="home" role="tabpanel" aria-labelledby="home-tab" tabindex="0">
-        <h3>Your local field journal</h3>
-        <p>Explore a photo or record a discovery below. Choose Map for fictional organism markers, or Profile to try a temporary profile scaffold. Nothing is shared.</p>
-      </section>
-      <section id="map" role="tabpanel" aria-labelledby="map-tab" tabindex="0" hidden>
-        <h3>Map · local schematic</h3>
+    </section>
+      <section id="map" class="panel demo-discovery" aria-labelledby="map-title" tabindex="-1" hidden>
+        <h2 id="map-title">Map · local schematic</h2>
         <p id="map-help">Imaginary layout only — not geography, coordinates, distances, or organism ranges. No GPS, tiles, geocoding, or journal locations are used.</p>
         <fieldset class="map-filters" aria-describedby="map-filter-help">
           <legend>Refine Map results</legend>
@@ -85,8 +86,8 @@
         <p>Separate illustration only. No seller, ordering, payment, contact, or external posting.</p>
         <ul id="demo-listings" class="demo-feed" aria-label="Fictional for-sale listings"></ul>
       </section>
-      <section id="profile" role="tabpanel" aria-labelledby="profile-tab" tabindex="0" hidden>
-        <h3>Profile · local demo scaffold</h3>
+      <section id="profile" class="panel demo-discovery" aria-labelledby="profile-title" tabindex="-1" hidden>
+        <h2 id="profile-title">Profile · local demo scaffold</h2>
         <p id="profile-help"><strong>MOCK profile — not an account.</strong> There is no authentication, upload backend, public profile, or social network. Photos are not read or uploaded; only their file names appear in this temporary demo. Mock observations and follow choices disappear on reload or when you leave the page. Your private journal is never copied here.</p>
         <h4>Your demo profile</h4>
         <p>Local explorer · unsigned in · visible only in this page</p>
@@ -107,8 +108,11 @@
         <p id="profile-follow-status" role="status" aria-live="polite" aria-atomic="true">No mock follows selected.</p>
         <button id="profile-reset" class="text-button" type="button">Clear mock profile observations and follows</button>
       </section>
-      <noscript><p>Enable JavaScript to switch these local demo views and display Map or Profile.</p></noscript>
+    <section id="feed" class="panel demo-discovery" aria-labelledby="feed-title" tabindex="-1" hidden>
+      <h2 id="feed-title">Feed · not connected</h2>
+      <p>No live community feed is connected. There are no posts, real follows, uploads, or external services here. Your private journal is never published or copied into this area.</p>
     </section>
+    <noscript><p>Enable JavaScript to display the local Map, Profile and unconnected Feed previews. Observation, Genetics and Projects / Journal links lead to the sections below.</p></noscript>
     <section class="panel identification-panel" aria-labelledby="identify-title">
       <div class="identify-heading"><div><p class="eyebrow">A CLOSER LOOK · LOCAL PROTOTYPE</p><h2 id="identify-title">Explore a photo</h2><p>Practice an identification review, without uploading a thing.</p></div><span class="demo-badge">MOCK · Not real AI</span></div>
       <p id="identify-privacy" class="identify-notice">Images are not uploaded. Previews and location detail stay temporary. Only after your explicit confirmation can a name, photos, date, and location context prefill Record a discovery for review; nothing is automatically saved or sent to iNaturalist.</p>

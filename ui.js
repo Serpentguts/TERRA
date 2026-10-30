@@ -79,32 +79,28 @@ const TerraLocation = (() => {
 (() => {
   const toggle = document.getElementById("navigation-toggle");
   const nav = document.getElementById("site-navigation");
-  const tabs = [...document.querySelectorAll(".discovery-tabs [role=tab]")];
+  const bottomNav = document.getElementById("bottom-navigation");
+  // Reserve the actual bar height, including wrapped labels, zoom and safe area.
+  const reserveNavigationSpace = () => document.documentElement.style.setProperty("--bottom-nav-height", `${bottomNav.getBoundingClientRect().height}px`);
+  new ResizeObserver(reserveNavigationSpace).observe(bottomNav);
+  reserveNavigationSpace();
+  const previews = ["home", "map", "profile", "feed"];
+  function selectArea(id) {
+    for (const preview of previews) {
+      document.getElementById(preview).hidden = preview !== (previews.includes(id) ? id : "home");
+    }
+    const destination = {
+      home: "identify-title", "form-title": "identify-title", "saved-title": "projects-title",
+      projects: "projects-title", "identification-title": "genetic-title", "genetic-data": "genetic-title"
+    }[id] || id || "identify-title";
+    for (const link of bottomNav.querySelectorAll("a")) {
+      if (link.hash === `#${destination}`) link.setAttribute("aria-current", "location");
+      else link.removeAttribute("aria-current");
+    }
+  }
   function closeNavigation() {
     nav.hidden = true;
     toggle.setAttribute("aria-expanded", "false");
-  }
-  function selectTab(id, focus = false) {
-    for (const tab of tabs) {
-      const selected = tab.getAttribute("aria-controls") === id;
-      tab.setAttribute("aria-selected", String(selected));
-      tab.tabIndex = selected ? 0 : -1;
-      document.getElementById(tab.getAttribute("aria-controls")).hidden = !selected;
-      if (selected && focus) tab.focus();
-    }
-  }
-  for (const [index, tab] of tabs.entries()) {
-    tab.addEventListener("click", () => selectTab(tab.getAttribute("aria-controls")));
-    tab.addEventListener("keydown", event => {
-      let next;
-      if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
-      if (event.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
-      if (event.key === "Home") next = 0;
-      if (event.key === "End") next = tabs.length - 1;
-      if (next === undefined) return;
-      event.preventDefault();
-      selectTab(tabs[next].getAttribute("aria-controls"), true);
-    });
   }
   toggle.addEventListener("click", () => {
     const open = nav.hidden;
@@ -125,22 +121,19 @@ const TerraLocation = (() => {
   });
   function followLink(event) {
     const link = event.target.closest("a");
-    if (!link) return;
+    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const id = link.hash.slice(1);
-    if (["home", "map", "profile"].includes(id)) selectTab(id);
     const target = document.getElementById(id);
     if (!target) return;
-    if (target.getAttribute("role") !== "tabpanel") target.tabIndex = -1;
+    selectArea(id);
+    target.tabIndex = -1;
     target.focus();
     closeNavigation();
   }
   nav.addEventListener("click", followLink);
-  document.getElementById("profile-link").addEventListener("click", followLink);
+  bottomNav.addEventListener("click", followLink);
   function followHash() {
-    // Old demo Feed bookmarks now lead directly to Map, not a duplicate feed.
-    const id = window.location.hash.slice(1);
-    if (["home", "map", "profile"].includes(id)) selectTab(id);
-    if (id === "feed") selectTab("map");
+    selectArea(window.location.hash.slice(1));
   }
   window.addEventListener("hashchange", followHash);
   followHash();
