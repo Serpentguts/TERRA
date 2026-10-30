@@ -2,6 +2,30 @@
 
 Branch: `integration/pr7-pr11-pr12`.
 
+## Current navigation redesign (after `fec372f`)
+
+This supersedes the historical Home/Map/Profile-tab and legacy Feed-redirect descriptions below.
+
+- Discover is a short welcome without tabs, Profile content, or repeated destination links. Map and Profile previews are siblings outside Discover; Feed is an explicit **not connected** placeholder, not fabricated community activity. Journal, observation/photo handoff, projects and genetic previews remain intact.
+- Six persistent bottom links: Map, Profile, Feed, Observation, Genetics, Projects / Journal. Inline outline SVGs depict map/person/list/camera/DNA/book; accessible names come from always-visible text, not emoji. Profile remains in the top-right hamburger, with no separate header shortcut or Discover tab. Profile is also included in the bottom bar because the approved six-destination list explicitly requests it.
+- Native Tab/Enter links focus destinations; `aria-current`, a border and bold text show selection. Hash navigation, reload and Back/Forward synchronize previews/current state. Only Map shows its existing legend and filters; colors, organism icons and combined filtering are unchanged.
+- Six columns on desktop, two rows of three at <=600px. The bar respects bottom/left/right safe-area insets with `viewport-fit=cover`. ResizeObserver reserves its actual height plus breathing room as body padding and scroll padding, including enlarged labels. No journal/schema/storage/network behavior or runtime dependency changes.
+
+Validation: all four full Chromium 156 suites PASS (`test-browser.cjs`, `test-projects-browser.cjs`, `test-discovery-browser.cjs`, `test-ui-browser.cjs`); nine JS unit tests and four Flask tests PASS. UI coverage includes six labeled destinations, icon accessibility, no Discover Profile/navigation, top-menu Profile, keyboard/focus/hash/history, Map-only controls, unchanged local/mock isolation, fixed placement, minimum target sizes, populated 320/390/768/1280px layouts, enlarged text and last-control spacing. Test-only Chromium libraries/fonts were extracted under ignored `.browser-cache`, not added to application requirements. Windows/Edge, physical-device safe areas, Firefox/Safari and manual screen-reader review remain human checks.
+
+Trevor: stop the old server and export your journal backup first. In your existing clone:
+
+```powershell
+Set-Location "$HOME\TERRA-combined-test"
+git fetch origin integration/pr7-pr11-pr12:refs/remotes/origin/integration/pr7-pr11-pr12
+git switch integration/pr7-pr11-pr12
+git pull --ff-only origin integration/pr7-pr11-pr12
+python -m pip install -r requirements.txt
+python server.py
+```
+
+Open **http://localhost:8080**, then hard-refresh (Ctrl+F5). Stop with Ctrl+C. Keep the same browser profile/hostname/port for your journal. If git refuses a switch or fast-forward, stop and preserve local work; do not force/reset. No `py` launcher is needed. Full optional test commands remain at the end of this file.
+
 ## Inputs and history
 
 Created from current origin/main `d82d73364056600f0f8f6ffd2d8d516cf165d878`.
@@ -81,7 +105,7 @@ git switch --track origin/integration/pr7-pr11-pr12
 # git pull --ff-only origin integration/pr7-pr11-pr12
 # If fast-forward is refused, stop and review local work; do not reset/force it.
 code .
-py -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 $env:PORT = "8080"
 .\.venv\Scripts\python.exe server.py
@@ -93,7 +117,7 @@ In a second PowerShell terminal, open the user's local Flask URL:
 Start-Process "http://localhost:8080"
 ```
 
-Use `python` instead of `py` if that is your launcher. Stop the server with Ctrl+C. No public host or remote service is involved; never use a tunnel or deployment command. A different hostname/port has separate browser storage.
+Use the installed `python` command; the `py` launcher is not required. Stop the server with Ctrl+C. No public host or remote service is involved; never use a tunnel or deployment command. A different hostname/port has separate browser storage.
 
 Optional full automated rerun in the second terminal, with the local server still running (Node 18+):
 

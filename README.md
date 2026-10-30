@@ -14,15 +14,16 @@ Early local-first prototype — no iNaturalist, BOLD, GenBank, real AI or scient
 
 See [the combined integration verification record](INTEGRATION.md) for exact input commits, conflict decisions, test results, and complete PowerShell checkout/startup/test commands.
 
-## UI iteration: temporary context, Map and local Profile
+## Navigation: persistent bottom bar and simpler Discover
 
 - **One location context dropdown per draft:** both Explore a photo and Record a discovery start with **Prefer not to say**. Choose **Natural / wild location** for optional habitat details, **Cultivated / garden** for optional cultivation details, or **Broad region / locality only** when the setting is unspecified. Each reveals optional broad region and manual locality controls. Changing context clears the previous location; changing region clears administrative detail; reducing precision clears hidden fields. Hidden fields are also disabled. None of these values is saved or exported, regardless of the privacy preference.
-- **Top-right navigation:** a visible **Profile** link sits beside the labeled hamburger button. The hamburger opens links to Home, Map, Profile, photo review, discovery, your private observations, projects, provenance, and Genetic Data. Enter/Space toggles it; Tab follows links; Escape closes it and restores button focus. Selecting a destination closes it and focuses the destination. Existing journal/app areas remain available on the page.
-- **Home / Map / Profile tabs:** use Left/Right arrows (wrapping in either direction) or Home/End to switch, then Tab into the panel. Navigation links and `#home` / `#map` / `#profile` URLs select the appropriate panel. The duplicate demo Feed/sample-observations page has been removed; old `#feed` bookmarks now open Map. **Your observations** still opens your real private browser journal, not the demo.
+- **Top-right navigation:** the existing hamburger keeps its **Profile · local demo** entry, plus Home, Map and links to existing journal/app areas. The redundant standalone header Profile link is removed. Enter/Space toggles the disclosure; Tab follows links; Escape closes it and restores button focus. Selecting a destination closes it and focuses the destination.
+- **Persistent bottom navigation:** six native links with visible labels and local outline SVG icons: **Map** (map), **Profile** (person), **Feed** (list), **Observation** (camera, not microscope), **Genetics** (DNA), **Projects / Journal** (book). Tab/Shift+Tab and Enter work without custom tab keyboard rules. The current destination has `aria-current`, a border and bold label. Hash links and browser Back/Forward keep the selection synchronized. Observation opens photo review above the discovery form; Projects / Journal opens existing local project tools (the menu still links directly to saved observations). The bar uses six columns on larger screens and two rows of three at 600px and below, with 44px-minimum targets, phone safe-area padding and dynamically measured content/scroll spacing, including enlarged labels.
+- **Simpler Discover:** one short welcome, no duplicated navigation or Profile tab/content. Map and Profile are separate local previews outside Discover. Feed is a separate **not connected** placeholder, with no invented community activity or posts; `#feed` now opens that placeholder rather than redirecting to Map. Only one preview is shown at a time; journal/forms/projects remain on the page. Profile is available in the top-right menu and the explicitly requested six-item bottom bar, nowhere in Discover.
 - **Map-only legend and filters:** neither is visible on Home or Profile. Green = observation in a natural setting; yellow = observation in a cultivated setting; red = fictional for-sale listing, **never an observation**. Two labeled native dropdowns combine color/purpose and organism category with AND; each includes an All option. A polite result count, explicit empty state and Reset Map filters button explain the current selection. Filters affect only the fictional Map observations/listing, never the journal. Observations have round organism icons; listings have square icons and a separate clearly labeled area. Mushroom, plant, bird, snake/reptile, mouse/mammal and bug/insect icons also carry text labels, so neither color nor emoji recognition is required. The grid remains an imaginary local schematic, not geography, coordinates or organism ranges; no map tiles, GPS or lookup.
-- **Profile · local demo scaffold:** no authentication, backend, public profile, real upload or social network. Try adding an observation label and choosing 1–6 local image files: only the label and file names are displayed temporarily; file contents are not read, stored or uploaded. Mock follow toggles affect only two explicitly fictional people; nobody is contacted or notified. Clear the mock profile, reload, or leave the page to discard it. Changing tabs keeps this temporary state until then. No journal entries, photos, location context or mock follows are copied into storage/export or published.
+- **Profile · local demo scaffold:** no authentication, backend, public profile, real upload or social network. Try adding an observation label and choosing 1–6 local image files: only the label and file names are displayed temporarily; file contents are not read, stored or uploaded. Mock follow toggles affect only two explicitly fictional people; nobody is contacted or notified. Clear the mock profile, reload, or leave the page to discard it. Switching areas keeps this temporary state until then. No journal entries, photos, location context or mock follows are copied into storage/export or published.
 
-Quick local review: open the hamburger with the keyboard and navigate to Map (not a demo observations page). Try every color and organism filter, combine Red + Mushroom for no results, then reset. Read the legend and separate demo listing. Switch to Home and Profile: neither may show Map filters or legend. Open the top-right Profile link, add a mock observation, toggle a mock follow and reload: both disappear and nothing is uploaded. In each draft form, try natural → cultivated → broad-only → Prefer not to say; hidden values must clear. Transfer a cultivated photo review and confirm its temporary details arrive without replacing notes/privacy. Save and export: only the existing six journal fields may appear. Check at 320px width. Screen-reader, Windows/Edge and Firefox/Safari manual reviews remain outstanding.
+Quick local review: open the hamburger with the keyboard and navigate to Map (not a demo observations page). Try every color and organism filter, combine Red + Mushroom for no results, then reset. Read the legend and separate demo listing. Switch to Home and Profile: neither may show Map filters or legend. Open Profile from the top-right menu or bottom bar, add a mock observation, toggle a mock follow and reload: both disappear and nothing is uploaded. Try all six bottom destinations, browser Back/Forward, keyboard focus and enlarged text; labels must stay visible and the last control must scroll above the bar. Feed must clearly say it is not connected. In each draft form, try natural → cultivated → broad-only → Prefer not to say; hidden values must clear. Transfer a cultivated photo review and confirm its temporary details arrive without replacing notes/privacy. Save and export: only the existing six journal fields may appear. Check at 320px width. Screen-reader, Windows/Edge and Firefox/Safari manual reviews remain outstanding.
 
 ## Run locally
 
@@ -39,20 +40,18 @@ There is no frontend build step, framework, CDN, external service, account, or d
 
 ### Windows (PowerShell)
 
-From your local TERRA repository folder, review this PR branch without merging:
+In Trevor's existing clone (stop the running server first; export a journal backup), update without merging:
 
 ```powershell
-git fetch origin
+Set-Location "$HOME\TERRA-combined-test"
 git fetch origin integration/pr7-pr11-pr12:refs/remotes/origin/integration/pr7-pr11-pr12
-git switch --track origin/integration/pr7-pr11-pr12
-# If you already have that local branch, use these INSTEAD of --track:
-# git switch integration/pr7-pr11-pr12
-# git pull --ff-only origin integration/pr7-pr11-pr12
-py -m pip install -r requirements.txt
-py server.py
+git switch integration/pr7-pr11-pr12
+git pull --ff-only origin integration/pr7-pr11-pr12
+python -m pip install -r requirements.txt
+python server.py
 ```
 
-Open **http://localhost:8080** and keep the terminal running. Use `python` instead of `py` if that is your installed launcher. Stop with Ctrl+C. Keep using the same browser profile, hostname, and port to see your existing journal; export a backup before testing.
+Open **http://localhost:8080** and keep the terminal running. These commands use `python`; the Windows `py` launcher is not required. Stop with Ctrl+C. Keep using the same browser profile, hostname, and port to see your existing journal; export a backup before testing.
 
 Check that there is **one date bar**: type `2024-02-29`, choose another date with its calendar icon, then type again. Try `2025-02-29` and `1900-02-29` (must not save), and `2000-02-29` (valid). Tab to the calendar icon and open it with Enter/Space. Type `Trich`, `BRIDGESII`, and `harz`; confirm matching local suggestions and save an unlisted custom name. Reload and verify dates/names persist. Resize to a narrow window.
 
@@ -107,8 +106,8 @@ These steps do **not** merge or deploy. Use Python 3.9+ and current Edge or Chro
 # From this repository folder; first commit/stash unrelated work if needed.
 git fetch origin
 git switch integration/pr7-pr11-pr12
-py -m pip install -r requirements.txt
-py server.py
+python -m pip install -r requirements.txt
+python server.py
 ```
 
 Open **http://localhost:8080** (not the file directly). If `py` is unavailable, use `python` in both commands. If 8080 is occupied, stop the other process or set `$env:PORT = "8081"` before starting and browse that port; note that a different port has a separate journal.
@@ -312,7 +311,7 @@ node test-discovery-browser.cjs
 node test-ui-browser.cjs
 ```
 
-`test-ui-browser.cjs` covers keyboard menu/three-tab/hash/focus (including legacy Feed → Map), Map-only legend/filter visibility on Home and Profile, every purpose/category dropdown, combined filters/empty/reset/counts, temporary mock Profile file-name-only add/invalid file/literal text/follow/reset/reload, native location disclosure and stale-field clearing in both forms, cultivated photo handoff and independent reset, unchanged journal/export privacy and mock isolation, six recognizable organism icons, separate nontransactional sale listing, labels/IDs and widths 320/390/768/1280. All four browser suites, nine JS unit tests and four Flask tests pass on Linux Chromium 156 for this follow-up. No runtime dependency was added. Windows/Edge, Firefox/Safari and manual screen-reader review remain unverified.
+`test-ui-browser.cjs` covers keyboard menu/six-destination bottom navigation/hash/history/focus, Discover without Profile or duplicate navigation, clearly unconnected Feed, fixed placement, 44px targets, safe content/scroll spacing and enlarged labels, Map-only legend/filter visibility on Home and Profile, every purpose/category dropdown, combined filters/empty/reset/counts, temporary mock Profile file-name-only add/invalid file/literal text/follow/reset/reload, native location disclosure and stale-field clearing in both forms, cultivated photo handoff and independent reset, unchanged journal/export privacy and mock isolation, six recognizable organism icons, separate nontransactional sale listing, labels/IDs and widths 320/390/768/1280. All four browser suites, nine JS unit tests and four Flask tests pass on Linux Chromium 156 for this follow-up. No runtime dependency was added. Windows/Edge, Firefox/Safari and manual screen-reader review remain unverified.
 
 `test-integration-plan.cjs` adds pure membership idempotency/immutability/scope/completion and single-record IUPAC DNA validation tests. `test-discovery-browser.cjs` adds new/saved/ordinary-save project handoff, failed journal/project writes and retry identity, stale drafts and cross-tab completion, six-field version-1 export/restore, unassignable provenance definitions, distinct local genetic plans, literal-text safety, no sequence persistence, keyboard/mobile checks and zero outbound/network API calls. All three browser suites, nine JS unit tests, Flask unittests, syntax/manifest/whitespace checks were run successfully on Linux Chromium for this follow-up. Test-only missing Chromium libraries/fonts were extracted under ignored `.browser-cache`; they are not runtime dependencies.
 

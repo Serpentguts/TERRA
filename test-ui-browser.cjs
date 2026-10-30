@@ -40,6 +40,13 @@ const { chromium } = require('playwright');
     assert.deepEqual(await bottom.locator('a span').allTextContents(), ['Map', 'Profile', 'Feed', 'Observation', 'Genetics', 'Projects / Journal']);
     assert.deepEqual(await bottom.locator('a').evaluateAll(links => links.map(link => link.hash.slice(1))), destinations);
     assert.equal(await bottom.locator('svg[aria-hidden="true"][focusable="false"]').count(), 6);
+    assert.equal(await bottom.evaluate(el => !el.closest('main, header, #discover')), true);
+    assert.match(await page.locator('meta[name="viewport"]').getAttribute('content'), /viewport-fit=cover/);
+    const bottomRule = await page.evaluate(() => [...document.styleSheets[0].cssRules].find(rule => rule.selectorText === '#bottom-navigation').cssText);
+    for (const inset of ['bottom', 'left', 'right']) assert.ok(bottomRule.includes(`env(safe-area-inset-${inset})`));
+    for (const label of ['Map', 'Profile', 'Feed', 'Observation', 'Genetics', 'Projects / Journal']) {
+      assert.equal(await bottom.getByRole('link', { name: label, exact: true }).isVisible(), true);
+    }
 
     // Disclosure navigation uses native buttons/links, not an incomplete ARIA menu.
     const toggle = page.getByRole('button', { name: 'Navigation', exact: true });
@@ -320,6 +327,17 @@ const { chromium } = require('playwright');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       await bottom.evaluate(el => el.querySelectorAll('a').forEach(a => { a.style.fontSize = ''; }));
       await page.waitForFunction(() => Math.abs(parseFloat(getComputedStyle(document.body).paddingBottom) - document.getElementById('bottom-navigation').getBoundingClientRect().height - 16) < 1);
+    }
+    // Short phone and landscape viewports keep every destination onscreen too.
+    for (const [width, height] of [[390, 568], [844, 390]]) {
+      await page.setViewportSize({ width, height });
+      const bar = await bottom.boundingBox();
+      assert.ok(bar.y >= 0 && bar.y + bar.height === height);
+      for (const link of await bottom.locator('a').all()) {
+        const rect = await link.boundingBox();
+        assert.ok(rect.y >= 0 && rect.y + rect.height <= height);
+      }
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
     // Dynamic controls keep unique IDs and explicit accessible labels.
     assert.equal(await page.evaluate(() => {
