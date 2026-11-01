@@ -2,6 +2,8 @@
 
 Review only, on `integration/pr7-pr11-pr12`. No merge, deployment, external map service, or real identification. This document supersedes earlier integration-history descriptions where they differ.
 
+Current workspace/profile/rewards/filter UI is documented in **[NEXT-UI.md](NEXT-UI.md)**, including the two independent local keys, non-monetary criteria, limitations and updated test/run commands. Existing journal/project/privacy/retention rules here remain in force. Journal backups do not include profile or rewards either.
+
 ## Observation changes
 
 - Removed the redundant first **Discover TERRA** section. Home still opens the existing introduction; other views and drafts remain intact.
@@ -77,7 +79,7 @@ Optional test terminal, with server still running (Node.js 18+):
 npm install --no-save --package-lock=false playwright
 $env:PLAYWRIGHT_BROWSERS_PATH = "$PWD/.browser-cache"
 npx playwright install chromium
-node --test test-field-summary.cjs test-integration-plan.cjs test-local-data.cjs
+node --test test-field-summary.cjs test-integration-plan.cjs test-local-data.cjs test-rewards.cjs
 python -m unittest test_server.py
 node test-browser.cjs
 node test-projects-browser.cjs
@@ -85,10 +87,11 @@ node test-discovery-browser.cjs
 node test-ui-browser.cjs
 node test-view-stack-browser.cjs
 node test-local-workflows-browser.cjs
+node test-next-ui-browser.cjs
 ```
 
 ## Verification
 
-15 JS unit tests and 4 Flask tests; six isolated Linux Chromium browser suites, including the new local-workflows suite. The latter covers future date text/picker/photo/handoff rejection, required location, exact/coarse/withheld privacy, clearing precision, ranges and group-specific/Other choices, site selection, outside Add rejection, boundary edits with journal retention, Trash quota failures/restore/reload/72-hour expiry, backup optional-field preservation and privacy/future import rejection, responsive widths 320/390/768/1280, and no outbound requests/GPS. Existing discovery retry identity, cross-tab changes, autocomplete, image URL ownership, CSV, navigation and closable-view regressions remain required.
+21 JS unit tests and 4 Flask tests; seven isolated Linux Chromium browser suites, including local-workflows and next-UI (see NEXT-UI.md). The latter covers future date text/picker/photo/handoff rejection, required location, exact/coarse/withheld privacy, clearing precision, ranges and group-specific/Other choices, site selection, outside Add rejection, boundary edits with journal retention, Trash quota failures/restore/reload/72-hour expiry, backup optional-field preservation and privacy/future import rejection, responsive widths 320/390/768/1280, and no outbound requests/GPS. Existing discovery retry identity, cross-tab changes, autocomplete, image URL ownership, CSV, navigation and closable-view regressions remain required.
 
 Windows/Edge, Firefox/Safari, touch device ergonomics, real geography and manual screen-reader review are **not verified** by these Linux Chromium tests.

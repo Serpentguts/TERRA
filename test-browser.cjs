@@ -856,7 +856,7 @@ async function testDiscoveryHandoff(page, key) {
     const choices = { plant: 'Plant', fungus: 'Mushroom', insect: 'Insect', mammal: 'Mammal', bird: 'Bird', fish: 'Fish', reptile: 'Reptile' };
     assert.deepEqual(await page.locator('#identify-group option').evaluateAll(options => options.slice(1, -1).map(o => o.textContent)), Object.values(choices));
     for (const [type, label] of Object.entries(choices)) {
-      await page.getByRole('radio', { name: label, exact: true }).check();
+      await page.fill('#organism-choice', label);
       await name.fill('Trich');
       assert.deepEqual(await page.locator('#name-suggestions li').allTextContents(), ['Trichocereus bridgesii', 'Trichoderma harzianum', 'Keep “Trich” as my manual name']);
       await name.fill(`${label} manual record`);

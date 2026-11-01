@@ -95,6 +95,7 @@
         const li = item($("decor-list"), `${decor.icon} ${TerraRewards.labels[grant.badge]} decoration · local serial ${grant.token} `);
         const button = document.createElement("button");
         button.type = "button"; button.className = "secondary-button";
+        button.dataset.badge = grant.badge;
         button.textContent = grant.placed ? "Remove from terrarium" : "Place in terrarium";
         button.setAttribute("aria-pressed", String(grant.placed));
         button.addEventListener("click", () => {
@@ -105,6 +106,7 @@
             current.placed = !current.placed;
             localStorage.setItem(TerraRewards.KEY, JSON.stringify(state));
             refresh();
+            $("decor-list").querySelector(`[data-badge="${grant.badge}"]`)?.focus();
           } catch { $("rewards-status").textContent = "Placement could not be saved. Existing rewards kept; reload/check storage."; }
         });
         li.append(button);

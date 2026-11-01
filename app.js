@@ -115,7 +115,8 @@ document.addEventListener("terra:prefill-discovery", event => {
   nameInput.value = draft.name.trim();
   closeSuggestions();
   nameStatus.textContent = "Unverified photo-review name. Review before saving.";
-  document.querySelector("#organism-choice").value = categories[draft.type];
+  organismChoice.value = categories[draft.type];
+  validateOrganism();
   dateInput.value = draft.date; // Missing dates stay blank; never invent an observation date.
   syncDate();
   TerraLocation.set("discovery", draft.location);

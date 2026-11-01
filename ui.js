@@ -207,7 +207,7 @@ const TerraLocation = (() => {
   document.addEventListener("click", followLink);
   function followHash() {
     const id = window.location.hash.slice(1);
-    if (id === "workspace") document.getElementById("workspace").hidden = false;
+    if (id === "workspace") { document.getElementById("workspace").hidden = false; updateWorkspace(); markCurrent(id); }
     selectArea(id);
   }
   window.addEventListener("hashchange", followHash);

@@ -2,7 +2,17 @@
 
 Branch: `integration/pr7-pr11-pr12`.
 
-## Latest request: observation privacy, recoverable Trash and scoped projects
+## Latest request: cohesive workspace/profile/awards UI
+
+Review remains **existing draft PR #13 only**, on this integration branch; no merge/deployment/main changes. See **[NEXT-UI.md](NEXT-UI.md)** for authoritative current UI behavior, new-key schemas, criteria/limits, full tests and existing-clone PowerShell instructions. It supersedes historical mock-profile, single-select and six-destination descriptions below.
+
+- Profile Posts/Projects derive from the existing journal/ID-only project store; no duplicate observations. Local profile text/symbolic avatar persists separately. Credentials are always user-entered/unverified; followers/following are 0/not connected. No LinkedIn, social follows, account sync or external calls.
+- Three once-only non-quality participation awards (first observation, seven distinct consecutive recorded days, nonempty eligible completed project) unlock randomized CSS/emoji decorations with persistent placement/local serials. No genuine verification evidence exists, so no verified-observation award. No rare-species/precise-location/transaction incentives. No cash/trade/NFT/blockchain value or global uniqueness promise.
+- Map → multiselect filters → legend, OR within each group/AND between groups, selected summary/reset; Map-only fictional data. One native searchable organism dropdown preserves legacy category keys.
+- Persistent Workspace plus six existing destinations; accessible minimize/expand/close/reopen without draft/data deletion. Current privacy/date/72h Trash/boundary/provenance safeguards retained.
+- Complete verification: **21 JS unit tests, 4 Flask tests, 7 full Linux Chromium suites PASS**, plus syntax/diff checks. New next-UI and reward suites cover triggers/random decor/farming/persistence/quotas/corruption/schema/multiselect/stack; existing complete suites retained. Human Windows/Edge, Firefox/Safari, touch and screen-reader review still needed.
+
+## Prior request: observation privacy, recoverable Trash and scoped projects
 
 Existing **draft PR #13 only** remains the review artifact; no merge/deployment. Commits `a309408` and `1aed8c6` add the cohesive update; subsequent hardening keeps the same branch/PR. See [LOCAL-WORKFLOWS.md](LOCAL-WORKFLOWS.md) for current behavior, schema/retention caveats, limitations and complete PowerShell update/run/test steps. It supersedes older historical claims below about future dates, immediate permanent Delete, six-field-only new saves and site labels without boundaries.
 
