@@ -152,7 +152,8 @@ const { chromium } = require('playwright');
     await page.goto(origin + '/#feed');
     assert.equal(await page.locator('#feed').isVisible(), true);
     assert.equal(await page.locator('#map').isVisible(), false);
-    assert.match(await page.locator('#feed').textContent(), /not connected.*no posts, real follows, uploads, or external services/is);
+    assert.match(await page.locator('#feed').textContent(), /local demo.*Not published.*fictional.*nobody is notified/is);
+    assert.equal(await page.locator('#feed-samples > li').count(), 5);
     assert.equal(await bottom.locator('a[href="#feed"]').getAttribute('aria-current'), 'location');
 
     // Profile now reads the journal; metadata persistence is covered in the next-UI suite.

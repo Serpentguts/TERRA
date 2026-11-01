@@ -34,6 +34,7 @@ class LocalAppChecks(unittest.TestCase):
             ("/app.js", "javascript"), ("/ui.js", "javascript"),
             ("/local-data.js", "javascript"), ("/local-map.js", "javascript"),
             ("/rewards.js", "javascript"), ("/profile.js", "javascript"),
+            ("/feed-data.js", "javascript"), ("/feed.js", "javascript"),
             ("/styles.css", "text/css"),
             ("/ditto.json", "application/json"),
         ]:
@@ -55,7 +56,8 @@ class LocalAppChecks(unittest.TestCase):
                             "observation-map", "project-map", "trash-list", "project-endDate",
                             "project-group-choice", "view-stack-help", "genetic-data", "navigation-toggle",
                             "site-navigation", "bottom-navigation", "home", "map", "feed",
-                            "profile", "profile-form",
+                            "profile", "profile-form", "feed-form", "feed-type", "feed-source",
+                            "feed-to-terra", "feed-to-inat", "feed-preparations", "feed-profiles",
                             "profile-tabs", "profile-observations", "rewards-terrarium",
                             "workspace", "workspace-views", "organism-choice", "organism-options",
                             "map-purpose", "map-organism", "map-results", "map-reset",

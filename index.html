@@ -12,6 +12,8 @@
   <script src="app.js" defer></script>
   <script src="rewards.js" defer></script>
   <script src="profile.js" defer></script>
+  <script src="feed-data.js" defer></script>
+  <script src="feed.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -24,7 +26,7 @@
         <a href="#home">Home</a><a href="#map">Map</a><a href="#profile">Profile · local demo</a>
         <a href="#identify-title">Explore a photo</a><a href="#form-title">Record a discovery</a>
         <a href="#saved-title">Your observations</a><a href="#projects-title">Projects / Field Summary</a>
-        <a href="#feed">Feed · not connected</a><a href="#genetic-title">Genetic Data</a>
+        <a href="#feed">Feed · local demo</a><a href="#genetic-title">Genetic Data</a>
       </nav>
     </div>
   </header>
@@ -126,8 +128,33 @@
         </div>
       </section>
     <section id="feed" class="panel demo-discovery" aria-labelledby="feed-title" tabindex="-1" hidden>
-      <h2 id="feed-title">Feed · not connected</h2>
-      <p>No live community feed is connected. There are no posts, real follows, uploads, or external services here. Your private journal is never published or copied into this area.</p>
+      <h2 id="feed-title">Feed · local demo</h2>
+      <p class="demo-badge">DEMO · Not published · No live community connection</p>
+      <p>Mock profiles and sample posts are fictional. Follow/unfollow is a local preference only: nobody is notified, and there are no real followers, likes, sales or uploads. Your journal is never automatically shared.</p>
+      <details><summary>Observation, discovery, or post?</summary><p>An <strong>observation</strong> is the underlying record: what you saw, when and where (subject to privacy). A <strong>discovery / identification</strong> is the organism or finding attached to that record, not proof of a verified identification. A <strong>post</strong> is a separate shareable presentation with its own caption, linked to a saved observation when relevant. Sharing here only creates a local demo.</p></details>
+      <p><a href="#feed-compose-title">Create a local demo post / preparation</a> · <a href="#feed-profiles-title">Explore mock profiles</a></p>
+      <p id="feed-storage-error" class="error" role="alert" hidden></p>
+      <p id="feed-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <h3 id="feed-compose-title" tabindex="-1">Create · local only</h3>
+      <form id="feed-form" aria-describedby="feed-safety">
+        <div class="field"><label for="feed-type">Post type</label><select id="feed-type"><option value="update">Field update</option><option value="offering">Offering / sale</option><option value="observation">Observation / discovery</option><option value="cultivated">Cultivated plant</option></select></div>
+        <div id="feed-source-field" class="field" hidden><label for="feed-source">Saved observation / discovery</label><select id="feed-source" disabled></select><small>Only active saved records. Save a discovery in the journal first. Sharing never edits that record.</small><p id="feed-source-preview"></p></div>
+        <div class="field"><label for="feed-post-title">Post title</label><input id="feed-post-title" maxlength="120" required></div>
+        <div class="field"><label for="feed-body">Your caption <span class="optional">(optional)</span></label><textarea id="feed-body" maxlength="3000" rows="3" aria-describedby="feed-safety"></textarea></div>
+        <fieldset><legend>Choose one or both local destinations</legend>
+          <label class="same-organism"><input id="feed-to-terra" type="checkbox" checked> TERRA demo feed · not published</label>
+          <label class="same-organism"><input id="feed-to-inat" type="checkbox" disabled> Prepare for iNaturalist · local only, not submitted</label>
+          <small>iNaturalist preparation is available only for a saved observation / discovery. No account connection, API, upload or real publishing exists.</small>
+        </fieldset>
+        <p id="feed-safety">Review your caption for private details. Notes, photos and location values are not copied automatically. Preparations are ID-linked local review cards, not valid iNaturalist submissions; the schematic map is not real geography. Nothing leaves this browser.</p>
+        <p id="feed-form-error" class="error" role="alert" hidden></p>
+        <div class="restore-actions"><button id="feed-save" type="submit" class="primary-button">Save local demo / preparation</button><button id="feed-reset" type="button" class="text-button">Clear post draft</button></div>
+      </form>
+      <h3>Your local demo posts</h3><ul id="feed-local-posts" class="feed-cards" aria-label="Your local demo posts"></ul>
+      <h3>iNaturalist preparations · not submitted</h3><ul id="feed-preparations" class="feed-cards" aria-label="Local iNaturalist preparations"></ul>
+      <h3>Fictional community samples</h3><ul id="feed-samples" class="feed-cards" aria-label="Fictional sample posts"></ul>
+      <h3 id="feed-profiles-title" tabindex="-1">Mock profiles · not real accounts</h3><p id="feed-follow-summary"></p><div id="feed-profiles"></div>
+      <p>Future idea only: music on posts. No music or audio feature is implemented.</p>
     </section>
     <noscript><p>Enable JavaScript to display the local Map, Profile and unconnected Feed previews. Observation, Genetics and Projects / Journal links lead to the sections below.</p></noscript>
     <section class="panel identification-panel" aria-labelledby="identify-title">

@@ -336,6 +336,11 @@ function render() {
     provenance.append(element("summary", "", "Identification provenance"));
     provenance.append(element("p", "", "No identification history yet"));
     card.append(provenance);
+    const share = element("a", "text-button", "Share / prepare · local demo");
+    share.href = "#feed";
+    share.dataset.shareObservation = observation.id;
+    share.setAttribute("aria-label", `Share or prepare saved observation: ${observation.name} (local demo)`);
+    card.append(share);
     const bottom = element("div", "card-bottom");
     const remove = element("button", "text-button", "🗑 Delete");
     remove.type = "button";

@@ -57,6 +57,13 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .demo-discovery { margin-bottom: 32px; }
 .demo-feed, .schematic-map { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; list-style: none; padding: 0; }
 .demo-card { border: 1px solid var(--line); border-left: 6px solid var(--marker); border-radius: 8px; padding: 16px; background: #fff; overflow-wrap: anywhere; }
+.feed-cards { list-style: none; padding: 0; margin: 16px 0; }
+#feed { overflow-wrap: anywhere; }
+#feed-form { max-width: 680px; margin: 20px 0 28px; }
+#feed h3 { margin-top: 28px; }
+#feed .observation-card h4 { margin: 12px 0; }
+#feed .observation-card p { white-space: pre-wrap; }
+.mock-profile { margin-top: 24px; scroll-margin-top: 20px; }
 .demo-card h4 { margin: 8px 0; }
 .demo-card p { font-size: 12px; margin-bottom: 8px; }
 .demo-purpose { font-weight: 700; }

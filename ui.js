@@ -100,6 +100,8 @@ const TerraLocation = (() => {
   }
   function selectArea(id, grouped = false) {
     id = aliases[id] || id;
+    // Feed profile/composer deep links reopen the same non-destructive Feed pane.
+    if (document.getElementById(id)?.closest("#feed")) id = "feed";
     const view = views.find(view => view.id === id);
     if (!view) return;
     const reveal = view => {
