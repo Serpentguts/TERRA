@@ -2,20 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#214c3c">
   <title>TERRA · Your field journal</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="local-data.js" defer></script>
+  <script src="local-map.js" defer></script>
+  <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="rewards.js" defer></script>
+  <script src="profile.js" defer></script>
+  <script src="feed-data.js" defer></script>
+  <script src="feed.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <a class="brand" href="./" aria-label="TERRA home"><span class="brand-mark" aria-hidden="true">❧</span> TERRA</a>
     <span class="header-note">A little closer to nature.</span>
+    <div class="site-navigation">
+      <button id="navigation-toggle" class="secondary-button" type="button" aria-label="Navigation" aria-expanded="false" aria-controls="site-navigation"><span aria-hidden="true">☰</span></button>
+      <nav id="site-navigation" aria-label="TERRA areas" hidden>
+        <a href="#home">Home</a><a href="#map">Map</a><a href="#profile">Profile · local demo</a>
+        <a href="#identify-title">Explore a photo</a><a href="#form-title">Record a discovery</a>
+        <a href="#saved-title">Your observations</a><a href="#projects-title">Projects / Field Summary</a>
+        <a href="#feed">Feed · local demo</a><a href="#genetic-title">Genetic Data</a>
+      </nav>
+    </div>
   </header>
+  <nav id="bottom-navigation" aria-label="Primary">
+    <a href="#workspace"><span aria-hidden="true">♧</span><span>Workspace</span></a>
+    <a href="#map"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Z M9 3v16 M15 5v16"/></svg><span>Map</span></a>
+    <a href="#profile"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="7" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3"/></svg><span>Profile</span></a>
+    <a href="#feed"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10 M7 12h10 M7 17h10"/></svg><span>Feed</span></a>
+    <a href="#identify-title" aria-current="location"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h4l2-3h6l2 3h4v14H3Z"/><circle cx="12" cy="13" r="4"/></svg><span>Observation</span></a>
+    <a href="#genetic-title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 2c0 10 12 10 12 20 M18 2C18 12 6 12 6 22 M7 5h10 M9 9h6 M9 15h6 M7 19h10"/></svg><span>Genetics</span></a>
+    <a href="#projects-title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5C9 3 5 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z M12 5v16"/></svg><span>Projects / Journal</span></a>
+  </nav>
   <main id="main">
-    <section class="intro" aria-labelledby="page-title">
+    <section id="home" class="intro" aria-labelledby="page-title" tabindex="-1">
       <p class="eyebrow">YOUR PERSONAL FIELD JOURNAL</p>
       <h1 id="page-title">Small discoveries.<br>A growing connection.</h1>
       <p>Notice a leaf, a mushroom, something new. Give your observations a place to take root.</p>
@@ -26,13 +51,119 @@
       <div><strong id="privacy-title">Your journal stays with you.</strong>
       <p>Saved only in this browser on this device. Nothing is synced, backed up, or submitted to iNaturalist. Clearing browser data can erase your journal—export a copy to keep it.</p></div>
     </aside>
+    <section id="workspace" class="panel" aria-labelledby="workspace-title" tabindex="-1" hidden>
+      <h2 id="workspace-title">Your workspace</h2><p>Open, minimize or close a section without deleting data or clearing drafts. Map remains a separate destination.</p>
+      <ul id="workspace-views" class="workspace-views"></ul><button type="button" id="workspace-close" class="secondary-button">Close workspace overview</button>
+    </section>
+    <p id="view-stack-help">Opened views stay in the main screen stack until closed. Minimize collapses a section’s content; open restores it. Close view only hides a section; it does not delete saved data or clear drafts. Reopen any view from the menu or persistent bottom navigation. Observation opens photo review and the discovery draft; Projects / Journal opens projects and saved observations.</p>
+    <p id="view-stack-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+
+      <section id="map" class="panel demo-discovery" aria-labelledby="map-title" tabindex="-1" hidden>
+        <h2 id="map-title">Map · local schematic</h2>
+        <p id="map-help">Imaginary layout only — not geography, coordinates, distances, or organism ranges. No GPS, tiles, geocoding, or journal locations are used.</p>
+        <div id="map-canvas">
+          <h4>Observation markers · fictional</h4>
+          <ul id="demo-map" class="schematic-map" aria-label="Fictional observation schematic" aria-describedby="map-help"></ul>
+          <h4>Demo for-sale listings · not observations</h4>
+          <p>Separate illustration only. No seller, ordering, payment, contact, or external posting.</p>
+          <ul id="demo-listings" class="demo-feed" aria-label="Fictional for-sale listings"></ul>
+        </div>
+        <fieldset class="map-filters" aria-describedby="map-filter-help">
+          <legend>Refine Map results</legend>
+          <p id="map-filter-help">Choose multiple in either list (Ctrl/Command + click, or Shift + arrow keys). Any selected organism AND any selected color match. All or an empty selection means unrestricted. Fictional markers only, never your journal.</p>
+          <div class="field"><label for="map-purpose">Color / entry purpose</label><select id="map-purpose" multiple size="4">
+            <option value="all">All colors / purposes</option>
+            <option value="natural">Green · natural observations</option>
+            <option value="cultivated">Yellow · cultivated observations</option>
+            <option value="sale">Red · for-sale listings (not observations)</option>
+          </select></div>
+          <div class="field"><label for="map-organism">Organism icon / category</label><select id="map-organism" multiple size="7">
+            <option value="all">All organisms</option>
+            <option value="fungus">🍄 Mushroom</option><option value="plant">🌿 Plant</option>
+            <option value="bird">🐦 Bird</option><option value="reptile">🐍 Snake / reptile</option>
+            <option value="mammal">🐁 Mouse / mammal</option><option value="insect">🐞 Bug / insect</option>
+          </select></div>
+          <p id="map-selected" role="status" aria-live="polite"></p>
+          <button id="map-reset" class="secondary-button" type="button">Reset Map filters</button>
+        </fieldset>
+        <p id="map-results" role="status" aria-live="polite" aria-atomic="true"></p>
+        <p id="map-empty" hidden>No matching Map results. Try another category or reset the filters.</p>
+        <h4>Color legend · entry purpose</h4>
+        <ul class="map-legend" aria-label="Map color meanings">
+          <li><span class="legend-swatch natural" aria-hidden="true"></span><strong>Green:</strong> observation in a natural setting</li>
+          <li><span class="legend-swatch cultivated" aria-hidden="true"></span><strong>Yellow:</strong> observation in a cultivated setting</li>
+          <li><span class="legend-swatch sale" aria-hidden="true"></span><strong>Red:</strong> for-sale listing, never an observation</li>
+        </ul>
+        <p>Organism icons: <span aria-hidden="true">🍄</span> Mushroom · <span aria-hidden="true">🌿</span> Plant · <span aria-hidden="true">🐦</span> Bird · <span aria-hidden="true">🐍</span> Snake / reptile · <span aria-hidden="true">🐁</span> Mouse / mammal · <span aria-hidden="true">🐞</span> Bug / insect. Every marker also has a text label.</p>
+      </section>
+      <section id="profile" class="panel demo-discovery" aria-labelledby="profile-title" tabindex="-1" hidden>
+        <h2 id="profile-title">Your local profile</h2>
+        <p id="profile-help">Not an account or public page. Profile details and rewards stay in this browser only: no upload, account sync or real follows. Posts read the same local journal; projects read the same ID-only collections. Nothing is stored twice. Journal photos remain temporary and are not displayed here.</p>
+        <div class="profile-heading"><span id="profile-avatar" class="profile-avatar" aria-label="Symbolic profile avatar">🌿</span><div><h3 id="profile-name">Local explorer</h3><p id="profile-bio"></p><p id="profile-credentials">Credentials: none · user-entered / unverified</p><p><strong>0</strong> followers · <strong>0</strong> following · not connected</p></div></div>
+        <details><summary>Edit local profile</summary>
+          <form id="profile-form">
+            <div class="field"><label for="profile-display-name">Display name</label><input id="profile-display-name" maxlength="80" required value="Local explorer"></div>
+            <div class="field"><label for="profile-description">Description</label><textarea id="profile-description" maxlength="500"></textarea></div>
+            <div class="field"><label for="profile-credential-input">Credentials · user-entered / unverified</label><input id="profile-credential-input" maxlength="300"><small>No LinkedIn connection or credential verification. Avoid private details.</small></div>
+            <div class="field"><label for="profile-avatar-input">Symbolic avatar · no photo stored</label><select id="profile-avatar-input"><option>🌿</option><option>🍄</option><option>🐦</option><option>❧</option></select></div>
+            <button type="submit" class="secondary-button">Save local profile</button>
+          </form>
+        </details>
+        <p id="profile-status" role="status" aria-live="polite"></p>
+        <div role="tablist" aria-label="Local profile sections" id="profile-tabs">
+          <button type="button" role="tab" id="posts-tab" aria-selected="true" aria-controls="profile-posts">Posts</button>
+          <button type="button" role="tab" id="projects-tab" aria-selected="false" aria-controls="profile-projects" tabindex="-1">Projects</button>
+          <button type="button" role="tab" id="awards-tab" aria-selected="false" aria-controls="profile-awards" tabindex="-1">Awards</button>
+        </div>
+        <div role="tabpanel" id="profile-posts" aria-labelledby="posts-tab"><h3>Journal observations</h3><p><a href="#form-title">Record a discovery</a> · <a href="#saved-title">Manage journal / provenance / Trash</a></p><ul id="profile-observations"></ul></div>
+        <div role="tabpanel" id="profile-projects" aria-labelledby="projects-tab" hidden><h3>Your projects</h3><ul id="profile-project-list"></ul><a href="#projects-title">Manage projects</a></div>
+        <div role="tabpanel" id="profile-awards" aria-labelledby="awards-tab" hidden>
+          <h3>Awards &amp; rewards terrarium</h3>
+          <p>Non-quality participation badges, not identification or conservation credentials. First observation: one active, valid, non-future journal entry. Seven-day fieldbook: entries dated on seven consecutive distinct days (backfilled/imported dates count; not proof of daily uploads). Project completion: one complete project with at least one eligible active observation. Each badge unlocks only once, ever in this local store. Duplicates, repeat events, reopen/complete, delete/restore and reload cannot multiply rewards.</p>
+          <p>No verified-observation badge is available: this prototype has no genuine verification evidence. No rewards for rare species, precise locations, transactions or collecting wildlife. Observe safely without disturbing habitats.</p>
+          <p><strong>Randomized digital collectibles are unique within this local prototype only, not guaranteed unique globally. No cash, trade, NFT, blockchain or financial value.</strong> Local data can be edited or erased; this is not fraud-resistant validation. Profile/rewards are not in journal backups.</p>
+          <p id="rewards-status" role="status" aria-live="polite"></p><ul id="award-list"></ul>
+          <div id="rewards-terrarium" class="rewards-terrarium" role="img" aria-label="Local decorative terrarium"></div>
+          <ul id="decor-list" aria-label="Decorations and placement controls"></ul>
+        </div>
+      </section>
+    <section id="feed" class="panel demo-discovery" aria-labelledby="feed-title" tabindex="-1" hidden>
+      <h2 id="feed-title">Feed · local demo</h2>
+      <p class="demo-badge">DEMO · Not published · No live community connection</p>
+      <p>Mock profiles and sample posts are fictional. Follow/unfollow is a local preference only: nobody is notified, and there are no real followers, likes, sales or uploads. Your journal is never automatically shared.</p>
+      <details><summary>Observation, discovery, or post?</summary><p>An <strong>observation</strong> is the underlying record: what you saw, when and where (subject to privacy). A <strong>discovery / identification</strong> is the organism or finding attached to that record, not proof of a verified identification. A <strong>post</strong> is a separate shareable presentation with its own caption, linked to a saved observation when relevant. Sharing here only creates a local demo.</p></details>
+      <p><a href="#feed-compose-title">Create a local demo post / preparation</a> · <a href="#feed-profiles-title">Explore mock profiles</a></p>
+      <p id="feed-storage-error" class="error" role="alert" hidden></p>
+      <p id="feed-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <h3 id="feed-compose-title" tabindex="-1">Create · local only</h3>
+      <form id="feed-form" aria-describedby="feed-safety">
+        <div class="field"><label for="feed-type">Post type</label><select id="feed-type"><option value="update">Field update</option><option value="offering">Offering / sale</option><option value="observation">Observation / discovery</option><option value="cultivated">Cultivated plant</option></select></div>
+        <div id="feed-source-field" class="field" hidden><label for="feed-source">Saved observation / discovery</label><select id="feed-source" disabled></select><small>Only active saved records. Save a discovery in the journal first. Sharing never edits that record.</small><p id="feed-source-preview"></p></div>
+        <div class="field"><label for="feed-post-title">Post title</label><input id="feed-post-title" maxlength="120" required></div>
+        <div class="field"><label for="feed-body">Your caption <span class="optional">(optional)</span></label><textarea id="feed-body" maxlength="3000" rows="3" aria-describedby="feed-safety"></textarea></div>
+        <fieldset><legend>Choose one or both local destinations</legend>
+          <label class="same-organism"><input id="feed-to-terra" type="checkbox" checked> TERRA demo feed · not published</label>
+          <label class="same-organism"><input id="feed-to-inat" type="checkbox" disabled> Prepare for iNaturalist · local only, not submitted</label>
+          <small>iNaturalist preparation is available only for a saved observation / discovery. No account connection, API, upload or real publishing exists.</small>
+        </fieldset>
+        <p id="feed-safety">Review your caption for private details. Notes, photos and location values are not copied automatically. Preparations are ID-linked local review cards, not valid iNaturalist submissions; the schematic map is not real geography. Nothing leaves this browser.</p>
+        <p id="feed-form-error" class="error" role="alert" hidden></p>
+        <div class="restore-actions"><button id="feed-save" type="submit" class="primary-button">Save local demo / preparation</button><button id="feed-reset" type="button" class="text-button">Clear post draft</button></div>
+      </form>
+      <h3>Your local demo posts</h3><ul id="feed-local-posts" class="feed-cards" aria-label="Your local demo posts"></ul>
+      <h3>iNaturalist preparations · not submitted</h3><ul id="feed-preparations" class="feed-cards" aria-label="Local iNaturalist preparations"></ul>
+      <h3>Fictional community samples</h3><ul id="feed-samples" class="feed-cards" aria-label="Fictional sample posts"></ul>
+      <h3 id="feed-profiles-title" tabindex="-1">Mock profiles · not real accounts</h3><p id="feed-follow-summary"></p><div id="feed-profiles"></div>
+      <p>Future idea only: music on posts. No music or audio feature is implemented.</p>
+    </section>
+    <noscript><p>Enable JavaScript to display the local Map, Profile and unconnected Feed previews. Observation, Genetics and Projects / Journal links lead to the sections below.</p></noscript>
     <section class="panel identification-panel" aria-labelledby="identify-title">
       <div class="identify-heading"><div><p class="eyebrow">A CLOSER LOOK · LOCAL PROTOTYPE</p><h2 id="identify-title">Explore a photo</h2><p>Practice an identification review, without uploading a thing.</p></div><span class="demo-badge">MOCK · Not real AI</span></div>
-      <p id="identify-privacy" class="identify-notice">Images are not uploaded. Previews, context, and review choices stay in this page only and disappear on reset or reload. Nothing is added to your journal or exports.</p>
+      <p id="identify-privacy" class="identify-notice">Images are not uploaded. Previews and location detail stay temporary. Only after your explicit confirmation can a name, photos, date, and location context prefill Record a discovery for review; nothing is automatically saved or sent to iNaturalist.</p>
       <noscript><p class="error">Enable JavaScript to use the local photo prototype.</p></noscript>
       <div class="identify-layout">
         <form id="identification-form" novalidate aria-describedby="identify-privacy">
-          <div class="field"><label for="identify-group">1. Organism group</label><select id="identify-group" required aria-describedby="identify-error"><option value="">Choose a group…</option><option value="plant">Plant</option><option value="fungus">Fungus / mushroom</option><option value="animal">Insect / animal</option><option value="unsure">Unsure</option></select></div>
+          <div class="field"><label for="identify-group">1. Organism group</label><select id="identify-group" required aria-describedby="identify-error"><option value="">Choose a group…</option><option value="plant">Plant</option><option value="fungus">Mushroom</option><option value="insect">Insect</option><option value="mammal">Mammal</option><option value="bird">Bird</option><option value="fish">Fish</option><option value="reptile">Reptile</option><option value="unsure">Unsure</option></select></div>
           <div class="field">
             <label class="same-organism" for="identify-multiple"><input id="identify-multiple" type="checkbox"> Add multiple views of the same organism (optional)</label>
             <small id="identify-mode-help">One photo is enough. For different organisms, reset and start a separate review. Multiple views must show the same organism.</small>
@@ -40,9 +171,9 @@
           <div class="field"><label for="identify-files">2. Choose local photo(s)</label><input id="identify-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-describedby="identify-file-help identify-mode-help identify-error"><small id="identify-file-help">JPEG, PNG, WebP, GIF, or AVIF · up to 10 MB each · at most 6 views. Choose again to add a view in multi-image mode. Select the photographed part for each preview.</small></div>
           <ul id="identify-previews" class="identify-previews" aria-label="Temporary photo previews"></ul>
           <div class="identify-context">
-            <div class="field"><label for="identify-date">Observation date <span class="optional">(optional, not saved)</span></label><input id="identify-date" type="date" aria-describedby="identify-error"></div>
-            <div class="field"><label for="identify-region">Coarse region <span class="optional">(optional, not saved)</span></label><select id="identify-region" aria-describedby="identify-region-help"><option value="">Prefer not to say</option><option>Africa</option><option>Antarctica</option><option>Asia</option><option>Europe</option><option>North America</option><option>Oceania</option><option>South America</option></select><small id="identify-region-help">Broad region only. No GPS, coordinates, address, or photo metadata is read by TERRA. Context does not affect this mock.</small></div>
+            <div class="field"><label for="identify-date">Observation date <span class="optional">(optional; temporary until transfer)</span></label><input id="identify-date" type="date" aria-describedby="identify-error"></div>
           </div>
+          <fieldset id="identify-location" class="location-context" data-location="identify"><legend>Temporary location context</legend></fieldset>
           <p id="identify-error" class="error" role="alert" hidden></p>
           <div class="identify-actions"><button class="primary-button" type="submit">Analyze — show MOCK suggestions <span aria-hidden="true">↗</span></button><button id="identify-reset" class="text-button" type="button">Reset photos &amp; review</button></div>
         </form>
@@ -53,7 +184,10 @@
             <p class="identify-warning"><strong>Illustrative MOCK suggestions — not an identification.</strong> These fixed examples depend only on your selected group, not the image, part, date, or region. Source: Demo data. Confidence scores are arbitrary illustrations, not calibrated probabilities or evidence of a match.</p>
             <p id="identify-caveat"></p>
             <ol id="identify-candidates" class="identify-candidates" aria-label="Illustrative mock candidates"></ol>
+            <details id="identify-more"><summary>All remaining MOCK candidates · descending scores · Demo data · non-calibrated</summary><ol id="identify-remaining" class="identify-candidates" start="4" aria-label="Remaining mock candidates in descending score order"></ol></details>
             <div class="identify-review"><h4>Your review · temporary only</h4><p>Accept a demo candidate above, enter your own label, or leave this uncertain. No choice is verified or saved.</p><div class="field"><label for="identify-correction">Your corrected name</label><input id="identify-correction" type="text" maxlength="120" placeholder="Common or scientific name" aria-describedby="identify-review-error"></div><p id="identify-review-error" class="error" role="alert" hidden></p><div class="restore-actions"><button id="identify-correct" class="secondary-button" type="button">Use corrected name</button><button id="identify-uncertain" class="secondary-button" type="button">Leave uncertain</button></div></div>
+            <button id="identify-record" class="primary-button" type="button" aria-describedby="identify-transfer-help">Use selected organism to record a discovery</button>
+            <p id="identify-transfer-help">Select a candidate (including in the remaining list) or use your corrected name first. Next, confirm the transfer. This replaces the discovery draft’s name, group, photos, date, and temporary location fields, but keeps notes and privacy preference. Review there, then save separately. Images and location detail are never saved or exported.</p>
             <p id="identify-review-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
         </section>
@@ -64,13 +198,11 @@
         <div class="section-heading"><span class="step" aria-hidden="true">01</span><div><h2 id="form-title">Record a discovery</h2><p>You don’t need to know its name to notice it.</p></div></div>
         <noscript><p class="error">JavaScript is needed to save observations. Enable it in your browser to use this journal.</p></noscript>
         <form id="observation-form">
-          <fieldset><legend>What did you find?</legend>
-            <div class="type-options">
-              <label><input type="radio" name="type" value="plant" checked> <span>Plant</span></label>
-              <label><input type="radio" name="type" value="fungus"> <span>Fungus</span></label>
-              <label><input type="radio" name="type" value="other"> <span>Other</span></label>
-            </div>
-          </fieldset>
+          <div class="field"><label for="organism-choice">What did you find?</label>
+            <input id="organism-choice" name="type" list="organism-options" value="Plant" required autocomplete="off" aria-describedby="organism-help">
+            <datalist id="organism-options"><option value="Plant"></option><option value="Mushroom"></option><option value="Insect"></option><option value="Mammal"></option><option value="Bird"></option><option value="Fish"></option><option value="Reptile"></option><option value="Other"></option></datalist>
+            <small id="organism-help">Search this dropdown by typing a group, then choose one of the eight options. Use arrow keys and Enter; choose Other when unsure. No species identification.</small>
+          </div>
           <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label>
             <div class="name-picker"><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help">
             <ul id="name-suggestions" class="name-suggestions" role="listbox" aria-label="Starter species suggestions and custom name" hidden></ul></div>
@@ -85,14 +217,23 @@
                 <input id="date-picker" type="date" min="0001-01-01" max="9999-12-31" aria-label="Choose observation date with calendar" aria-describedby="date-help" title="Choose observation date with calendar">
               </span>
             </div>
-            <small id="date-help">Type YYYY-MM-DD (year 0001–9999), or use the calendar icon in this bar. Tab to the icon and press Enter or Space to open the calendar. Future dates are allowed.</small>
+            <small id="date-help">Type YYYY-MM-DD, today or earlier, or use the calendar icon. Future observation dates are not allowed.</small>
           </div>
           <div class="field"><label for="notes">Field notes <span class="optional">(optional)</span></label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Colors, textures, habitat… what caught your eye?" aria-describedby="notes-help"></textarea><small id="notes-help">Avoid sensitive details or exact locations in names and notes.</small></div>
           <div class="field"><label for="photo">Take a closer look <span class="optional">(optional)</span></label><input id="photo" type="file" accept="image/*" aria-describedby="photo-help"><small id="photo-help">Image preview only, up to 10 MB. Images are never uploaded, saved, or included in exports.</small><p id="photo-error" class="error" role="alert" hidden></p><div id="preview-wrap" hidden><img id="photo-preview" alt="Preview of your selected observation image"><button id="remove-photo" class="text-button" type="button">Remove preview</button></div></div>
-          <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">A preference only—not actual location storage. TERRA never requests your location or saves coordinates, whatever you choose.</small></div>
+          <fieldset id="discovery-location" class="location-context" data-location="discovery"><legend>Temporary location context · review only</legend></fieldset>
+          <div id="discovery-images" hidden><p>Transferred photo previews · temporary only. Choosing a new journal photo replaces all transferred views. Resetting Explore a photo does not clear this independent draft; remove here, save, or reload to clear.</p><ul id="discovery-previews" class="identify-previews" aria-label="Temporary discovery photo previews"></ul><button id="discovery-clear-images" class="text-button" type="button">Remove all transferred previews</button></div>
+          <p id="discovery-transfer-status" class="status" role="status" aria-live="polite"></p>
+          <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">Choose a location below. Exact retains a local schematic pin; Approximate retains only a coarse region. Hidden discards location entirely. No GPS or real geographic accuracy.</small></div>
+          <fieldset><legend>Required location · local schematic only</legend><div id="observation-map"></div><div class="field"><label for="location-project-site">Saved project site (Approximate / Hidden)</label><select id="location-project-site"></select></div></fieldset>
           <p id="form-error" class="error" role="alert" hidden></p>
           <button id="save-button" class="primary-button" type="submit" disabled>Save to local journal <span aria-hidden="true">↗</span></button>
-          <p class="form-footer">Local journal first. No uploads, no sharing.</p>
+          <div class="field"><label for="project-observation">Observation to add</label><select id="project-observation" aria-describedby="add-project-help"><option value="">Current discovery draft (save once, then add)</option></select></div>
+          <div class="field"><label for="discovery-project">TERRA project</label><select id="discovery-project" aria-describedby="add-project-help"></select><small id="add-project-help">Local references only. Choose an open project; day/name scope must match. A saved observation is reused, not copied.</small></div>
+          <button id="add-project-button" class="primary-button" type="button" disabled>Add to TERRA project</button>
+          <p id="add-project-state" class="status" role="status"></p>
+          <p><a href="#projects">Create or reopen a local project</a></p>
+          <p class="form-footer">Local journal first. No uploads, no sharing. iNaturalist publishing is a separate future, explicit authenticated integration—not connected here.</p>
           <p class="integration-note">iNaturalist publishing is a future integration only: review your saved observation and privacy, then explicitly approve publishing. No connection or publishing is available now.</p>
         </form>
       </section>
@@ -115,11 +256,70 @@
         <ul id="observation-list" class="observation-list" aria-label="Saved observations"></ul>
       </section>
     </div>
+    <section class="panel" aria-labelledby="trash-title">
+      <h2 id="trash-title">🗑 Trash · <span id="trash-count">0</span></h2>
+      <p>Delete moves a record here, not out of storage. Restore within 3 days (72 hours). After that Restore is disabled; the record is permanently removed on the next successful journal change. Closing the app pauses cleanup, not the recovery clock. No background service runs. Export includes unexpired Trash; keep backups private. Project references do not count trashed observations.</p>
+      <ul id="trash-list" class="observation-list"></ul>
+    </section>
+    <section id="projects" class="panel projects-panel" aria-labelledby="projects-title">
+      <p class="eyebrow">LOCAL DESCRIPTIVE REPORTING</p>
+      <h2 id="projects-title">Projects / Field Summary</h2>
+      <p>Collect existing journal observations. This is a count of your selected records, not an AI summary, ecological inference, species verification, or evidence of trends.</p>
+      <p>Membership is always chosen manually, including previous journal entries in the inclusive start/end timeframe. Site rectangles use the same local demo grid as observation locations, not geographic boundaries. Hidden or legacy records without location cannot prove inclusion. Approximate regions must fit entirely inside a boundary.</p>
+      <p id="project-error" class="error" role="alert" hidden></p>
+      <p id="project-status" class="status" role="status" aria-live="polite"></p>
+      <div class="project-toolbar">
+        <div class="field"><label for="project-select">Choose project</label><select id="project-select"><option value="">New project</option></select></div>
+        <button id="project-refresh" class="secondary-button" type="button">Discard draft / refresh</button>
+      </div>
+      <form id="project-form" novalidate>
+        <fieldset id="project-fields">
+          <legend>Project details and included records</legend>
+          <div class="project-grid">
+            <div class="field"><label for="project-title">Project title</label><input id="project-title" maxlength="120" required></div>
+            <div class="field"><label for="project-type">Group by</label><select id="project-type"><option value="custom">Custom collection</option><option value="day">Project date / day</option><option value="species">Species / name</option><option value="site">Site / name</option></select></div>
+            <div class="field"><label for="project-date">Start date (or single day)</label><input id="project-date" type="text" placeholder="YYYY-MM-DD" maxlength="10" aria-describedby="project-scope-help"></div>
+            <div class="project-site-species" role="group" aria-label="Site and species names" aria-describedby="project-names-help">
+              <div class="field"><label for="project-site">Site name</label><input id="project-site" maxlength="120" aria-describedby="project-names-help"></div>
+              <div class="field"><label for="project-species">Species / name</label><input id="project-species" maxlength="120" aria-describedby="project-scope-help project-names-help"></div>
+              <p id="project-names-help"><small>One shared column, two separate values: site is your manual project label; species is the recorded name used for species-group matching. Both are kept in the saved scope and CSV.</small></p>
+            </div>
+          </div>
+          <div class="field"><label for="project-endDate">End date (inclusive; blank = single day)</label><input id="project-endDate" type="text" placeholder="YYYY-MM-DD" maxlength="10"></div>
+          <div id="project-specific" class="field"><label for="project-group-choice">Group-specific value</label><select id="project-group-choice"></select><small>Choose from prior observations, or Other to enter a new value in the date, species or site fields. Values are stored as text, not HTML.</small></div>
+          <div id="project-other-day-field" class="field" hidden><label for="project-other-day">Other day within timeframe</label><input id="project-other-day" placeholder="YYYY-MM-DD" maxlength="10"></div>
+          <fieldset id="project-boundary-fields" hidden><legend>Site boundary · editable after creation</legend><div id="project-map"></div><p>Saving a changed boundary removes memberships that cannot prove inclusion. Journal records are never deleted. Legacy label-only site projects remain readable; draw a boundary to enforce inclusion.</p></fieldset>
+          <div class="field"><label for="project-notes">Project notes (optional)</label><textarea id="project-notes" rows="2" maxlength="3000"></textarea></div>
+          <p id="project-scope-help">Every project needs a title. Start/end dates filter all groups inclusively; day groups require a start. Species uses an exact, case-sensitive recorded name or Other/manual name. New site groups require a label and drawn boundary. Changing scope removes nonmatching memberships on save, never journal records.</p>
+          <fieldset><legend>Include existing observations</legend>
+            <p id="project-candidate-message"></p>
+            <div id="project-candidates" class="project-candidates"></div>
+          </fieldset>
+        </fieldset>
+        <button id="project-save" class="primary-button" type="submit">Create project</button>
+      </form>
+      <div class="project-toolbar">
+        <button id="project-toggle" class="secondary-button" type="button" hidden>Mark complete</button>
+        <button id="project-csv" class="secondary-button" type="button" disabled>Export summary CSV</button>
+      </div>
+      <div id="project-report" aria-labelledby="project-report-title"></div>
+      <p><small>Projects stay in this browser. Completion locks editing until reopened; it is not a frozen snapshot. Deleting a journal record changes its summaries; missing references are shown, never counted. Journal JSON backups do not include projects. CSV is a readable report, not a project restore file.</small></p>
+    </section>
+    <section id="genetic-data" class="panel projects-panel" aria-labelledby="genetic-title">
+      <h2 id="genetic-title">Genetic Data</h2>
+      <p>Unconnected planning preview only. BOLD identification/search and GenBank record search are separate paths. No results, network calls, credentials, sequence submission or outbound data. GenBank submission would be a separate reviewed workflow, not a lookup.</p>
+      <div class="field"><label for="genetic-query">Taxon name or record identifier (optional)</label><input id="genetic-query" maxlength="120" autocomplete="off"></div>
+      <div class="field"><label for="genetic-sequence">Temporary DNA sequence (optional; local validation only)</label><textarea id="genetic-sequence" rows="3" maxlength="10000" autocomplete="off" spellcheck="false" aria-describedby="genetic-help"></textarea><small id="genetic-help">Up to 10,000 input characters. Plain IUPAC DNA or one FASTA record; no RNA, gaps or multiple records. Validation checks syntax, not quality, identity, or biological meaning. Never saved in journal, projects or exports. Clear when finished.</small></div>
+      <div class="restore-actions"><button id="bold-preview" class="secondary-button" type="button">BOLD lookup — future / local preview</button><button id="genbank-preview" class="secondary-button" type="button">GenBank lookup — future / local preview</button><button id="genetic-clear" class="text-button" type="button">Clear genetic inputs</button></div>
+      <p id="genetic-error" class="error" role="alert" hidden></p>
+      <p id="genetic-preview" class="status" role="status" aria-live="polite"></p>
+    </section>
     <footer> TERRA <span aria-hidden="true">/</span> A space for curiosity, not a species identification service.</footer>
   </main>
   <script>
   "use strict";
-  // Isolated, ephemeral prototype: no storage, network, metadata reads, or journal writes.
+  // Ephemeral prototype: no storage, network, metadata reads, or journal writes.
+  // A confirmed local event prefills a separate review draft; it never submits it.
   (() => {
     const $ = id => document.getElementById(id);
     const form = $("identification-form");
@@ -132,22 +332,35 @@
     const parts = {
       plant: ["Leaf", "Flower", "Fruit", "Bark", "Whole organism", "Other"],
       fungus: ["Cap", "Gills / underside", "Stem", "Whole organism", "Other"],
-      animal: ["Dorsal / top", "Ventral / underside", "Wing", "Leg", "Whole organism", "Other"],
+      insect: ["Dorsal / top", "Ventral / underside", "Wing", "Leg", "Whole organism", "Other"],
+      mammal: ["Head", "Body", "Tracks", "Whole organism", "Other"],
+      bird: ["Head", "Wing", "Plumage", "Whole organism", "Other"],
+      fish: ["Side", "Fin", "Head", "Whole organism", "Other"],
+      reptile: ["Head", "Scales", "Body", "Whole organism", "Other"],
       unsure: ["Whole organism", "Detail / close-up", "Other"]
     };
     const demos = {
-      plant: ["Common dandelion (Taraxacum officinale)", "Daisy (Bellis perennis)", "Broadleaf plantain (Plantago major)"],
-      fungus: ["Fly agaric (Amanita muscaria)", "Oyster mushroom (Pleurotus ostreatus)", "Turkey tail (Trametes versicolor)"],
-      animal: ["Seven-spot ladybird (Coccinella septempunctata)", "Monarch butterfly (Danaus plexippus)", "European honey bee (Apis mellifera)"],
-      unsure: ["Unresolved plant — demo label", "Unresolved fungus — demo label", "Unresolved animal — demo label"]
+      plant: ["Common dandelion (Taraxacum officinale)", "Daisy (Bellis perennis)", "Broadleaf plantain (Plantago major)", "Cat's ear (Hypochaeris radicata)", "Rough hawkbit (Leontodon hispidus)", "Autumn hawkbit (Scorzoneroides autumnalis)"],
+      fungus: ["Fly agaric (Amanita muscaria)", "Oyster mushroom (Pleurotus ostreatus)", "Turkey tail (Trametes versicolor)", "False turkey tail (Stereum ostrea)", "Panther cap (Amanita pantherina)", "Jack-o'-lantern (Omphalotus olearius)"],
+      insect: ["Seven-spot ladybird (Coccinella septempunctata)", "Monarch butterfly (Danaus plexippus)", "European honey bee (Apis mellifera)", "Viceroy butterfly (Limenitis archippus)", "Harlequin ladybird (Harmonia axyridis)", "Common drone fly (Eristalis tenax)"],
+      mammal: ["Red fox (Vulpes vulpes)", "Red squirrel (Sciurus vulgaris)", "European hedgehog (Erinaceus europaeus)", "Unresolved mammal — demo label A", "Unresolved mammal — demo label B", "Unresolved mammal — demo label C"],
+      bird: ["European robin (Erithacus rubecula)", "House sparrow (Passer domesticus)", "Mallard (Anas platyrhynchos)", "Unresolved bird — demo label A", "Unresolved bird — demo label B", "Unresolved bird — demo label C"],
+      fish: ["Atlantic salmon (Salmo salar)", "Rainbow trout (Oncorhynchus mykiss)", "European perch (Perca fluviatilis)", "Unresolved fish — demo label A", "Unresolved fish — demo label B", "Unresolved fish — demo label C"],
+      reptile: ["Green iguana (Iguana iguana)", "Grass snake (Natrix natrix)", "European pond turtle (Emys orbicularis)", "Unresolved reptile — demo label A", "Unresolved reptile — demo label B", "Unresolved reptile — demo label C"],
+      unsure: ["Unresolved plant — demo label", "Unresolved fungus — demo label", "Unresolved animal — demo label", "Unresolved moss — demo label", "Unresolved lichen — demo label", "Unresolved organism — demo label"]
     };
     const caveats = {
       plant: "Look-alike plants may require several features and expert review. Never use this demo to decide whether a plant is edible or medicinal.",
       fungus: "Mushroom look-alikes can be deadly. Never eat or handle a mushroom based on these examples; seek a qualified local expert.",
-      animal: "Similar animals may need scale, multiple views, or expert examination. Keep a safe distance and do not disturb wildlife for a photo.",
+      insect: "Similar insects may need scale, multiple views, or expert examination. Keep a safe distance and do not disturb wildlife for a photo.",
+      mammal: "Mammal look-alikes may need expert review. Keep a safe distance; never approach or disturb wildlife for a photo.",
+      bird: "Bird plumage varies by age and season. Keep a safe distance and do not disturb birds or nests for a photo.",
+      fish: "Similar fish may need expert review of several features. Do not capture or handle wildlife for this demo.",
+      reptile: "Reptile look-alikes can be dangerous. Keep a safe distance; never handle a reptile based on this demo.",
       unsure: "The organism group is unresolved. These examples are placeholders across groups, not evidence for choosing one. Leaving it uncertain is useful."
     };
     let images = [];
+    let selectedName = "";
     let nextId = 0;
     function node(tag, text, className) {
       const el = document.createElement(tag);
@@ -163,6 +376,9 @@
     }
     function invalidate(message = "Inputs changed. Analyze again to review fresh MOCK examples.") {
       output.hidden = true;
+      selectedName = "";
+      $("identify-more").open = false;
+      $("identify-remaining").replaceChildren();
       $("identify-candidates").replaceChildren();
       $("identify-review-status").textContent = "";
       $("identify-correction").value = "";
@@ -239,7 +455,7 @@
         const remove = node("button", "Remove photo", "text-button");
         remove.type = "button";
         remove.setAttribute("aria-label", `Remove ${file.name}, view ${id}`);
-        const image = { card, img, select, url: URL.createObjectURL(file), ready: false };
+        const image = { file, card, img, select, url: URL.createObjectURL(file), ready: false };
         fillParts(image);
         select.addEventListener("change", () => { select.removeAttribute("aria-invalid"); error(""); invalidate(); });
         remove.addEventListener("click", () => removeImage(image));
@@ -254,10 +470,13 @@
         img.src = image.url;
       }
     });
-    for (const id of ["identify-date", "identify-region"]) {
-      $(id).addEventListener("input", () => { $(id).removeAttribute("aria-invalid"); error(""); invalidate(); });
-    }
-    function review(message) {
+    $("identify-date").addEventListener("input", () => { error(""); invalidate(); });
+    $("identify-location").addEventListener("terra:location-changed", () => { error(""); invalidate(); });
+    function review(message, name = "") {
+      selectedName = name;
+      document.querySelectorAll("#identify-candidates button, #identify-remaining button").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.dataset.name === name));
+      });
       $("identify-review-error").hidden = true;
       $("identify-correction").removeAttribute("aria-invalid");
       $("identify-review-status").textContent = `${message} Temporary review only; not verified and not saved to observations.`;
@@ -273,8 +492,8 @@
       const date = $("identify-date");
       const dateValue = date.value;
       const parsed = new Date(`${dateValue}T12:00:00Z`);
-      if (date.validity.badInput || (dateValue && (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue) || dateValue.startsWith("0000") || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== dateValue))) {
-        error("Enter a valid optional date (year 0001–9999), or clear it.", date); return;
+      if (date.validity.badInput || (dateValue && (!TerraData.observationDate(dateValue) || !Number.isFinite(parsed.getTime())))) {
+        error("Enter a valid optional date, today or earlier, or clear it.", date); return;
       }
       invalidate();
       $("identify-caveat").textContent = caveats[group.value];
@@ -282,10 +501,12 @@
         const card = node("li");
         const accept = node("button", "Accept demo candidate", "secondary-button");
         accept.type = "button";
+        accept.dataset.name = name;
+        accept.setAttribute("aria-pressed", "false");
         accept.setAttribute("aria-label", `Accept demo candidate: ${name}`);
-        accept.addEventListener("click", () => review(`Accepted MOCK candidate: ${name}.`));
-        card.append(node("h4", name), node("p", `Demo data · Illustrative confidence: ${[72, 48, 26][index]}/100 — arbitrary, not a probability.`), accept);
-        $("identify-candidates").append(card);
+        accept.addEventListener("click", () => review(`Accepted MOCK candidate: ${name}.`, name));
+        card.append(node("h4", name), node("p", `MOCK · Demo data · Illustrative confidence / score: ${[72, 48, 26, 19, 12, 5][index]}/100 — non-calibrated, arbitrary, not a probability.`), accept);
+        $(index < 3 ? "identify-candidates" : "identify-remaining").append(card);
       });
       output.hidden = false;
       status.textContent = `MOCK examples ready for ${images.length} local photo(s). No image analysis was performed. Review below.`;
@@ -301,14 +522,36 @@
         input.focus();
         return;
       }
-      review(`Your corrected label: ${value}.`);
+      review(`Your corrected label: ${value}.`, value);
     });
     $("identify-uncertain").addEventListener("click", () => review("Left uncertain. No identification chosen."));
+    $("identify-correction").addEventListener("input", () => {
+      review("Name edited. Use corrected name to select it before transfer.");
+    });
+    $("identify-record").addEventListener("click", () => {
+      if (output.hidden || !selectedName.trim() || selectedName.length > 120 || !images.length || images.some(image => !image.ready)) {
+        $("identify-review-error").textContent = "Select a candidate or use a non-empty corrected name before transferring.";
+        $("identify-review-error").hidden = false;
+        $("identify-correction").focus();
+        return;
+      }
+      const location = TerraLocation.read("identify");
+      const date = $("identify-date").value;
+      if (date && !TerraData.observationDate(date)) { error("Observation date must be today or earlier.", $("identify-date")); return; }
+      const summary = `Name: ${selectedName}\nPhotos: ${images.length} temporary preview(s)\nDate: ${date || "Not supplied — required before save"}\nTemporary garden / region / administrative context: ${Object.values(location).filter(Boolean).join(" / ") || "Not supplied"}`;
+      if (!window.confirm(`Review unverified selection:\n${summary}\n\nReplace these fields in the discovery draft? Notes and privacy stay unchanged. Photos and location are not saved/exported. This only prefills; nothing is saved or sent to iNaturalist.`)) return;
+      document.dispatchEvent(new CustomEvent("terra:prefill-discovery", { detail: {
+        name: selectedName, type: group.value === "unsure" ? "other" : group.value,
+        date, location, files: images.map(image => image.file)
+      } }));
+      review(`Transferred ${selectedName} for review in Record a discovery.`, selectedName);
+    });
     function reset() {
       images.forEach(release);
       images = [];
       previews.replaceChildren();
       form.reset();
+      TerraLocation.sync("identify");
       files.multiple = false;
       form.querySelectorAll("[aria-invalid]").forEach(el => el.removeAttribute("aria-invalid"));
       error("");
@@ -317,6 +560,278 @@
     $("identify-reset").addEventListener("click", () => { reset(); group.focus(); });
     window.addEventListener("pagehide", reset);
   })();
+  </script>
+  <script id="field-summary-logic">
+  "use strict";
+  // Pure reporting/compatibility functions. No observation copies are persisted.
+  const FieldSummary = (() => {
+    const KEY = "terra.projects.v1";
+    const types = ["custom", "day", "species", "site"];
+    const text = (value, max, required = false) => typeof value === "string" && value.length <= max && (!required || value.trim().length > 0);
+    const date = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !value.startsWith("0000") && Number.isFinite(Date.parse(`${value}T12:00:00Z`)) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value;
+    function matches(project, record) {
+      if (record.deletedAt) return false;
+      if (project.date && (record.date < project.date || record.date > (project.endDate || project.date))) return false;
+      if (project.type === "species" && record.name.trim() !== project.species.trim()) return false;
+      if (project.groupValue && project.type === "day" && record.date !== project.groupValue) return false;
+      return !project.boundary || (TerraData.location(record.location, record.privacy) && TerraData.inside(project.boundary, record.location));
+    }
+    function valid(project) {
+      return project && !Array.isArray(project) && text(project.id, 200, true) && text(project.title, 120, true) && types.includes(project.type) &&
+        text(project.date, 10) && (!project.date || date(project.date)) && (project.type !== "day" || date(project.date)) &&
+        text(project.site, 120, project.type === "site") && text(project.species, 120, project.type === "species") && text(project.notes, 3000) &&
+        (!Object.hasOwn(project, "endDate") || (date(project.endDate) && date(project.date) && project.endDate >= project.date)) &&
+        (!Object.hasOwn(project, "boundary") || TerraData.boundary(project.boundary)) &&
+        (!Object.hasOwn(project, "groupValue") || (text(project.groupValue, 120, true) && (project.type !== "day" || (date(project.groupValue) && project.groupValue >= project.date && project.groupValue <= (project.endDate || project.date))))) &&
+        typeof project.complete === "boolean" && Array.isArray(project.observationIds) && project.observationIds.every(id => text(id, Infinity, true)) && new Set(project.observationIds).size === project.observationIds.length;
+    }
+    function parse(raw) {
+      if (raw === null) return [];
+      const data = JSON.parse(raw);
+      if (!data || data.format !== "terra-projects" || data.version !== 1 || !Array.isArray(data.projects) || !data.projects.every(valid) || new Set(data.projects.map(p => p.id)).size !== data.projects.length) throw new Error("Unsupported or damaged project data");
+      return data.projects.map(({ id, title, type, date, site, species, notes, complete, observationIds, endDate, boundary, groupValue }) => ({ id, title, type, date, site, species, notes, complete, observationIds: [...observationIds], ...(endDate ? { endDate } : {}), ...(boundary ? { boundary: { ...boundary } } : {}), ...(groupValue ? { groupValue } : {}) }));
+    }
+    const encode = projects => JSON.stringify({ format: "terra-projects", version: 1, projects });
+    function summarize(project, journal) {
+      const byId = new Map(journal.filter(record => !record.deletedAt).map(record => [record.id, record]));
+      const records = project.observationIds.map(id => byId.get(id)).filter(record => record && matches(project, record)).sort((a, b) => a.date.localeCompare(b.date) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      const missing = project.observationIds.filter(id => !byId.has(id) || !matches(project, byId.get(id)));
+      const group = key => {
+        const groups = new Map();
+        for (const record of records) {
+          const label = key(record);
+          if (!groups.has(label)) groups.set(label, []);
+          groups.get(label).push(record.id);
+        }
+        return [...groups].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+      };
+      const species = group(record => record.name.trim());
+      return { records, missing, total: records.length, uniqueTaxa: species.filter(([name]) => name.toLowerCase() !== "unknown").length, dates: group(record => record.date), species };
+    }
+    const scope = p => `${p.type}; date: ${p.date || "not specified"}${p.endDate ? ` through ${p.endDate} (inclusive)` : ""}; species/name: ${p.species || "not specified"}; site label: ${p.site || "not specified"}${p.boundary ? "; local schematic boundary enforced (not geography)" : ""}${p.groupValue ? `; selected value: ${p.groupValue}` : ""}`;
+    function csv(project, journal) {
+      const summary = summarize(project, journal);
+      // Quote all fields and neutralize spreadsheet formulas, including leading whitespace.
+      const cell = value => {
+        let s = String(value);
+        if (/^[\s]*[=+@-]/.test(s) || /^[\t\r\n]/.test(s)) s = "'" + s;
+        return '"' + s.replaceAll('"', '""') + '"';
+      };
+      const heading = ["report_kind", "project_id", "project_title", "project_scope", "project_notes", "project_state", "references", "included_observations", "unique_taxa_labels", "missing_references", "record_status", "observation_id", "date", "species_name", "type", "notes", "privacy_preference"];
+      const prefix = ["Local descriptive reporting; no AI or ecological inference", project.id, project.title, scope(project), project.notes, project.complete ? "complete" : "open", project.observationIds.length, summary.total, summary.uniqueTaxa, summary.missing.length];
+      const rows = summary.records.map(r => [...prefix, "included", r.id, r.date, r.name, r.type, r.notes, r.privacy]);
+      rows.push(...summary.missing.map(id => [...prefix, "missing (not counted)", id, "", "", "", "", ""]));
+      if (!rows.length) rows.push([...prefix, "empty", "", "", "", "", "", ""]);
+      return [heading, ...rows].map(row => row.map(cell).join(",")).join("\r\n") + "\r\n";
+    }
+    function addMember(projects, projectId, record) {
+      const project = projects.find(p => p.id === projectId);
+      if (!project) throw new Error("Choose an existing TERRA project. Create one below if none exist.");
+      if (project.complete) throw new Error("This project is complete. Reopen it in Projects / Field Summary first.");
+      if (!matches(project, record)) throw new Error("Observation does not match this project's exact day/name scope, date range, or is outside its boundary (or location cannot prove inclusion). Choose another project or edit its scope below.");
+      return projects.map(p => p.id === projectId ? { ...p, observationIds: [...new Set([...p.observationIds, record.id])] } : p);
+    }
+    return { KEY, valid, parse, encode, matches, summarize, scope, csv, addMember };
+  })();
+  </script>
+  <script id="genetic-preview-logic">
+  "use strict";
+  function validateLocalDNA(input) {
+    if (input.length > 10000) throw new Error("Use at most 10,000 input characters.");
+    const lines = input.trim().split(/\r?\n/);
+    if (lines[0].startsWith(">")) {
+      if (!lines[0].slice(1).trim()) throw new Error("A FASTA record needs a header.");
+      lines.shift();
+    }
+    const sequence = lines.join("").replace(/\s/g, "").toUpperCase();
+    if (!sequence || !/^[ACGTRYSWKMBDHVN]+$/.test(sequence)) throw new Error("Enter one DNA record using IUPAC bases ACGTRYSWKMBDHVN only (no RNA, gaps, digits or additional FASTA headers).");
+    return { length: sequence.length, ambiguous: sequence.replace(/[ACGT]/g, "").length };
+  }
+  </script>
+  <script id="field-summary-ui">
+  document.addEventListener("DOMContentLoaded", () => {
+    const $ = id => document.getElementById(id);
+    const node = (tag, text) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; return el; };
+    const fields = ["title", "type", "date", "site", "species", "notes", "endDate"];
+    let groupValue = "", otherDay = false;
+    let projects = [], journal = [], selectedId = "", snapshot = null, ready = false;
+    let chosen = new Set();
+    const error = message => { $("project-error").textContent = message; $("project-error").hidden = !message; };
+    function read() {
+      try {
+        const raw = localStorage.getItem(FieldSummary.KEY);
+        const next = FieldSummary.parse(raw);
+        const records = readObservations(); // Existing strict validator; never rewrite journal data.
+        projects = next; journal = TerraData.active(records); ready = true;
+        return raw;
+      } catch {
+        ready = false;
+        error("Projects or journal data cannot be read (blocked storage, damaged JSON, or unsupported version). Reporting and project changes are paused. Existing data is untouched; do not clear browser data. Check permissions and reload.");
+        return undefined;
+      }
+    }
+    const current = () => projects.find(p => p.id === selectedId);
+    function draft() {
+      const p = { id: selectedId || (typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `project-${Date.now()}-${Math.random().toString(36).slice(2)}`), ...Object.fromEntries(fields.map(key => [key, $("project-" + key).value.trim()])), complete: current()?.complete || false, observationIds: [...chosen] };
+      if (!p.endDate) delete p.endDate;
+      if (p.type === "site" && TerraMaps.project.read()) p.boundary = TerraMaps.project.read();
+      if (groupValue && p.type === "day") p.groupValue = groupValue;
+      return p;
+    }
+    function candidates() {
+      const p = draft();
+      const area = $("project-candidates");
+      area.replaceChildren();
+      const needsBoundary = p.type === "site" && !p.boundary && (!current() || current().type !== "site" || current().boundary);
+      const eligible = needsBoundary ? [] : journal.filter(record => FieldSummary.matches(p, record));
+      const eligibleIds = new Set(eligible.map(r => r.id));
+      const known = new Set(journal.map(r => r.id));
+      const excluded = [...chosen].filter(id => known.has(id) && !eligibleIds.has(id)).length;
+      $("project-candidate-message").textContent = !journal.length ? "No suitable observations yet. Save a discovery in the journal, or restore an existing TERRA journal backup, then refresh here. No sample records are invented." : `${eligible.length} eligible of ${journal.length} journal records.${needsBoundary ? " Draw and apply a boundary first." : ""} Check records to include; none are automatically selected.${excluded ? ` ${excluded} previously selected records outside this scope will be removed on save.` : ""}${!eligible.length ? " No records match this exact day/name. Change the scope or add a journal observation." : ""}`;
+      function checkbox(id, label) {
+        const wrapper = node("label");
+        const input = node("input"); input.type = "checkbox"; input.value = id; input.checked = chosen.has(id);
+        input.addEventListener("change", () => { input.checked ? chosen.add(id) : chosen.delete(id); });
+        wrapper.append(input, node("span", label)); area.append(wrapper);
+      }
+      for (const r of eligible) checkbox(r.id, `${r.date} · ${r.name} · ${r.type} · ID: ${r.id}`);
+      for (const id of chosen) if (!known.has(id)) checkbox(id, `Missing observation · ID: ${id} (not counted; uncheck to remove reference)`);
+    }
+    function table(title, headings, rows) {
+      const wrap = node("div"); wrap.className = "project-table-wrap"; wrap.tabIndex = 0; wrap.setAttribute("role", "region"); wrap.setAttribute("aria-label", title);
+      const table = node("table"); table.append(node("caption", title));
+      const head = node("thead"), tr = node("tr");
+      for (const heading of headings) { const th = node("th", heading); th.scope = "col"; tr.append(th); }
+      head.append(tr); table.append(head);
+      const body = node("tbody");
+      for (const row of rows) { const tr = node("tr"); for (const value of row) tr.append(node("td", String(value))); body.append(tr); }
+      table.append(body); wrap.append(table); return wrap;
+    }
+    function report() {
+      const out = $("project-report"); out.replaceChildren();
+      const p = current();
+      $("project-csv").disabled = !ready || !p;
+      $("project-toggle").hidden = !p;
+      $("project-toggle").disabled = !ready;
+      $("project-fields").disabled = !ready || Boolean(p?.complete);
+      $("project-save").disabled = !ready || Boolean(p?.complete);
+      $("project-save").textContent = p ? "Save project changes" : "Create project";
+      $("project-toggle").textContent = p?.complete ? "Reopen project" : "Mark complete";
+      if (!ready || !p) return;
+      const s = FieldSummary.summarize(p, journal);
+      const h = node("h3", `${p.title} — ${p.complete ? "Complete" : "Open"}`); h.id = "project-report-title"; out.append(h);
+      out.append(node("p", `Saved project scope: ${FieldSummary.scope(p)}. Explicit membership only; journal currently contains ${journal.length} records. Unsaved edits are not included in this report.`));
+      out.append(node("p", p.notes ? `Project notes: ${p.notes}` : "No project notes."));
+      out.append(node("p", `${p.observationIds.length} references · ${s.total} included observations · ${s.uniqueTaxa} unique taxa labels · ${s.missing.length} missing references (excluded).`));
+      out.append(node("p", "Unique taxa means distinct exact, trimmed recorded names, excluding Unknown (any letter case). Common/scientific synonyms and case variants are not resolved. This is not verified biological richness. Each included record counts once; counts do not represent abundance, sampling effort, trends, or ecological condition."));
+      if (!s.total) out.append(node("p", "No included observations to summarize. Select existing journal records and save, or reopen this project to change membership. Missing or unselected records cannot contribute to metrics."));
+      if (s.missing.length) out.append(node("p", `Missing record IDs: ${s.missing.join(", ")}. Missing, trashed or currently out-of-scope records are not counted. References reconnect only if the restored records satisfy the current scope. Completion does not freeze the journal.`));
+      if (s.records.length) {
+        out.append(table("Records by date", ["Date", "Count", "Included observation IDs"], s.dates.map(([name, ids]) => [name, ids.length, ids.join(", ")])));
+        out.append(table("Records by species / recorded name (including Unknown)", ["Recorded name", "Count", "Included observation IDs"], s.species.map(([name, ids]) => [name, ids.length, ids.join(", ")])));
+        out.append(table("Included records — metric source", ["ID", "Date", "Recorded name", "Group", "Notes"], s.records.map(r => [r.id, r.date, r.name, r.type, r.notes])));
+      }
+    }
+    function refresh(resetDraft = false) {
+      const raw = read();
+      const select = $("project-select"); select.replaceChildren();
+      const option = node("option", "New project"); option.value = ""; select.append(option);
+      for (const p of projects) { const option = node("option", `${p.title} (${p.complete ? "complete" : "open"})`); option.value = p.id; select.append(option); }
+      if (resetDraft && ready && selectedId && !current()) selectedId = "";
+      select.value = selectedId;
+      if (resetDraft && ready) {
+        snapshot = raw;
+        const p = current();
+        for (const key of fields) $("project-" + key).value = p ? (p[key] || "") : key === "type" ? "custom" : "";
+        groupValue = p?.groupValue || "";
+        otherDay = false;
+        TerraMaps.project.set(p?.boundary ? { ...p.boundary, kind: "region" } : null);
+        chosen = new Set(p?.observationIds || []);
+        error("");
+      }
+      groupChoices(); candidates(); report();
+      document.dispatchEvent(new Event("terra:projects-rendered"));
+    }
+    function persist(next) {
+      try { localStorage.setItem(FieldSummary.KEY, FieldSummary.encode(next)); return true; }
+      catch { error("Project change could not be saved. Storage may be full or blocked. Existing projects, journal data, and your draft are unchanged. Check permissions and try again."); return false; }
+    }
+    function unchanged() {
+      const raw = read();
+      if (!ready) { report(); return false; }
+      if (raw !== snapshot) { error("Projects changed in another tab. Your draft has not been saved. Use Discard draft / refresh, review the latest project, then retry."); return false; }
+      return true;
+    }
+    $("project-select").addEventListener("change", event => { selectedId = event.target.value; refresh(true); });
+    $("project-refresh").addEventListener("click", () => { refresh(true); $("project-status").textContent = "Latest saved data loaded; unsaved project edits discarded."; });
+    function groupChoices() {
+      const p = draft(), select = $("project-group-choice");
+      select.replaceChildren(new Option(p.type === "day" ? "All dates in timeframe" : "Other / enter a new value", ""));
+      $("project-specific").hidden = p.type === "custom";
+      $("project-boundary-fields").hidden = p.type !== "site";
+      let values = [];
+      if (p.type === "species") values = journal.map(r => r.name.trim());
+      if (p.type === "day") values = journal.filter(r => (!p.date || r.date >= p.date) && (!p.endDate || r.date <= p.endDate) && (p.endDate || !p.date || r.date === p.date)).map(r => r.date);
+      if (p.type === "site") values = projects.filter(p => p.boundary).map(p => p.site);
+      for (const v of [...new Set(values)].sort()) select.add(new Option(v, v));
+      if (p.type === "day") select.add(new Option("Other / enter another day in timeframe", "__other"));
+      select.value = p.type === "day" ? (otherDay || (groupValue && !values.includes(groupValue)) ? "__other" : groupValue) : values.includes(p.type === "species" ? p.species : p.site) ? (p.type === "species" ? p.species : p.site) : "";
+      $("project-other-day-field").hidden = p.type !== "day" || select.value !== "__other";
+      $("project-other-day").value = groupValue;
+    }
+    for (const key of ["type", "date", "endDate", "species"]) $("project-" + key).addEventListener("input", () => { groupValue = ""; otherDay = false; groupChoices(); candidates(); });
+    $("project-group-choice").addEventListener("change", event => {
+      const v = event.target.value, type = $("project-type").value;
+      if (type === "species") { $("project-species").value = v; if (!v) $("project-species").focus(); }
+      if (type === "day") {
+        otherDay = v === "__other";
+        groupValue = otherDay ? "" : v;
+        $("project-other-day-field").hidden = v !== "__other";
+      }
+      if (type === "site") {
+        $("project-site").value = v;
+        const p = projects.find(p => p.site === v && p.boundary);
+        TerraMaps.project.set(p ? { ...p.boundary, kind: "region" } : null);
+        if (!v) $("project-site").focus();
+      }
+      candidates();
+    });
+    $("project-other-day").addEventListener("input", event => { groupValue = event.target.value.trim(); candidates(); });
+    $("project-map").addEventListener("terra:map-changed", candidates);
+    $("project-form").addEventListener("submit", event => {
+      event.preventDefault(); error("");
+      if (!unchanged() || current()?.complete) return;
+      const p = draft();
+      if (p.type === "day" && otherDay && !groupValue) { error("Enter the Other day within the start/end timeframe, or choose All dates."); return; }
+      const known = new Map(journal.map(r => [r.id, r]));
+      p.observationIds = p.observationIds.filter(id => !known.has(id) || FieldSummary.matches(p, known.get(id)));
+      if (!FieldSummary.valid(p)) { error("Enter a title (1–120 characters), a valid optional YYYY-MM-DD date (year 0001–9999), and the required date, species/name or site for this group. Notes allow up to 3,000 characters; site/species allow 120."); return; }
+      if (p.type === "site" && !p.boundary && (!current() || current().type !== "site" || current().boundary)) { error("Draw a site boundary before saving. Existing journal records are unchanged."); return; }
+      const removed = [...chosen].filter(id => !p.observationIds.includes(id));
+      const next = selectedId ? projects.map(item => item.id === selectedId ? p : item) : [...projects, p];
+      if (!persist(next)) return;
+      selectedId = p.id; refresh(true); $("project-status").textContent = `Project saved locally. Summary reflects only its saved references to the current journal.${removed.length ? ` Removed ${removed.length} outside / invalid memberships: ${removed.join(", ")}. Journal records were NOT deleted.` : ""}`;
+    });
+    $("project-toggle").addEventListener("click", () => {
+      error(""); if (!unchanged() || !current()) return;
+      const p = current();
+      if (!persist(projects.map(item => item.id === p.id ? { ...item, complete: !item.complete } : item))) return;
+      refresh(true); $("project-status").textContent = p.complete ? "Project reopened for editing." : "Project marked complete. Reopen to edit; counts still reflect current journal records.";
+    });
+    $("project-csv").addEventListener("click", () => {
+      error(""); read(); report(); if (!ready || !current()) return;
+      try {
+        const url = URL.createObjectURL(new Blob([FieldSummary.csv(current(), journal)], { type: "text/csv;charset=utf-8" }));
+        const link = node("a"); link.href = url; link.download = "terra-field-summary.csv";
+        document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+        $("project-status").textContent = "CSV export requested for the saved project, not unsaved edits. Contains notes and site labels; keep it private. Spreadsheet formula-like text is prefixed with an apostrophe.";
+      } catch { error("CSV could not be created. Your saved data is unchanged; try again."); }
+    });
+    document.addEventListener("terra:project-membership-changed", () => refresh());
+    document.addEventListener("terra:journal-rendered", () => refresh());
+    window.addEventListener("storage", event => { if (event.key === FieldSummary.KEY || event.key === null) refresh(); });
+    refresh(true);
+  });
   </script>
 </body>
 </html>
