@@ -53,6 +53,10 @@ const TerraMaps = (() => {
       if (!TerraData.boundary({ ...base, ...r })) { status.textContent = "Region needs positive width and height."; return; }
       set({ ...base, kind: "region", ...r });
     }
+    controls.addEventListener("input", () => {
+      // Typed, unapplied edits must never silently reuse the previous pin/region.
+      value = null; first = null; draw(); host.dispatchEvent(new Event("terra:map-changed"));
+    });
     apply.addEventListener("click", () => {
       const nums = Object.keys(inputs).map(k => inputs[k].value === "" ? NaN : Number(inputs[k].value)); select(...nums);
     });
@@ -76,7 +80,6 @@ const TerraMaps = (() => {
   }
   const privacy = document.getElementById("privacy");
   const observation = create(document.getElementById("observation-map"), () => privacy.value);
-  privacy.addEventListener("change", () => observation.clear());
   const project = create(document.getElementById("project-map"), () => "boundary");
   const sites = document.getElementById("location-project-site");
   function refreshSites() {
@@ -90,7 +93,10 @@ const TerraMaps = (() => {
       else observation.clear();
     } catch { observation.clear(); }
   });
-  privacy.addEventListener("change", () => { sites.disabled = privacy.value === "exact"; sites.value = ""; });
+  function resetObservation() {
+    observation.clear(); sites.disabled = privacy.value === "exact"; sites.value = "";
+  }
+  privacy.addEventListener("change", resetObservation);
   document.addEventListener("terra:projects-rendered", refreshSites);
-  return { observation, project };
+  return { observation, project, resetObservation };
 })();

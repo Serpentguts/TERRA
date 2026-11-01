@@ -32,6 +32,7 @@ class LocalAppChecks(unittest.TestCase):
         for path, content_type in [
             ("/", "text/html"), ("/index.html", "text/html"),
             ("/app.js", "javascript"), ("/ui.js", "javascript"),
+            ("/local-data.js", "javascript"), ("/local-map.js", "javascript"),
             ("/styles.css", "text/css"),
             ("/ditto.json", "application/json"),
         ]:
@@ -50,7 +51,8 @@ class LocalAppChecks(unittest.TestCase):
             html = response.get_data(as_text=True)
             for control in ["identify-record", "identify-more", "discovery-previews",
                             "discovery-location", "add-project-button", "project-form",
-                            "view-stack-help", "genetic-data", "navigation-toggle",
+                            "observation-map", "project-map", "trash-list", "project-endDate",
+                            "project-group-choice", "view-stack-help", "genetic-data", "navigation-toggle",
                             "site-navigation", "bottom-navigation", "home", "map", "feed",
                             "profile", "profile-form",
                             "profile-photos", "profile-observations", "profile-reset",

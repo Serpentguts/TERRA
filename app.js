@@ -40,7 +40,7 @@ let activeChoice = -1;
 let observations = [];
 let storageReady = false;
 let previewUrl = null;
-// Retry identity is in memory only; never add fields to the six-field journal.
+// Retry identity is in memory only; never persist workflow bookkeeping.
 let pendingDiscovery = null;
 const projectObservation = document.querySelector("#project-observation");
 const discoveryProject = document.querySelector("#discovery-project");
@@ -113,7 +113,7 @@ document.addEventListener("terra:prefill-discovery", event => {
   dateInput.value = draft.date; // Missing dates stay blank; never invent an observation date.
   syncDate();
   TerraLocation.set("discovery", draft.location);
-  TerraMaps.observation.clear(); // Never inherit a previous draft's precise location.
+  TerraMaps.resetObservation(); // Never inherit a previous draft's precise location.
   for (const file of draft.files) {
     const card = element("li", "identify-photo");
     const img = element("img");
@@ -453,7 +453,7 @@ function saveDiscovery(withProject = false) {
   const targetProject = discoveryProject.value;
   form.reset();
   TerraLocation.sync("discovery");
-  TerraMaps.observation.clear();
+  TerraMaps.resetObservation();
   discoveryProject.value = targetProject;
   dateInput.value = today();
   syncDate();

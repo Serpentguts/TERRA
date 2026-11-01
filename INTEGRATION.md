@@ -2,7 +2,20 @@
 
 Branch: `integration/pr7-pr11-pr12`.
 
-## Latest consolidated request: discovery provenance + closable view stack
+## Latest request: observation privacy, recoverable Trash and scoped projects
+
+Existing **draft PR #13 only** remains the review artifact; no merge/deployment. Commits `a309408` and `1aed8c6` add the cohesive update; subsequent hardening keeps the same branch/PR. See [LOCAL-WORKFLOWS.md](LOCAL-WORKFLOWS.md) for current behavior, schema/retention caveats, limitations and complete PowerShell update/run/test steps. It supersedes older historical claims below about future dates, immediate permanent Delete, six-field-only new saves and site labels without boundaries.
+
+- Redundant first Discover TERRA section removed; existing intro remains Home. Natural habitat input removed, cultivated context preserved.
+- Today/past-only observation dates enforced in both UI paths, Save/Add, photo handoff and import. Existing stored legacy records remain readable without destructive migration.
+- Required honest local map: Exact pin, Approximate coarse rectangle/project site, Hidden selection discarded. No real geographic accuracy, GPS, external geocoder or services. Privacy validation prevents hidden/approximate point-coordinate leakage.
+- Confirmed Delete atomically soft-deletes, visible 🗑 Trash with deadline/Restore. 72-hour recovery, then disabled restore and permanent cleanup on next successful journal write only; no read-time or background deletion.
+- Inclusive project start/end dates, prior-entry checkboxes, recorded-species/day/site choices and safe Other/manual values. New site rectangles enforce full containment on every membership path. Editable boundaries revalidate/remove invalid memberships with IDs and an explicit journal-retention explanation.
+- Existing version-1 keys/envelopes and six-field records readable; optional versioned local-grid location, ISO `deletedAt`, project `endDate`/`groupValue`/`boundary`. Backups preserve recognized optional fields and unexpired Trash; no automatic migration. Do not downgrade to a build that strips those fields. Project backup UI remains unavailable.
+- Verification: **six Linux Chromium browser suites, 15 JS unit tests, four Flask tests PASS**, including future dates/photo paths, privacy precision, location requirement, Trash quota failure/restore/expiry, timeframe/group choices, boundary add/edit validation, journal retention, backups, no outbound requests and responsive widths. Existing discovery retry identity, navigation/view-stack, photo URL ownership, journal import and project CSV coverage preserved. Syntax and whitespace checks pass. Browser test libraries/fonts are workspace-only ignored tools, no runtime dependency added.
+- Remaining human checks: Windows/Edge, Firefox/Safari, manual screen reader, physical touch/safe areas. Rectangles are local demo workflow geometry, not geographic enforcement.
+
+## Prior consolidated request: discovery provenance + closable view stack
 
 Review artifact: existing **draft PR #13 only**, <https://github.com/Serpentguts/TERRA/pull/13>. Implementation commits: `2d8f3bc`, `81ca3af`. This supersedes the older staged-provenance page and exclusive-preview visibility described in historical notes below. No separate provenance branch/proposal/PR is being implemented.
 

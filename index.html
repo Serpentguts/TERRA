@@ -499,7 +499,7 @@
       const location = TerraLocation.read("identify");
       const date = $("identify-date").value;
       if (date && !TerraData.observationDate(date)) { error("Observation date must be today or earlier.", $("identify-date")); return; }
-      const summary = `Name: ${selectedName}\nPhotos: ${images.length} temporary preview(s)\nDate: ${date || "Not supplied — required before save"}\nTemporary setting / habitat or garden / region / administrative details: ${Object.values(location).filter(Boolean).join(" / ") || "Not supplied"}`;
+      const summary = `Name: ${selectedName}\nPhotos: ${images.length} temporary preview(s)\nDate: ${date || "Not supplied — required before save"}\nTemporary garden / region / administrative context: ${Object.values(location).filter(Boolean).join(" / ") || "Not supplied"}`;
       if (!window.confirm(`Review unverified selection:\n${summary}\n\nReplace these fields in the discovery draft? Notes and privacy stay unchanged. Photos and location are not saved/exported. This only prefills; nothing is saved or sent to iNaturalist.`)) return;
       document.dispatchEvent(new CustomEvent("terra:prefill-discovery", { detail: {
         name: selectedName, type: group.value === "unsure" ? "other" : group.value,
@@ -643,11 +643,12 @@
       const p = draft();
       const area = $("project-candidates");
       area.replaceChildren();
-      const eligible = journal.filter(record => FieldSummary.matches(p, record));
+      const needsBoundary = p.type === "site" && !p.boundary && (!current() || current().type !== "site" || current().boundary);
+      const eligible = needsBoundary ? [] : journal.filter(record => FieldSummary.matches(p, record));
       const eligibleIds = new Set(eligible.map(r => r.id));
       const known = new Set(journal.map(r => r.id));
       const excluded = [...chosen].filter(id => known.has(id) && !eligibleIds.has(id)).length;
-      $("project-candidate-message").textContent = !journal.length ? "No suitable observations yet. Save a discovery in the journal, or restore an existing TERRA journal backup, then refresh here. No sample records are invented." : `${eligible.length} eligible of ${journal.length} journal records. Check records to include; none are automatically selected.${excluded ? ` ${excluded} previously selected records outside this scope will be removed on save.` : ""}${!eligible.length ? " No records match this exact day/name. Change the scope or add a journal observation." : ""}`;
+      $("project-candidate-message").textContent = !journal.length ? "No suitable observations yet. Save a discovery in the journal, or restore an existing TERRA journal backup, then refresh here. No sample records are invented." : `${eligible.length} eligible of ${journal.length} journal records.${needsBoundary ? " Draw and apply a boundary first." : ""} Check records to include; none are automatically selected.${excluded ? ` ${excluded} previously selected records outside this scope will be removed on save.` : ""}${!eligible.length ? " No records match this exact day/name. Change the scope or add a journal observation." : ""}`;
       function checkbox(id, label) {
         const wrapper = node("label");
         const input = node("input"); input.type = "checkbox"; input.value = id; input.checked = chosen.has(id);
