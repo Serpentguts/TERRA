@@ -462,7 +462,7 @@ async function testDiscoveryHandoff(page, key) {
   await confirm(true);
   await ready();
   assert.equal(await page.locator('#name').inputValue(), chosen);
-  assert.equal(await page.locator('input[name=type]:checked').inputValue(), 'insect');
+  assert.equal(await page.locator('#organism-choice').inputValue(), 'Insect');
   assert.equal(await page.locator('#date').inputValue(), '2024-02-29');
   assert.equal(await page.locator('#date-picker').inputValue(), '2024-02-29');
   assert.equal(await page.locator('#notes').inputValue(), 'Keep notes');
@@ -542,7 +542,7 @@ async function testDiscoveryHandoff(page, key) {
   await analyze();
   await page.locator('#identify-candidates button').first().click();
   await confirm(true);
-  assert.equal(await page.locator('input[name=type]:checked').inputValue(), 'plant');
+  assert.equal(await page.locator('#organism-choice').inputValue(), 'Plant');
   await page.setInputFiles('#photo', photo('replacement.png'));
   assert.equal(await page.locator('#discovery-previews img').count(), 0);
   assert.equal(await page.locator('#preview-wrap').isVisible(), true);
@@ -577,7 +577,7 @@ async function testDiscoveryHandoff(page, key) {
     await dialog.accept();
     await click;
     await ready();
-    assert.equal(await page.locator('input[name=type]:checked').inputValue(), type);
+    assert.equal(await page.locator('#organism-choice').inputValue(), ({ plant: 'Plant', fungus: 'Mushroom', insect: 'Insect', mammal: 'Mammal', bird: 'Bird', fish: 'Fish', reptile: 'Reptile', other: 'Other' })[type]);
     assert.equal(await page.locator('#discovery-previews img').count(), 1);
   }
   // pagehide clears both owners; each object URL must be revoked exactly once.
@@ -794,7 +794,7 @@ async function testDiscoveryHandoff(page, key) {
     const injection = '<img src=x onerror="window.injected=true">';
     await page.fill('#name', injection);
     await page.fill('#notes', '<script>alert(1)</script>\nA second line.');
-    await page.check('input[value="fungus"]');
+    await page.fill('#organism-choice', 'Mushroom');
     await page.selectOption('#privacy', 'exact');
     await page.fill('#date', '2025-04-02');
     await saveObservation(page);

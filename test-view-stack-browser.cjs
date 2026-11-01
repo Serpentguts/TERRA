@@ -63,13 +63,12 @@ const { chromium } = require('playwright');
     await bottom.locator('a[href="#map"]').click();
     await bottom.locator('a[href="#profile"]').click();
     assert.equal(await page.locator('#map').isVisible(), true);
-    await page.locator('#profile-observation').fill('Unsubmitted mock draft');
-    await page.getByRole('button', { name: 'Mock follow River', exact: true }).click();
+    await page.locator('#profile > details > summary').click();
+    await page.locator('#profile-description').fill('Unsubmitted local profile draft');
     await page.getByRole('button', { name: 'Close Profile view', exact: true }).click();
     assert.equal(await page.locator('#map').isVisible(), true);
     await bottom.locator('a[href="#profile"]').click();
-    assert.equal(await page.locator('#profile-observation').inputValue(), 'Unsubmitted mock draft');
-    assert.equal(await page.getByRole('button', { name: 'Mock follow River', exact: true }).getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#profile-description').inputValue(), 'Unsubmitted local profile draft');
     // Closing forms is not a reset, save, delete, project completion or image removal.
     await page.locator('#name').fill('Unsaved discovery');
     await page.locator('#notes').fill('Unsaved notes');
@@ -108,7 +107,7 @@ const { chromium } = require('playwright');
     // All views can be closed at once; all essential destinations remain reachable.
     for (const [, label] of views) await page.getByRole('button', { name: `Close ${label} view`, exact: true }).click();
     assert.equal(await page.locator('.close-view:visible').count(), 0);
-    assert.equal(await bottom.locator('a:visible').count(), 6);
+    assert.equal(await bottom.locator('a:visible').count(), 7);
     for (const link of await bottom.locator('a').all()) {
       await link.click();
       assert.equal(await page.locator(await link.getAttribute('href')).isVisible(), true);

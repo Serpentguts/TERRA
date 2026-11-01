@@ -36,8 +36,8 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#profile').evaluate(el => !el.closest('#discover')), true);
     assert.equal(await page.locator('.site-header a[href="#profile"]').count(), 1);
     const bottom = page.getByRole('navigation', { name: 'Primary', exact: true });
-    const destinations = ['map', 'profile', 'feed', 'identify-title', 'genetic-title', 'projects-title'];
-    assert.deepEqual(await bottom.locator('a span').allTextContents(), ['Map', 'Profile', 'Feed', 'Observation', 'Genetics', 'Projects / Journal']);
+    const destinations = ['workspace', 'map', 'profile', 'feed', 'identify-title', 'genetic-title', 'projects-title'];
+    assert.deepEqual(await bottom.locator('a span').allTextContents(), ['♧', 'Workspace', 'Map', 'Profile', 'Feed', 'Observation', 'Genetics', 'Projects / Journal']);
     assert.deepEqual(await bottom.locator('a').evaluateAll(links => links.map(link => link.hash.slice(1))), destinations);
     assert.equal(await bottom.locator('svg[aria-hidden="true"][focusable="false"]').count(), 6);
     assert.equal(await bottom.evaluate(el => !el.closest('main, header, #discover')), true);
@@ -75,9 +75,9 @@ const { chromium } = require('playwright');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
 
     // Native bottom links have visible labels, keyboard activation and one current destination.
-    await bottom.locator('a').first().focus();
+    await bottom.locator('a[href="#map"]').focus();
     await page.keyboard.press('Tab');
-    assert.equal(await bottom.locator('a').nth(1).evaluate(el => el === document.activeElement), true);
+    assert.equal(await bottom.locator('a[href="#profile"]').evaluate(el => el === document.activeElement), true);
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('#profile').isVisible(), true);
     assert.equal(await page.locator('.map-legend').isVisible(), false);
@@ -155,45 +155,15 @@ const { chromium } = require('playwright');
     assert.match(await page.locator('#feed').textContent(), /not connected.*no posts, real follows, uploads, or external services/is);
     assert.equal(await bottom.locator('a[href="#feed"]').getAttribute('aria-current'), 'location');
 
-    // Profile is temporary local UI: no auth/upload/follow backend or storage.
+    // Profile now reads the journal; metadata persistence is covered in the next-UI suite.
     await toggle.click();
     await page.locator('#site-navigation a[href="#profile"]').click();
     assert.equal(await page.locator('#profile').isVisible(), true);
     assert.equal(await page.locator('#profile').evaluate(el => el === document.activeElement), true);
-    assert.match(await page.locator('#profile-help').textContent(), /MOCK profile.*no authentication, upload backend/s);
+    assert.match(await page.locator('#profile-help').textContent(), /no upload, account sync or real follows/);
     assert.equal(await page.locator('.map-legend').isVisible(), false);
     assert.equal(await page.locator('.map-filters').isVisible(), false);
-    await page.locator('#profile-observation').fill('<img src=x onerror=alert(1)>');
-    const photo = { name: 'mock.png', mimeType: 'image/png', buffer: Buffer.from('local file name demo') };
-    await page.setInputFiles('#profile-photos', { name: 'bad.txt', mimeType: 'text/plain', buffer: Buffer.from('no') });
-    await page.getByRole('button', { name: 'Add to mock profile · local only', exact: true }).click();
-    assert.equal(await page.locator('#profile-observations li').count(), 0);
-    assert.equal(await page.locator('#profile-photos').evaluate(el => el.checkValidity()), false);
-    await page.setInputFiles('#profile-photos', photo);
-    await page.getByRole('button', { name: 'Add to mock profile · local only', exact: true }).click();
-    assert.equal(await page.locator('#profile-observations li').count(), 1);
-    assert.match(await page.locator('#profile-observations').textContent(), /<img.*MOCK.*mock.png/);
-    assert.equal(await page.locator('#profile-observations img').count(), 0);
-    assert.match(await page.locator('#profile-status').textContent(), /Nothing uploaded or saved/);
-    const follow = page.locator('button[aria-label="Mock follow River"]');
-    await follow.focus(); await page.keyboard.press('Space');
-    assert.equal(await follow.getAttribute('aria-pressed'), 'true');
-    assert.match(await page.locator('#profile-follow-status').textContent(), /1 mock follow.*nobody contacted/);
-    await follow.click(); assert.equal(await follow.getAttribute('aria-pressed'), 'false');
-    await follow.click();
     assert.deepEqual(await storage(), initial);
-    await page.reload();
-    assert.equal(await page.locator('#profile').isVisible(), true);
-    assert.equal(await page.locator('#profile-observations li').count(), 0);
-    assert.equal(await follow.getAttribute('aria-pressed'), 'false');
-    await page.locator('#profile-observation').fill('Temporary reset check');
-    await page.setInputFiles('#profile-photos', photo);
-    await page.getByRole('button', { name: 'Add to mock profile · local only', exact: true }).click();
-    await follow.click(); await page.locator('#profile-reset').click();
-    assert.equal(await follow.getAttribute('aria-pressed'), 'false');
-    assert.equal(await page.locator('#profile-observations li').count(), 0);
-    await toggle.click(); await page.getByRole('link', { name: 'Profile · local demo', exact: true }).click();
-    assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
     await page.goto(origin + '/#home');
 
     // Both forms start with a single native dropdown. All other location fields
@@ -284,13 +254,10 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#demo-map .demo-card').count(), 6);
     assert.doesNotMatch((await page.locator('#demo-map, #profile').allTextContents()).join(' '), /Keep my notes/);
 
-    // Populated Profile never copies or changes an existing private journal.
+    // Profile displays the authoritative journal name/date, not private notes/location.
     const savedStorage = await storage();
     await bottom.locator('a[href="#profile"]').click();
-    await page.locator('#profile-observation').fill('A'.repeat(120));
-    await page.setInputFiles('#profile-photos', { ...photo, name: 'long-private-filename-'.repeat(8) + '.png' });
-    await page.getByRole('button', { name: 'Add to mock profile · local only', exact: true }).click();
-    await follow.click();
+    assert.match(await page.locator('#profile-observations').textContent(), /Common dandelion/);
     assert.deepEqual(await storage(), savedStorage);
     assert.doesNotMatch(await page.locator('#profile-observations').textContent(), /Keep my notes/);
 
@@ -353,14 +320,13 @@ const { chromium } = require('playwright');
     await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
     assert.equal(await page.locator('#discovery-context').inputValue(), '');
     assert.equal(await page.locator('#discovery-city').inputValue(), '');
-    assert.equal(await page.locator('#profile-observations li').count(), 0);
-    assert.equal(await follow.getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('#profile-observations li').count(), 1);
     assert.deepEqual(await storage(), savedStorage);
     await page.reload();
     assert.equal(await page.locator('#discovery-context-fields').isVisible(), false);
     assert.deepEqual(await page.evaluate(() => window.outbound), []);
     assert.deepEqual(errors, []); assert.deepEqual(network, []);
     await context.close();
-    console.log('PASS: native context disclosure/clearing, setting handoff/nonpersistence/export/reset, six-destination persistent navigation/hash/history/focus/spacing, Map-only legend/combined filters/empty/reset, mock Profile add/follow/reset/nonpersistence, icons/sale separation, labels/mobile, no GPS or network.');
+    console.log('PASS: native context disclosure/clearing, setting handoff/nonpersistence/export/reset, seven-destination persistent navigation/hash/history/focus/spacing, Map-only legend/combined filters/empty/reset, journal-backed local Profile, icons/sale separation, labels/mobile, no GPS or network.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

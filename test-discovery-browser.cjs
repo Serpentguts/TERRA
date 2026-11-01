@@ -117,7 +117,7 @@ const { chromium } = require('playwright');
     }
     await page.fill('#genetic-sequence', 'ACGTRYSWKMBDHVN'); await page.click('#genbank-preview');
     assert.equal(await raw(J), journalBeforeDNA); assert.equal(await raw(K), projectsBeforeDNA);
-    assert.deepEqual(await page.evaluate(() => Object.keys(localStorage).sort()), [J, K].sort());
+    assert.deepEqual(await page.evaluate(() => Object.keys(localStorage).sort()), [J, K, 'terra.rewards.v1'].sort());
     const download = page.waitForEvent('download'); await page.click('#export-button');
     const exported = JSON.parse(await fs.readFile(await (await download).path(), 'utf8'));
     assert.equal(exported.version, 1);
@@ -139,7 +139,7 @@ const { chromium } = require('playwright');
     const beforeCategories = (await records()).length;
     for (const [index, type] of ['plant', 'fungus', 'insect', 'mammal', 'bird', 'fish', 'reptile'].entries()) {
       await page.selectOption('#project-observation', '');
-      await page.check(`#observation-form input[name="type"][value="${type}"]`);
+      await page.fill('#organism-choice', ({ plant: 'Plant', fungus: 'Mushroom', insect: 'Insect', mammal: 'Mammal', bird: 'Bird', fish: 'Fish', reptile: 'Reptile', other: 'Other' })[type]);
       await page.fill('#name', `Local ${type} discovery`); await select(customId); await add();
       const record = (await records())[0];
       assert.equal(record.type, type);
@@ -179,7 +179,7 @@ const { chromium } = require('playwright');
       assert.equal(await page.locator('#name').isVisible(), true, 'Confirmed handoff reopens a closed draft');
       assert.equal(await raw(J), beforeTransfer, 'Photo confirmation must not save');
       assert.equal(await page.locator('#project-observation').inputValue(), '', 'New photo draft must not add a previously selected saved record');
-      assert.equal(await page.locator('input[name=type]:checked').inputValue(), type === 'unsure' ? 'other' : type);
+      assert.equal(await page.locator('#organism-choice').inputValue(), ({ plant: 'Plant', fungus: 'Mushroom', insect: 'Insect', mammal: 'Mammal', bird: 'Bird', fish: 'Fish', reptile: 'Reptile', unsure: 'Other' })[type]);
       await select(customId);
       if (type === 'plant') {
         // Project-write failure keeps independent previews/context and reuses the journal ID.
