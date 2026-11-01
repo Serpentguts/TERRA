@@ -43,7 +43,7 @@
   }
   function link(href, text) { const a = node("a", text); a.href = href; return a; }
   function sampleCard(sample) {
-    const card = node("li", undefined, "observation-card");
+    const card = node("li", undefined, "feed-card");
     const author = TerraFeed.profiles.find(p => p.id === sample.author);
     card.append(node("p", `FICTIONAL DEMO · ${TerraFeed.types[sample.type]} · Not published`, "demo-purpose"),
       link(`#demo-profile-${author.id}`, `${author.icon} ${author.name}`), node("h4", sample.title), node("p", sample.body));
@@ -52,7 +52,7 @@
   // Fixed samples and profiles have no storage side effects on startup.
   for (const sample of TerraFeed.samples) $("feed-samples").append(sampleCard(sample));
   for (const profile of TerraFeed.profiles) {
-    const card = node("section", undefined, "mock-profile observation-card");
+    const card = node("section", undefined, "mock-profile feed-card");
     card.id = `demo-profile-${profile.id}`; card.tabIndex = -1;
     const heading = node("h4", `${profile.icon} ${profile.name}`);
     heading.id = `${card.id}-title`; card.setAttribute("aria-labelledby", heading.id);
@@ -70,7 +70,7 @@
     $("feed-profiles").append(card);
   }
   function localCard(post, records, preparation) {
-    const card = node("li", undefined, "observation-card");
+    const card = node("li", undefined, "feed-card");
     card.dataset.postId = post.id;
     card.append(node("p", preparation ? "LOCAL PREPARATION · iNaturalist NOT SUBMITTED" : "LOCAL TERRA DEMO · NOT PUBLISHED", "demo-purpose"),
       link("#profile", "Your local profile · not a public account"), node("h4", post.title), node("p", `${TerraFeed.types[post.type]} · Saved locally ${new Date(post.createdAt).toLocaleString()}`), node("p", post.body));

@@ -337,7 +337,7 @@ function render() {
     provenance.append(element("p", "", "No identification history yet"));
     card.append(provenance);
     const share = element("a", "text-button", "Share / prepare · local demo");
-    share.href = "#feed";
+    share.href = "#feed-post-title";
     share.dataset.shareObservation = observation.id;
     share.setAttribute("aria-label", `Share or prepare saved observation: ${observation.name} (local demo)`);
     card.append(share);

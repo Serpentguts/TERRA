@@ -61,8 +61,8 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 #feed { overflow-wrap: anywhere; }
 #feed-form { max-width: 680px; margin: 20px 0 28px; }
 #feed h3 { margin-top: 28px; }
-#feed .observation-card h4 { margin: 12px 0; }
-#feed .observation-card p { white-space: pre-wrap; }
+#feed .feed-card h4 { margin: 12px 0; }
+#feed .feed-card p { white-space: pre-wrap; }
 .mock-profile { margin-top: 24px; scroll-margin-top: 20px; }
 .demo-card h4 { margin: 8px 0; }
 .demo-card p { font-size: 12px; margin-bottom: 8px; }
@@ -157,7 +157,7 @@ h3 { font: 20px/1.4 Georgia, serif; margin-bottom: 12px; }
 .empty-state p { font-size: 13px; color: var(--muted); }
 .empty-caption { font-size: 9px; color: var(--muted); letter-spacing: 2px; display: block; margin-top: 28px; }
 .observation-list { padding: 0; list-style: none; margin: 20px 0 0; }
-.observation-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 20px; margin-bottom: 14px; overflow-wrap: anywhere; }
+.observation-card, .feed-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 20px; margin-bottom: 14px; overflow-wrap: anywhere; }
 .card-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; margin-bottom: 12px; }
 .category { color: var(--green); background: #edf1e7; border-radius: 4px; padding: 3px 8px; }
 .observation-card h3 { margin-bottom: 8px; font-size: 23px; }
