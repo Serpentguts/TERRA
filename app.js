@@ -1,6 +1,7 @@
 "use strict";
 
-// Only these text fields are saved. Photos and coordinates never enter storage.
+// Legacy six-field records remain readable. Optional validated local-grid location
+// and deletion timestamps are preserved in storage/backups. Photos are never saved.
 const STORAGE_KEY = "terra.observations.v1";
 // Keep legacy fungus/other keys readable in existing version-1 journals and backups.
 const categories = { plant: "Plant", fungus: "Mushroom", insect: "Insect", mammal: "Mammal", bird: "Bird", fish: "Fish", reptile: "Reptile", other: "Other" };
@@ -49,7 +50,7 @@ function refreshProjectAction() {
   const selectedRecord = projectObservation.value;
   const selectedProject = discoveryProject.value;
   projectObservation.replaceChildren(new Option("Current discovery draft (save once, then add)", ""));
-  for (const r of observations) projectObservation.add(new Option(`${r.name} · ${r.date} · ID: ${r.id}`, r.id));
+  for (const r of TerraData.active(observations)) projectObservation.add(new Option(`${r.name} · ${r.date} · ID: ${r.id}`, r.id));
   projectObservation.value = observations.some(r => r.id === selectedRecord) ? selectedRecord : "";
   try {
     const projects = FieldSummary.parse(localStorage.getItem(FieldSummary.KEY));
@@ -98,7 +99,7 @@ document.querySelector("#discovery-clear-images").addEventListener("click", clea
 document.addEventListener("terra:prefill-discovery", event => {
   const draft = event.detail;
   if (!draft || typeof draft.name !== "string" || !draft.name.trim() || draft.name.length > 120 ||
-      !Object.hasOwn(categories, draft.type) || (draft.date && !validDate(draft.date)) ||
+      !Object.hasOwn(categories, draft.type) || (draft.date && !TerraData.observationDate(draft.date)) ||
       !Array.isArray(draft.files) || !draft.files.length || draft.files.length > 6 ||
       draft.files.some(file => !(file instanceof File) || !file.type.startsWith("image/") || !file.size || file.size > 10 * 1024 * 1024)) return;
   clearPreview();
@@ -112,6 +113,7 @@ document.addEventListener("terra:prefill-discovery", event => {
   dateInput.value = draft.date; // Missing dates stay blank; never invent an observation date.
   syncDate();
   TerraLocation.set("discovery", draft.location);
+  TerraMaps.observation.clear(); // Never inherit a previous draft's precise location.
   for (const file of draft.files) {
     const card = element("li", "identify-photo");
     const img = element("img");
@@ -220,8 +222,10 @@ nameInput.addEventListener("keydown", event => {
 });
 
 function syncDate() {
-  const valid = validDate(dateInput.value);
-  dateInput.setCustomValidity(valid ? "" : "Enter a valid date as YYYY-MM-DD (year 0001–9999).");
+  const valid = TerraData.observationDate(dateInput.value);
+  datePicker.max = today();
+  document.querySelector("#identify-date").max = today();
+  dateInput.setCustomValidity(valid ? "" : "Enter a valid YYYY-MM-DD date, today or earlier.");
   dateInput.setAttribute("aria-invalid", String(!valid));
   datePicker.value = valid ? dateInput.value : "";
 }
@@ -247,7 +251,7 @@ function validObservation(item) {
     typeof item.type === "string" && Object.hasOwn(categories, item.type) &&
     typeof item.privacy === "string" && Object.hasOwn(privacyLabels, item.privacy) &&
     typeof item.name === "string" && item.name.trim().length > 0 && item.name.length <= 120 &&
-    typeof item.notes === "string" && item.notes.length <= 3000 && validDate(item.date);
+    typeof item.notes === "string" && item.notes.length <= 3000 && validDate(item.date) && TerraData.optional(item);
 }
 
 function showError(element, message) {
@@ -263,7 +267,7 @@ function readObservations() {
     throw new Error("Invalid saved journal");
   }
   // Explicitly pick fields, even if storage has been edited externally.
-  return saved.map(({ id, type, name, notes, date, privacy }) => ({ id, type, name, notes, date, privacy }));
+  return saved.map(TerraData.pick);
 }
 
 function load() {
@@ -281,8 +285,9 @@ function load() {
 
 function persist(next, errorElement = formError) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    observations = next;
+    const retained = TerraData.retain(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(retained));
+    observations = retained;
     showError(errorElement, "");
     return true;
   } catch {
@@ -301,12 +306,14 @@ function element(tag, className, text) {
 function render() {
   document.dispatchEvent(new Event("terra:journal-rendered"));
   list.replaceChildren();
-  document.querySelector("#count").textContent = String(observations.length);
-  document.querySelector("#empty-state").hidden = observations.length > 0 || !storageReady;
+  const active = TerraData.active(observations);
+  document.querySelector("#count").textContent = String(active.length);
+  document.querySelector("#empty-state").hidden = active.length > 0 || !storageReady;
+  renderTrash();
   exportButton.disabled = !storageReady || observations.length === 0;
   importFile.disabled = !storageReady;
   confirmImport.disabled = !storageReady || !pendingImport || pendingImport.additions.length === 0;
-  for (const observation of [...observations].sort((a, b) => b.date.localeCompare(a.date))) {
+  for (const observation of [...active].sort((a, b) => b.date.localeCompare(a.date))) {
     const card = element("li", "observation-card");
     const meta = element("div", "card-meta");
     const date = element("time", "", new Date(`${observation.date}T12:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }));
@@ -321,26 +328,53 @@ function render() {
     provenance.append(element("p", "", "No identification history yet"));
     card.append(provenance);
     const bottom = element("div", "card-bottom");
-    const remove = element("button", "text-button", "Delete");
+    const remove = element("button", "text-button", "🗑 Delete");
     remove.type = "button";
     remove.disabled = !storageReady;
     remove.setAttribute("aria-label", `Delete observation: ${observation.name}`);
     remove.addEventListener("click", () => {
-      if (!window.confirm(`Delete “${observation.name}”? This cannot be undone.`)) return;
+      if (!window.confirm(`Move “${observation.name}” to Trash? Restore it within 3 days. After that it is permanently removed on the next successful journal change.`)) return;
       // Read again so another tab's latest entries are not overwritten.
       load();
       if (!storageReady) return;
-      if (persist(observations.filter(item => item.id !== observation.id))) {
+      if (persist(observations.map(item => item.id === observation.id && !item.deletedAt ? { ...item, deletedAt: new Date().toISOString() } : item))) {
         render();
-        status.textContent = "Observation deleted.";
+        status.textContent = "Observation moved to Trash. Restore within 3 days using the trash bin below. Project references are retained but not counted while in Trash.";
         exportButton.disabled ? document.querySelector("#name").focus() : exportButton.focus();
       }
     });
-    bottom.append(element("small", "", `Privacy preference: ${privacyLabels[observation.privacy]} · No location saved`), remove);
+    bottom.append(element("small", "", `Privacy: ${privacyLabels[observation.privacy]} · ${observation.location ? (observation.privacy === "hidden" ? "Location withheld" : observation.privacy === "approximate" ? "Coarse local region only" : "Local schematic pin") : "Legacy record: no location saved"}`), remove);
     card.append(bottom);
     list.append(card);
   }
   refreshProjectAction();
+}
+
+function renderTrash() {
+  const trash = document.querySelector("#trash-list");
+  trash.replaceChildren();
+  for (const r of observations.filter(r => r.deletedAt)) {
+    const expired = TerraData.expired(r);
+    const row = element("li", "observation-card");
+    const until = new Date(Date.parse(r.deletedAt) + TerraData.RETENTION).toLocaleString();
+    row.append(element("p", "", `${r.name} · ${expired ? "Recovery expired; permanently removed on next successful journal change." : `Recover until ${until} (3 days after deletion).`}`));
+    const restore = element("button", "secondary-button", "Restore observation");
+    restore.type = "button"; restore.disabled = !storageReady || expired;
+    restore.addEventListener("click", () => {
+      load();
+      const saved = observations.find(item => item.id === r.id);
+      if (!storageReady || !saved?.deletedAt || TerraData.expired(saved)) {
+        status.textContent = "Recovery is unavailable: the entry changed or its 3-day window expired."; return;
+      }
+      const next = observations.map(item => {
+        if (item.id !== r.id) return item;
+        const { deletedAt, ...record } = item; return record;
+      });
+      if (persist(next)) { render(); status.textContent = "Observation restored to journal. Project references reconnect only where the current scope still allows it."; }
+    });
+    row.append(restore); trash.append(row);
+  }
+  document.querySelector("#trash-count").textContent = String(observations.filter(r => r.deletedAt).length);
 }
 
 function clearPreview() {
@@ -383,8 +417,10 @@ function saveDiscovery(withProject = false) {
     date: data.get("date"),
     privacy: data.get("privacy")
   };
-  if (!validObservation(observation)) {
-    showError(formError, "Check the observation fields and enter a valid date (year 0001–9999).");
+  const location = TerraMaps.observation.read();
+  if (location) observation.location = location;
+  if (!validObservation(observation) || !TerraData.observationDate(observation.date) || !location) {
+    showError(formError, "Check the fields: date must be today or earlier, and a map location selection is required for the chosen privacy tier.");
     return;
   }
   // Check scope before creating a record, then recheck before writing membership.
@@ -415,6 +451,7 @@ function saveDiscovery(withProject = false) {
   const targetProject = discoveryProject.value;
   form.reset();
   TerraLocation.sync("discovery");
+  TerraMaps.observation.clear();
   discoveryProject.value = targetProject;
   dateInput.value = today();
   syncDate();
@@ -437,7 +474,7 @@ addProjectButton.addEventListener("click", () => {
   const id = projectObservation.value;
   load();
   if (!storageReady) return;
-  const record = observations.find(r => r.id === id);
+  const record = TerraData.active(observations).find(r => r.id === id);
   if (!record) { showError(formError, "That saved observation no longer exists. Choose another record or the current draft."); return; }
   try {
     projectMembership(record, true);
@@ -451,7 +488,7 @@ exportButton.addEventListener("click", () => {
   try {
     const exported = {
       format: "terra-observations", version: 1, exportedAt: new Date().toISOString(),
-      notice: "Browser-only journal. Images and coordinates are not saved. Privacy is a preference only.",
+      notice: "Browser-only journal. May include versioned local schematic locations and 3-day Trash timestamps. No photos or real geographic coordinates. Keep private; do not downgrade to older builds that discard optional fields.",
       observations
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" }));
@@ -483,11 +520,11 @@ function parseImport(text) {
     throw new Error("This is not a supported TERRA version-1 export. Nothing was imported.");
   }
   // Validate even records that will be skipped as duplicates, before any write.
-  const invalid = data.observations.findIndex(item => !validObservation(item));
+  const invalid = data.observations.findIndex(item => !validObservation(item) || !TerraData.observationDate(item.date));
   if (invalid !== -1) {
     throw new Error(`Observation ${invalid + 1} has invalid or missing fields. The whole file was rejected; nothing was imported.`);
   }
-  return data.observations.map(({ id, type, name, notes, date, privacy }) => ({ id, type, name, notes, date, privacy }));
+  return data.observations.map(TerraData.pick);
 }
 
 function resetImport() {
@@ -502,6 +539,7 @@ function resetImport() {
 function previewImport(records) {
   const seen = new Set(observations.map(item => item.id));
   const additions = [];
+  records = TerraData.retain(records);
   const rows = records.map(record => {
     const duplicate = seen.has(record.id);
     seen.add(record.id);

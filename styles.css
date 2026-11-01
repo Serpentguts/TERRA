@@ -1,3 +1,9 @@
+.local-map { display: block; width: min(100%, 320px); aspect-ratio: 1; border: 2px solid #386d5d; cursor: crosshair; touch-action: manipulation; }
+.map-coordinates { display: flex; flex-wrap: wrap; gap: .6rem; margin-block: .6rem; }
+.map-coordinates label { flex: 1 1 65px; max-width: 100px; }
+.map-coordinates input { width: 100%; min-width: 0; }
+#observation-map, #project-map { min-width: 0; }
+
 :root { color-scheme: light; --ink: #243c31; --green: #214c3c; --muted: #617064; --line: #dce1d5; --paper: #f7f8f2; }
 * { box-sizing: border-box; }
 html { scroll-padding-bottom: calc(var(--bottom-nav-height, 170px) + 16px); }
