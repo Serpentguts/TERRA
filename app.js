@@ -230,6 +230,8 @@ function syncDate() {
   datePicker.value = valid ? dateInput.value : "";
 }
 dateInput.addEventListener("input", syncDate);
+datePicker.addEventListener("focus", syncDate);
+document.querySelector("#identify-date").addEventListener("focus", event => { event.target.max = today(); });
 function pickDate() {
   dateInput.value = datePicker.value;
   syncDate();
@@ -489,7 +491,7 @@ exportButton.addEventListener("click", () => {
     const exported = {
       format: "terra-observations", version: 1, exportedAt: new Date().toISOString(),
       notice: "Browser-only journal. May include versioned local schematic locations and 3-day Trash timestamps. No photos or real geographic coordinates. Keep private; do not downgrade to older builds that discard optional fields.",
-      observations
+      observations: TerraData.retain(observations)
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" }));
     const link = element("a");
@@ -522,7 +524,7 @@ function parseImport(text) {
   // Validate even records that will be skipped as duplicates, before any write.
   const invalid = data.observations.findIndex(item => !validObservation(item) || !TerraData.observationDate(item.date));
   if (invalid !== -1) {
-    throw new Error(`Observation ${invalid + 1} has invalid or missing fields. The whole file was rejected; nothing was imported.`);
+    throw new Error(`Observation ${invalid + 1} has invalid or missing fields (including a future date or location beyond its privacy tier). The whole file was rejected; nothing was imported.`);
   }
   return data.observations.map(TerraData.pick);
 }

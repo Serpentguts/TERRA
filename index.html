@@ -186,9 +186,9 @@
           <div id="discovery-images" hidden><p>Transferred photo previews · temporary only. Choosing a new journal photo replaces all transferred views. Resetting Explore a photo does not clear this independent draft; remove here, save, or reload to clear.</p><ul id="discovery-previews" class="identify-previews" aria-label="Temporary discovery photo previews"></ul><button id="discovery-clear-images" class="text-button" type="button">Remove all transferred previews</button></div>
           <p id="discovery-transfer-status" class="status" role="status" aria-live="polite"></p>
           <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">Choose a location below. Exact retains a local schematic pin; Approximate retains only a coarse region. Hidden discards location entirely. No GPS or real geographic accuracy.</small></div>
+          <fieldset><legend>Required location · local schematic only</legend><div id="observation-map"></div><div class="field"><label for="location-project-site">Saved project site (Approximate / Hidden)</label><select id="location-project-site"></select></div></fieldset>
           <p id="form-error" class="error" role="alert" hidden></p>
           <button id="save-button" class="primary-button" type="submit" disabled>Save to local journal <span aria-hidden="true">↗</span></button>
-          <fieldset><legend>Required location · local schematic only</legend><div id="observation-map"></div><div class="field"><label for="location-project-site">Saved project site (Approximate / Hidden)</label><select id="location-project-site"></select></div></fieldset>
           <div class="field"><label for="project-observation">Observation to add</label><select id="project-observation" aria-describedby="add-project-help"><option value="">Current discovery draft (save once, then add)</option></select></div>
           <div class="field"><label for="discovery-project">TERRA project</label><select id="discovery-project" aria-describedby="add-project-help"></select><small id="add-project-help">Local references only. Choose an open project; day/name scope must match. A saved observation is reused, not copied.</small></div>
           <button id="add-project-button" class="primary-button" type="button" disabled>Add to TERRA project</button>
@@ -535,7 +535,7 @@
       if (project.date && (record.date < project.date || record.date > (project.endDate || project.date))) return false;
       if (project.type === "species" && record.name.trim() !== project.species.trim()) return false;
       if (project.groupValue && project.type === "day" && record.date !== project.groupValue) return false;
-      return !project.boundary || TerraData.inside(project.boundary, record.location);
+      return !project.boundary || (TerraData.location(record.location, record.privacy) && TerraData.inside(project.boundary, record.location));
     }
     function valid(project) {
       return project && !Array.isArray(project) && text(project.id, 200, true) && text(project.title, 120, true) && types.includes(project.type) &&
@@ -614,7 +614,7 @@
     const $ = id => document.getElementById(id);
     const node = (tag, text) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; return el; };
     const fields = ["title", "type", "date", "site", "species", "notes", "endDate"];
-    let groupValue = "";
+    let groupValue = "", otherDay = false;
     let projects = [], journal = [], selectedId = "", snapshot = null, ready = false;
     let chosen = new Set();
     const error = message => { $("project-error").textContent = message; $("project-error").hidden = !message; };
@@ -685,7 +685,7 @@
       out.append(node("p", `${p.observationIds.length} references · ${s.total} included observations · ${s.uniqueTaxa} unique taxa labels · ${s.missing.length} missing references (excluded).`));
       out.append(node("p", "Unique taxa means distinct exact, trimmed recorded names, excluding Unknown (any letter case). Common/scientific synonyms and case variants are not resolved. This is not verified biological richness. Each included record counts once; counts do not represent abundance, sampling effort, trends, or ecological condition."));
       if (!s.total) out.append(node("p", "No included observations to summarize. Select existing journal records and save, or reopen this project to change membership. Missing or unselected records cannot contribute to metrics."));
-      if (s.missing.length) out.append(node("p", `Missing record IDs: ${s.missing.join(", ")}. References are retained so restoring these exact IDs reconnects them. Completion does not freeze the journal.`));
+      if (s.missing.length) out.append(node("p", `Missing record IDs: ${s.missing.join(", ")}. Missing, trashed or currently out-of-scope records are not counted. References reconnect only if the restored records satisfy the current scope. Completion does not freeze the journal.`));
       if (s.records.length) {
         out.append(table("Records by date", ["Date", "Count", "Included observation IDs"], s.dates.map(([name, ids]) => [name, ids.length, ids.join(", ")])));
         out.append(table("Records by species / recorded name (including Unknown)", ["Recorded name", "Count", "Included observation IDs"], s.species.map(([name, ids]) => [name, ids.length, ids.join(", ")])));
@@ -704,6 +704,7 @@
         const p = current();
         for (const key of fields) $("project-" + key).value = p ? (p[key] || "") : key === "type" ? "custom" : "";
         groupValue = p?.groupValue || "";
+        otherDay = false;
         TerraMaps.project.set(p?.boundary ? { ...p.boundary, kind: "region" } : null);
         chosen = new Set(p?.observationIds || []);
         error("");
@@ -734,14 +735,17 @@
       if (p.type === "site") values = projects.filter(p => p.boundary).map(p => p.site);
       for (const v of [...new Set(values)].sort()) select.add(new Option(v, v));
       if (p.type === "day") select.add(new Option("Other / enter another day in timeframe", "__other"));
-      select.value = p.type === "day" ? groupValue : p.type === "species" ? p.species : p.site;
+      select.value = p.type === "day" ? (otherDay || (groupValue && !values.includes(groupValue)) ? "__other" : groupValue) : values.includes(p.type === "species" ? p.species : p.site) ? (p.type === "species" ? p.species : p.site) : "";
+      $("project-other-day-field").hidden = p.type !== "day" || select.value !== "__other";
+      $("project-other-day").value = groupValue;
     }
-    for (const key of ["type", "date", "endDate", "species"]) $("project-" + key).addEventListener("input", () => { groupValue = ""; groupChoices(); candidates(); });
+    for (const key of ["type", "date", "endDate", "species"]) $("project-" + key).addEventListener("input", () => { groupValue = ""; otherDay = false; groupChoices(); candidates(); });
     $("project-group-choice").addEventListener("change", event => {
       const v = event.target.value, type = $("project-type").value;
       if (type === "species") { $("project-species").value = v; if (!v) $("project-species").focus(); }
       if (type === "day") {
-        groupValue = v === "__other" ? "" : v;
+        otherDay = v === "__other";
+        groupValue = otherDay ? "" : v;
         $("project-other-day-field").hidden = v !== "__other";
       }
       if (type === "site") {
@@ -758,10 +762,11 @@
       event.preventDefault(); error("");
       if (!unchanged() || current()?.complete) return;
       const p = draft();
+      if (p.type === "day" && otherDay && !groupValue) { error("Enter the Other day within the start/end timeframe, or choose All dates."); return; }
       const known = new Map(journal.map(r => [r.id, r]));
       p.observationIds = p.observationIds.filter(id => !known.has(id) || FieldSummary.matches(p, known.get(id)));
       if (!FieldSummary.valid(p)) { error("Enter a title (1–120 characters), a valid optional YYYY-MM-DD date (year 0001–9999), and the required date, species/name or site for this group. Notes allow up to 3,000 characters; site/species allow 120."); return; }
-      if (p.type === "site" && !p.boundary && (!current() || current().boundary)) { error("Draw a site boundary before saving. Existing journal records are unchanged."); return; }
+      if (p.type === "site" && !p.boundary && (!current() || current().type !== "site" || current().boundary)) { error("Draw a site boundary before saving. Existing journal records are unchanged."); return; }
       const removed = [...chosen].filter(id => !p.observationIds.includes(id));
       const next = selectedId ? projects.map(item => item.id === selectedId ? p : item) : [...projects, p];
       if (!persist(next)) return;

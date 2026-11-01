@@ -38,7 +38,7 @@ const fs = require('node:fs/promises');
     const records = [
       { id: 'a', type: 'plant', name: 'Oak', date: '2024-02-29', notes: 'A', privacy: 'hidden' },
       { id: 'b', type: 'plant', name: 'Oak', date: '2024-02-29', notes: 'B', privacy: 'hidden' },
-      { id: 'c', type: 'other', name: 'Unknown', date: '2025-01-01', notes: '=CMD()', privacy: 'exact' },
+      { id: 'c', type: 'other', name: 'Unknown', date: '2025-01-01', notes: '=CMD()', privacy: 'exact', location: { version: 1, space: 'terra-local-grid-v1', kind: 'point', x: 50, y: 50 } },
       { id: 'd', type: 'fungus', name: '<img src=x onerror="window.injected=1">', date: '2025-01-01', notes: '<script>bad()</script>', privacy: 'approximate' }
     ];
     const journalBytes = JSON.stringify(records);
@@ -93,7 +93,9 @@ const fs = require('node:fs/promises');
     // Site group requires a manual label, offers journal records, and never implies geographic matching.
     await page.selectOption('#project-select', ''); await page.fill('#project-title', 'Site collection'); await page.selectOption('#project-type', 'site'); await save();
     assert.equal(await page.locator('#project-error').isVisible(), true);
-    await page.fill('#project-site', 'North garden'); await choose('c'); await save();
+    await page.fill('#project-site', 'North garden');
+    await page.evaluate(() => TerraMaps.project.select(0, 0, 100, 100));
+    await choose('c'); await save();
     const site = (await projects()).at(-1); assert.match(await report(), /North garden/); assert.match(await report(), /1 included observations · 0 unique taxa labels/);
     assert.equal(await raw(J), journalBytes);
     // Completed projects remain live: deleted records become retained missing IDs, then reconnect on restore.
@@ -101,8 +103,7 @@ const fs = require('node:fs/promises');
     page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete observation: Oak', exact: true }).first().click();
     assert.match(await report(), /0 included observations/); assert.match(await report(), /Missing record IDs: a/);
     assert.deepEqual((await projects()).find(p => p.id === species.id).observationIds, ['a']);
-    await page.setInputFiles('#import-file', { name: 'restore.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ format: 'terra-observations', version: 1, exportedAt: '2026-01-01T00:00:00.000Z', observations: [records[0]] })) });
-    await page.waitForSelector('#import-preview:visible'); await page.click('#confirm-import');
+    await page.locator('#trash-list').getByRole('button', { name: 'Restore observation' }).click();
     assert.match(await report(), /1 included observations/);
     // Project write failures preserve draft and both stores; retry succeeds.
     await page.selectOption('#project-select', site.id); await page.fill('#project-notes', 'Keep this draft');

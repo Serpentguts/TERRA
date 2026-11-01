@@ -5,7 +5,7 @@ const TerraMaps = (() => {
   function create(host, mode) {
     let value = null, first = null;
     const note = document.createElement("p");
-    note.textContent = "LOCAL / DEMO schematic · shared 0–100 grid, NOT real geography. Use the same imagined grid for observations and sites. No GPS or external services. Click for a pin (Exact), or two opposite corners for a rectangle. Keyboard alternative: enter grid values and Apply.";
+    note.textContent = "LOCAL / DEMO schematic · shared 0–100 grid, NOT real geography. Use the same imagined grid for observations and sites. No GPS or external services. Click for a pin (Exact), or two opposite corners for a rectangle. Keyboard alternative: enter grid values and Apply. x runs left to right; y runs top to bottom. x1/y1 and x2/y2 are opposite rectangle corners. Approximate snaps outward to 10-unit cells, at least 20×20; Hidden uses at least 40×40 and discards it on save.";
     const svg = document.createElementNS(svgNS, "svg");
     svg.setAttribute("viewBox", "0 0 100 100"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Local schematic location selection; numeric controls below provide keyboard access");
     svg.classList.add("local-map");
