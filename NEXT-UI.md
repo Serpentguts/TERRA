@@ -2,12 +2,14 @@
 
 Current review: existing draft [PR #13](https://github.com/Serpentguts/TERRA/pull/13), branch `integration/pr7-pr11-pr12` only. No merge or deployment. This document supersedes historical temporary mock-profile, single-select filter and six-destination navigation descriptions. [LOCAL-WORKFLOWS.md](LOCAL-WORKFLOWS.md) remains authoritative for privacy, dates, project geometry and 72-hour Trash.
 
+**Latest Feed addition:** [FEED.md](FEED.md) is authoritative for the fictional Feed, local follow preferences, typed composer, ID-linked observation sharing and iNaturalist local-only preparation. Feed is no longer an empty placeholder. Nothing is published; music remains future-only. Complete verification is now **25 JS unit tests, 4 Flask tests, 8 Chromium suites**.
+
 ## One local fieldbook, not a social account
 
 - **Profile → Posts** reads active entries directly from the existing journal, without storing copies. Names, categories and dates link to saved journal details/provenance. Private notes and locations are not repeated on Profile. Trash entries disappear from Posts and return on Restore. Photos remain temporary; they are not saved or used as profile posts.
 - **Projects** reads the existing ID-only project collections and their eligible active counts. Completion remains a local user action, not scientific validation.
 - Local name, description, symbolic avatar and credentials persist in `terra.profile.v1`: `{version:1,name,bio,credentials,avatar}`. The avatar uses app emoji primitives, not an uploaded/stored photo. Credentials always say **user-entered / unverified**. No LinkedIn integration.
-- Followers / following are **0 / 0 · not connected**. No pretend follows, contacts, notifications, uploads, account sync or public profile. Feed and Genetics remain explicitly unconnected scaffolds. No AI or external API calls.
+- Your own Profile followers / following remain **0 / 0 · not connected**. No real follows, contacts, notifications, uploads, account sync or public profile. The separate Feed now has explicitly fictional profiles with local-only follow toggles; those preferences are not real social counts. Genetics remains unconnected. No AI or external API calls.
 - Profile tabs support click, Left/Right, Home/End, roving keyboard focus and correctly associated tabpanels. All user text uses textContent/value, never HTML.
 
 ## Transparent non-quality participation awards
@@ -46,7 +48,7 @@ Workspace lists the nine navigable sections and their open/minimized/closed stat
 
 Existing `terra.observations.v1`, `terra.projects.v1`, version-1 JSON envelope, optional location/deletedAt/endDate/groupValue/boundary and ID-only membership are unchanged. No startup rewrite/migration of journal/projects. Future dates, privacy precision ceilings, required schematic selections, full-boundary containment, 72-hour Trash and neutral saved-discovery provenance remain enforced by the existing paths.
 
-Only the two new independent local keys store profile text and rewards. **Journal JSON backups exclude profile, rewards and projects.** CSV is a report, not a project restore. Keep the same browser profile/origin; clearing data or browser eviction can erase all local state. Local storage is not encrypted, authenticated, synced or automatically backed up. No credentials, location or photos should be treated as public-safe just because the profile is local. No global awards/validation/social backend exists.
+Profile text and rewards use two independent local keys. The later [Feed addition](FEED.md) uses a third independent key, `terra.feed.v1`, without journal copies/migration. **Journal JSON backups exclude feed posts/preparations/follows, profile, rewards and projects.** CSV is a report, not a project restore. Keep the same browser profile/origin; clearing data or browser eviction can erase all local state. Local storage is not encrypted, authenticated, synced or automatically backed up. No credentials, location or photos should be treated as public-safe just because the profile is local. No global awards/validation/social backend exists.
 
 ## Update existing Windows clone (PowerShell)
 
@@ -71,7 +73,7 @@ Set-Location "$HOME\TERRA-combined-test"
 npm install --no-save --package-lock=false playwright
 $env:PLAYWRIGHT_BROWSERS_PATH = "$PWD/.browser-cache"
 npx playwright install chromium
-node --test test-field-summary.cjs test-integration-plan.cjs test-local-data.cjs test-rewards.cjs
+node --test test-field-summary.cjs test-integration-plan.cjs test-local-data.cjs test-rewards.cjs test-feed-data.cjs
 python -m unittest test_server.py
 node test-browser.cjs
 node test-projects-browser.cjs
@@ -80,10 +82,11 @@ node test-ui-browser.cjs
 node test-view-stack-browser.cjs
 node test-local-workflows-browser.cjs
 node test-next-ui-browser.cjs
+node test-feed-browser.cjs
 ```
 
 ## Verification and manual follow-up
 
-Full relevant automated checks: **21 JavaScript unit tests**, **4 Flask tests**, **7 complete isolated Linux Chromium suites**. New coverage includes awards/date streak boundaries, no invented verification, missing/empty/out-of-scope projects, randomized stable primitives and collision retry, idempotent unlocks, repeat completion/trash/reload events, placement persistence/focus, same-source profile and credentials, cross-tab updates, failed writes/corrupt stores, native searchable group mapping/handoff validity, multiselect union/intersection/All/empty/reset/order, workspace/minimized/closed/grouped reopening and schema compatibility. Existing future date/privacy/project/72h/provenance/image/JSON/CSV and mobile suites remain required.
+Full relevant automated checks including [Feed coverage](FEED.md): **25 JavaScript unit tests**, **4 Flask tests**, **8 complete isolated Linux Chromium suites**. New coverage includes awards/date streak boundaries, no invented verification, missing/empty/out-of-scope projects, randomized stable primitives and collision retry, idempotent unlocks, repeat completion/trash/reload events, placement persistence/focus, same-source profile and credentials, cross-tab updates, failed writes/corrupt stores, native searchable group mapping/handoff validity, multiselect union/intersection/All/empty/reset/order, workspace/minimized/closed/grouped reopening and schema compatibility. Existing future date/privacy/project/72h/provenance/image/JSON/CSV and mobile suites remain required.
 
 Human follow-up: Windows/Edge, Firefox/Safari, physical touch/safe areas, screen readers (especially native datalist and multi-select) and visual review of this prototype. Linux automated tests are not evidence of scientific verification, geography, production account safety or global collectible uniqueness.

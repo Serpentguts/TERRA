@@ -24,11 +24,11 @@ const { chromium } = require('playwright');
     await page.locator('#feed-samples a[href="#demo-profile-moss"]').click();
     assert.equal(await page.locator('#demo-profile-moss').evaluate(el => el === document.activeElement), true);
     assert.match(await page.locator('#demo-profile-moss').textContent(), /Fictional woodland/);
-    await page.click('[data-follow="moss"]');
+    await page.focus('[data-follow="moss"]'); await page.keyboard.press('Enter');
     assert.deepEqual((await feed()).following, ['moss']);
     assert.equal(await page.locator('[data-follow="moss"]').getAttribute('aria-pressed'), 'true');
     await page.reload(); assert.equal(await page.locator('[data-follow="moss"]').textContent(), 'Unfollow locally');
-    await page.click('[data-follow="moss"]'); assert.deepEqual((await feed()).following, []);
+    await page.focus('[data-follow="moss"]'); await page.keyboard.press('Space'); assert.deepEqual((await feed()).following, []);
     await page.click('#feed .close-view');
     await page.goto(origin + '/#demo-profile-fern');
     assert(await page.locator('#feed').isVisible(), 'Deep link reopens containing feed');
@@ -44,6 +44,8 @@ const { chromium } = require('playwright');
 
     // Seed legacy and privacy-tier records: no changes/migrations or copied private details.
     const records = ['hidden', 'approximate', 'exact'].map((privacy, i) => ({ id: `o${i}`, type: 'fungus', name: `Finding ${privacy}`, date: '2024-02-01', notes: 'SECRET journal notes', privacy }));
+    records[1].location = { version: 1, space: 'terra-local-grid-v1', kind: 'region', x1: 20, y1: 20, x2: 60, y2: 60 };
+    records[2].location = { version: 1, space: 'terra-local-grid-v1', kind: 'point', x: 37, y: 43 };
     await page.evaluate(({ J, records }) => localStorage.setItem(J, JSON.stringify(records)), { J, records });
     await page.reload(); const journal = await raw(J);
     for (const [i, [terra, inat]] of [[true, false], [false, true], [true, true]].entries()) {
@@ -100,6 +102,13 @@ const { chromium } = require('playwright');
     }, { J, records });
     assert.match(await page.locator('#feed-preparations [data-post-id]').first().textContent(), /Source observation unavailable/);
     assert.doesNotMatch(await page.locator('#feed-preparations [data-post-id]').first().textContent(), /Finding exact/);
+    const linkedState = await raw(F);
+    await page.evaluate(({ J, records }) => {
+      localStorage.setItem(J, JSON.stringify(records));
+      document.dispatchEvent(new Event('terra:journal-rendered'));
+    }, { J, records });
+    assert.match(await page.locator('#feed-preparations [data-post-id]').first().textContent(), /Finding exact/);
+    assert.equal(await raw(F), linkedState, 'Restore reconnects without duplicating posts');
     const beforeRemove = await raw(J);
     await page.locator('#feed-local-posts button').last().click();
     assert.equal(await raw(J), beforeRemove);
@@ -118,6 +127,12 @@ const { chromium } = require('playwright');
     await page.click('#feed-save');
     assert.match(await page.locator('#feed-form-error').textContent(), /source observation is unavailable/);
     assert.equal(await raw(F), null);
+    await page.click('#feed-reset');
+    await page.selectOption('#feed-type', 'cultivated');
+    await page.fill('#feed-post-title', 'My demo cultivated plant'); await page.click('#feed-save');
+    assert.equal((await feed()).posts[0].type, 'cultivated');
+    assert.equal((await feed()).posts[0].observationId, null);
+    assert.equal(await raw(J), '[]', 'Cultivated posts are not new journal observations');
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, `No horizontal overflow at ${width}`);
