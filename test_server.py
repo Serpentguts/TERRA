@@ -33,6 +33,7 @@ class LocalAppChecks(unittest.TestCase):
             ("/", "text/html"), ("/index.html", "text/html"),
             ("/app.js", "javascript"), ("/ui.js", "javascript"),
             ("/local-data.js", "javascript"), ("/local-map.js", "javascript"),
+            ("/rewards.js", "javascript"), ("/profile.js", "javascript"),
             ("/styles.css", "text/css"),
             ("/ditto.json", "application/json"),
         ]:
@@ -55,7 +56,8 @@ class LocalAppChecks(unittest.TestCase):
                             "project-group-choice", "view-stack-help", "genetic-data", "navigation-toggle",
                             "site-navigation", "bottom-navigation", "home", "map", "feed",
                             "profile", "profile-form",
-                            "profile-photos", "profile-observations", "profile-reset",
+                            "profile-tabs", "profile-observations", "rewards-terrarium",
+                            "workspace", "workspace-views", "organism-choice", "organism-options",
                             "map-purpose", "map-organism", "map-results", "map-reset",
                             "identify-location", "demo-map", "demo-listings"]:
                 with self.subTest(control=control):

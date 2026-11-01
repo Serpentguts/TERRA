@@ -102,11 +102,16 @@ const TerraLocation = (() => {
     id = aliases[id] || id;
     const view = views.find(view => view.id === id);
     if (!view) return;
-    view.section.hidden = false;
-    // The two persistent destinations open their related sections together.
-    // Menu links and direct hashes can still open each section independently.
-    if (grouped && id === "identify-title") views.find(view => view.id === "form-title").section.hidden = false;
-    if (grouped && id === "projects-title") views.find(view => view.id === "saved-title").section.hidden = false;
+    const reveal = view => {
+      view.section.hidden = false;
+      view.section.classList.remove("minimized");
+      view.section.querySelector(".minimize-view").setAttribute("aria-expanded", "true");
+    };
+    reveal(view);
+    // Persistent destinations restore both related sections, including minimized drafts.
+    if (grouped && id === "identify-title") reveal(views.find(view => view.id === "form-title"));
+    if (grouped && id === "projects-title") reveal(views.find(view => view.id === "saved-title"));
+    updateWorkspace();
     markCurrent(id);
   }
   for (const view of views) {
@@ -123,6 +128,7 @@ const TerraLocation = (() => {
     close.addEventListener("click", () => {
       // Visibility only: do not reset forms, remove nodes, revoke images or write storage.
       view.section.hidden = true;
+      updateWorkspace();
       // Clear the closed location without a hashchange that could reopen it.
       history.replaceState(null, "", `${location.pathname}${location.search}`);
       markCurrent("");
@@ -130,9 +136,40 @@ const TerraLocation = (() => {
       const reopen = bottomNav.querySelector(`a[href="#${destinationFor(view.id)}"]`) || toggle;
       reopen.focus();
     });
-    controls.append(close);
+    const minimize = document.createElement("button");
+    minimize.type = "button";
+    minimize.className = "secondary-button minimize-view";
+    minimize.textContent = "Minimize / expand";
+    minimize.setAttribute("aria-label", `Minimize or expand ${view.label} view`);
+    minimize.setAttribute("aria-expanded", "true");
+    minimize.setAttribute("aria-controls", view.section.id);
+    minimize.addEventListener("click", () => {
+      const minimized = view.section.classList.toggle("minimized");
+      minimize.setAttribute("aria-expanded", String(!minimized));
+      updateWorkspace();
+    });
+    controls.append(minimize, close);
     view.section.prepend(controls);
   }
+  function updateWorkspace() {
+    const list = document.getElementById("workspace-views");
+    list.replaceChildren();
+    for (const view of views) {
+      const item = document.createElement("li");
+      const open = document.createElement("a");
+      open.href = `#${view.id}`;
+      open.textContent = `${view.label} · ${view.section.hidden ? "closed" : view.section.classList.contains("minimized") ? "minimized" : "open"}`;
+      item.append(open);
+      list.append(item);
+    }
+  }
+  updateWorkspace();
+  document.getElementById("workspace-close").addEventListener("click", () => {
+    document.getElementById("workspace").hidden = true;
+    history.replaceState(null, "", `${location.pathname}${location.search}`);
+    markCurrent("");
+    bottomNav.querySelector('a[href="#workspace"]').focus();
+  });
   function closeNavigation() {
     nav.hidden = true;
     toggle.setAttribute("aria-expanded", "false");
@@ -158,6 +195,7 @@ const TerraLocation = (() => {
     const link = event.target.closest("a");
     if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const id = link.hash.slice(1);
+    if (id === "workspace") { document.getElementById("workspace").hidden = false; updateWorkspace(); markCurrent("workspace"); }
     const target = document.getElementById(id);
     if (!target) return;
     selectArea(id, bottomNav.contains(link));
@@ -168,7 +206,9 @@ const TerraLocation = (() => {
   // Include in-content project links, including repeated links to a closed view.
   document.addEventListener("click", followLink);
   function followHash() {
-    selectArea(window.location.hash.slice(1));
+    const id = window.location.hash.slice(1);
+    if (id === "workspace") document.getElementById("workspace").hidden = false;
+    selectArea(id);
   }
   window.addEventListener("hashchange", followHash);
   // A confirmed photo handoff must also reveal a previously closed draft.
@@ -208,10 +248,13 @@ const TerraLocation = (() => {
   const purpose = document.getElementById("map-purpose");
   const organism = document.getElementById("map-organism");
   function filterMap() {
+    const values = select => [...select.selectedOptions].some(option => option.value === "all") ? [] : [...select.selectedOptions].map(option => option.value);
+    const purposes = values(purpose), organisms = values(organism);
+    document.getElementById("map-selected").textContent = `Selected colors: ${purposes.join(", ") || "all"} · organisms: ${organisms.join(", ") || "all"}`;
     let observations = 0, listings = 0;
     for (const marker of document.querySelectorAll("#map .demo-card")) {
-      marker.hidden = (purpose.value !== "all" && purpose.value !== marker.dataset.purpose)
-        || (organism.value !== "all" && organism.value !== marker.dataset.category);
+      marker.hidden = (purposes.length > 0 && !purposes.includes(marker.dataset.purpose))
+        || (organisms.length > 0 && !organisms.includes(marker.dataset.category));
       if (!marker.hidden) {
         if (marker.dataset.purpose === "sale") listings++;
         else observations++;
@@ -228,55 +271,4 @@ const TerraLocation = (() => {
   });
   filterMap();
 
-  // Mock profile state lives only in the DOM. Never read/copy the private journal.
-  const profileForm = document.getElementById("profile-form");
-  const photos = document.getElementById("profile-photos");
-  const profileStatus = document.getElementById("profile-status");
-  const mockObservations = document.getElementById("profile-observations");
-  const follows = [...document.querySelectorAll(".mock-follow")];
-  function validatePhotos() {
-    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
-    const files = [...photos.files];
-    const valid = files.length <= 6 && files.every(file => validTypes.includes(file.type) && file.size > 0 && file.size <= 10 * 1024 * 1024);
-    photos.setCustomValidity(valid ? "" : "Choose 1–6 supported, nonempty image files up to 10 MB each.");
-  }
-  photos.addEventListener("change", validatePhotos);
-  profileForm.addEventListener("submit", event => {
-    event.preventDefault();
-    const label = document.getElementById("profile-observation");
-    if (!label.value.trim()) {
-      profileStatus.textContent = "Enter an observation label for this local mock.";
-      label.focus();
-      return;
-    }
-    const item = document.createElement("li");
-    item.textContent = `${label.value.trim()} · MOCK · file names only: ${[...photos.files].map(file => file.name).join(", ")}`;
-    mockObservations.append(item);
-    profileForm.reset();
-    photos.setCustomValidity("");
-    profileStatus.textContent = `${mockObservations.children.length} mock profile observation(s). Nothing uploaded or saved; cleared when you leave this page.`;
-  });
-  function updateFollows() {
-    const count = follows.filter(button => button.getAttribute("aria-pressed") === "true").length;
-    document.getElementById("profile-follow-status").textContent = `${count} mock follow(s) selected · local demo only; nobody contacted or notified.`;
-  }
-  for (const button of follows) button.addEventListener("click", () => {
-    const pressed = button.getAttribute("aria-pressed") === "true";
-    button.setAttribute("aria-pressed", String(!pressed));
-    button.textContent = `${button.getAttribute("aria-label")}${pressed ? "" : " · selected"}`;
-    updateFollows();
-  });
-  function clearProfile() {
-    profileForm.reset();
-    photos.setCustomValidity("");
-    mockObservations.replaceChildren();
-    profileStatus.textContent = "No mock observations added. Nothing uploaded or saved.";
-    for (const button of follows) {
-      button.setAttribute("aria-pressed", "false");
-      button.textContent = button.getAttribute("aria-label");
-    }
-    updateFollows();
-  }
-  document.getElementById("profile-reset").addEventListener("click", clearProfile);
-  window.addEventListener("pagehide", clearProfile);
 })();

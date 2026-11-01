@@ -7,6 +7,12 @@ const STORAGE_KEY = "terra.observations.v1";
 const categories = { plant: "Plant", fungus: "Mushroom", insect: "Insect", mammal: "Mammal", bird: "Bird", fish: "Fish", reptile: "Reptile", other: "Other" };
 const privacyLabels = { hidden: "Hidden", approximate: "Approximate", exact: "Exact" };
 const form = document.querySelector("#observation-form");
+const organismChoice = document.querySelector("#organism-choice");
+function validateOrganism() {
+  organismChoice.setCustomValidity(Object.values(categories).some(label => label.toLowerCase() === organismChoice.value.trim().toLowerCase()) ? "" : "Choose a listed organism group, or Other.");
+}
+organismChoice.addEventListener("input", validateOrganism);
+form.addEventListener("reset", () => organismChoice.setCustomValidity(""));
 const list = document.querySelector("#observation-list");
 const status = document.querySelector("#status");
 const storageError = document.querySelector("#storage-error");
@@ -109,7 +115,7 @@ document.addEventListener("terra:prefill-discovery", event => {
   nameInput.value = draft.name.trim();
   closeSuggestions();
   nameStatus.textContent = "Unverified photo-review name. Review before saving.";
-  form.querySelector(`input[name=type][value="${draft.type}"]`).checked = true;
+  document.querySelector("#organism-choice").value = categories[draft.type];
   dateInput.value = draft.date; // Missing dates stay blank; never invent an observation date.
   syncDate();
   TerraLocation.set("discovery", draft.location);
@@ -413,7 +419,7 @@ function saveDiscovery(withProject = false) {
   const data = new FormData(form);
   const observation = {
     id: typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    type: data.get("type"),
+    type: Object.keys(categories).find(key => categories[key].toLowerCase() === data.get("type").trim().toLowerCase()),
     name: data.get("name").trim() || "Unknown",
     notes: data.get("notes").trim(),
     date: data.get("date"),

@@ -10,6 +10,8 @@
   <script src="local-map.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="rewards.js" defer></script>
+  <script src="profile.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -27,6 +29,7 @@
     </div>
   </header>
   <nav id="bottom-navigation" aria-label="Primary">
+    <a href="#workspace"><span aria-hidden="true">♧</span><span>Workspace</span></a>
     <a href="#map"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Z M9 3v16 M15 5v16"/></svg><span>Map</span></a>
     <a href="#profile"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="7" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3"/></svg><span>Profile</span></a>
     <a href="#feed"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10 M7 12h10 M7 17h10"/></svg><span>Feed</span></a>
@@ -46,27 +49,39 @@
       <div><strong id="privacy-title">Your journal stays with you.</strong>
       <p>Saved only in this browser on this device. Nothing is synced, backed up, or submitted to iNaturalist. Clearing browser data can erase your journal—export a copy to keep it.</p></div>
     </aside>
-    <p id="view-stack-help">Opened views stay in the main screen stack until closed. Close view only hides a section; it does not delete saved data or clear drafts. Reopen any view from the menu or persistent bottom navigation. Observation opens photo review and the discovery draft; Projects / Journal opens projects and saved observations.</p>
+    <section id="workspace" class="panel" aria-labelledby="workspace-title" tabindex="-1" hidden>
+      <h2 id="workspace-title">Your workspace</h2><p>Open, minimize or close a section without deleting data or clearing drafts. Map remains a separate destination.</p>
+      <ul id="workspace-views" class="workspace-views"></ul><button type="button" id="workspace-close" class="secondary-button">Close workspace overview</button>
+    </section>
+    <p id="view-stack-help">Opened views stay in the main screen stack until closed. Minimize collapses a section’s content; open restores it. Close view only hides a section; it does not delete saved data or clear drafts. Reopen any view from the menu or persistent bottom navigation. Observation opens photo review and the discovery draft; Projects / Journal opens projects and saved observations.</p>
     <p id="view-stack-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
 
       <section id="map" class="panel demo-discovery" aria-labelledby="map-title" tabindex="-1" hidden>
         <h2 id="map-title">Map · local schematic</h2>
         <p id="map-help">Imaginary layout only — not geography, coordinates, distances, or organism ranges. No GPS, tiles, geocoding, or journal locations are used.</p>
+        <div id="map-canvas">
+          <h4>Observation markers · fictional</h4>
+          <ul id="demo-map" class="schematic-map" aria-label="Fictional observation schematic" aria-describedby="map-help"></ul>
+          <h4>Demo for-sale listings · not observations</h4>
+          <p>Separate illustration only. No seller, ordering, payment, contact, or external posting.</p>
+          <ul id="demo-listings" class="demo-feed" aria-label="Fictional for-sale listings"></ul>
+        </div>
         <fieldset class="map-filters" aria-describedby="map-filter-help">
           <legend>Refine Map results</legend>
-          <p id="map-filter-help">Both filters apply together to these fictional markers and listings only, never your journal.</p>
-          <div class="field"><label for="map-purpose">Color / entry purpose</label><select id="map-purpose">
+          <p id="map-filter-help">Choose multiple in either list (Ctrl/Command + click, or Shift + arrow keys). Any selected organism AND any selected color match. All or an empty selection means unrestricted. Fictional markers only, never your journal.</p>
+          <div class="field"><label for="map-purpose">Color / entry purpose</label><select id="map-purpose" multiple size="4">
             <option value="all">All colors / purposes</option>
             <option value="natural">Green · natural observations</option>
             <option value="cultivated">Yellow · cultivated observations</option>
             <option value="sale">Red · for-sale listings (not observations)</option>
           </select></div>
-          <div class="field"><label for="map-organism">Organism icon / category</label><select id="map-organism">
+          <div class="field"><label for="map-organism">Organism icon / category</label><select id="map-organism" multiple size="7">
             <option value="all">All organisms</option>
             <option value="fungus">🍄 Mushroom</option><option value="plant">🌿 Plant</option>
             <option value="bird">🐦 Bird</option><option value="reptile">🐍 Snake / reptile</option>
             <option value="mammal">🐁 Mouse / mammal</option><option value="insect">🐞 Bug / insect</option>
           </select></div>
+          <p id="map-selected" role="status" aria-live="polite"></p>
           <button id="map-reset" class="secondary-button" type="button">Reset Map filters</button>
         </fieldset>
         <p id="map-results" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -78,33 +93,37 @@
           <li><span class="legend-swatch sale" aria-hidden="true"></span><strong>Red:</strong> for-sale listing, never an observation</li>
         </ul>
         <p>Organism icons: <span aria-hidden="true">🍄</span> Mushroom · <span aria-hidden="true">🌿</span> Plant · <span aria-hidden="true">🐦</span> Bird · <span aria-hidden="true">🐍</span> Snake / reptile · <span aria-hidden="true">🐁</span> Mouse / mammal · <span aria-hidden="true">🐞</span> Bug / insect. Every marker also has a text label.</p>
-        <h4>Observation markers · fictional</h4>
-        <ul id="demo-map" class="schematic-map" aria-label="Fictional observation schematic" aria-describedby="map-help"></ul>
-        <h4>Demo for-sale listings · not observations</h4>
-        <p>Separate illustration only. No seller, ordering, payment, contact, or external posting.</p>
-        <ul id="demo-listings" class="demo-feed" aria-label="Fictional for-sale listings"></ul>
       </section>
       <section id="profile" class="panel demo-discovery" aria-labelledby="profile-title" tabindex="-1" hidden>
-        <h2 id="profile-title">Profile · local demo scaffold</h2>
-        <p id="profile-help"><strong>MOCK profile — not an account.</strong> There is no authentication, upload backend, public profile, or social network. Photos are not read or uploaded; only their file names appear in this temporary demo. Mock observations and follow choices disappear on reload or when you leave the page. Your private journal is never copied here.</p>
-        <h4>Your demo profile</h4>
-        <p>Local explorer · unsigned in · visible only in this page</p>
-        <form id="profile-form" aria-describedby="profile-help">
-          <h4>Add an observation to your mock profile</h4>
-          <div class="field"><label for="profile-observation">Observation label (local mock)</label><input id="profile-observation" maxlength="120" required autocomplete="off"></div>
-          <div class="field"><label for="profile-photos">Choose observation photos · local mock, not an upload</label><input id="profile-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple required aria-describedby="profile-photo-help"><small id="profile-photo-help">1–6 JPEG, PNG, WebP, GIF or AVIF files, up to 10 MB each. File names only; no image analysis, storage or upload.</small></div>
-          <button class="secondary-button" type="submit">Add to mock profile · local only</button>
-        </form>
-        <p id="profile-status" role="status" aria-live="polite" aria-atomic="true">No mock observations added.</p>
-        <ul id="profile-observations" aria-label="Temporary mock profile observations"></ul>
-        <h4>Following · fictional people</h4>
-        <p>These toggles change this demo only. They do not contact, notify, or follow anyone on a network.</p>
-        <ul class="mock-people">
-          <li>River · fictional botanist <button type="button" class="secondary-button mock-follow" aria-pressed="false" aria-label="Mock follow River">Mock follow River</button></li>
-          <li>Moss · fictional fungi enthusiast <button type="button" class="secondary-button mock-follow" aria-pressed="false" aria-label="Mock follow Moss">Mock follow Moss</button></li>
-        </ul>
-        <p id="profile-follow-status" role="status" aria-live="polite" aria-atomic="true">No mock follows selected.</p>
-        <button id="profile-reset" class="text-button" type="button">Clear mock profile observations and follows</button>
+        <h2 id="profile-title">Your local profile</h2>
+        <p id="profile-help">Not an account or public page. Profile details and rewards stay in this browser only: no upload, account sync or real follows. Posts read the same local journal; projects read the same ID-only collections. Nothing is stored twice. Journal photos remain temporary and are not displayed here.</p>
+        <div class="profile-heading"><span id="profile-avatar" class="profile-avatar" aria-label="Symbolic profile avatar">🌿</span><div><h3 id="profile-name">Local explorer</h3><p id="profile-bio"></p><p id="profile-credentials">Credentials: none · user-entered / unverified</p><p><strong>0</strong> followers · <strong>0</strong> following · not connected</p></div></div>
+        <details><summary>Edit local profile</summary>
+          <form id="profile-form">
+            <div class="field"><label for="profile-display-name">Display name</label><input id="profile-display-name" maxlength="80" required value="Local explorer"></div>
+            <div class="field"><label for="profile-description">Description</label><textarea id="profile-description" maxlength="500"></textarea></div>
+            <div class="field"><label for="profile-credential-input">Credentials · user-entered / unverified</label><input id="profile-credential-input" maxlength="300"><small>No LinkedIn connection or credential verification. Avoid private details.</small></div>
+            <div class="field"><label for="profile-avatar-input">Symbolic avatar · no photo stored</label><select id="profile-avatar-input"><option>🌿</option><option>🍄</option><option>🐦</option><option>❧</option></select></div>
+            <button type="submit" class="secondary-button">Save local profile</button>
+          </form>
+        </details>
+        <p id="profile-status" role="status" aria-live="polite"></p>
+        <div role="tablist" aria-label="Local profile sections" id="profile-tabs">
+          <button type="button" role="tab" id="posts-tab" aria-selected="true" aria-controls="profile-posts">Posts</button>
+          <button type="button" role="tab" id="projects-tab" aria-selected="false" aria-controls="profile-projects" tabindex="-1">Projects</button>
+          <button type="button" role="tab" id="awards-tab" aria-selected="false" aria-controls="profile-awards" tabindex="-1">Awards</button>
+        </div>
+        <div role="tabpanel" id="profile-posts" aria-labelledby="posts-tab"><h3>Journal observations</h3><p><a href="#form-title">Record a discovery</a> · <a href="#saved-title">Manage journal / provenance / Trash</a></p><ul id="profile-observations"></ul></div>
+        <div role="tabpanel" id="profile-projects" aria-labelledby="projects-tab" hidden><h3>Your projects</h3><ul id="profile-project-list"></ul><a href="#projects-title">Manage projects</a></div>
+        <div role="tabpanel" id="profile-awards" aria-labelledby="awards-tab" hidden>
+          <h3>Awards &amp; rewards terrarium</h3>
+          <p>Non-quality participation badges, not identification or conservation credentials. First observation: one active, valid, non-future journal entry. Seven-day fieldbook: entries dated on seven consecutive distinct days (backfilled/imported dates count; not proof of daily uploads). Project completion: one complete project with at least one eligible active observation. Each badge unlocks only once, ever in this local store. Duplicates, repeat events, reopen/complete, delete/restore and reload cannot multiply rewards.</p>
+          <p>No verified-observation badge is available: this prototype has no genuine verification evidence. No rewards for rare species, precise locations, transactions or collecting wildlife. Observe safely without disturbing habitats.</p>
+          <p><strong>Randomized digital collectibles are unique within this local prototype only, not guaranteed unique globally. No cash, trade, NFT, blockchain or financial value.</strong> Local data can be edited or erased; this is not fraud-resistant validation. Profile/rewards are not in journal backups.</p>
+          <p id="rewards-status" role="status" aria-live="polite"></p><ul id="award-list"></ul>
+          <div id="rewards-terrarium" class="rewards-terrarium" role="img" aria-label="Local decorative terrarium"></div>
+          <ul id="decor-list" aria-label="Decorations and placement controls"></ul>
+        </div>
       </section>
     <section id="feed" class="panel demo-discovery" aria-labelledby="feed-title" tabindex="-1" hidden>
       <h2 id="feed-title">Feed · not connected</h2>
@@ -152,18 +171,11 @@
         <div class="section-heading"><span class="step" aria-hidden="true">01</span><div><h2 id="form-title">Record a discovery</h2><p>You don’t need to know its name to notice it.</p></div></div>
         <noscript><p class="error">JavaScript is needed to save observations. Enable it in your browser to use this journal.</p></noscript>
         <form id="observation-form">
-          <fieldset><legend>What did you find?</legend>
-            <div class="type-options">
-              <label><input type="radio" name="type" value="plant" checked> <span>Plant</span></label>
-              <label><input type="radio" name="type" value="fungus"> <span>Mushroom</span></label>
-              <label><input type="radio" name="type" value="insect"> <span>Insect</span></label>
-              <label><input type="radio" name="type" value="mammal"> <span>Mammal</span></label>
-              <label><input type="radio" name="type" value="bird"> <span>Bird</span></label>
-              <label><input type="radio" name="type" value="fish"> <span>Fish</span></label>
-              <label><input type="radio" name="type" value="reptile"> <span>Reptile</span></label>
-              <label><input type="radio" name="type" value="other"> <span>Other</span></label>
-            </div>
-          </fieldset>
+          <div class="field"><label for="organism-choice">What did you find?</label>
+            <input id="organism-choice" name="type" list="organism-options" value="Plant" required autocomplete="off" aria-describedby="organism-help">
+            <datalist id="organism-options"><option value="Plant"></option><option value="Mushroom"></option><option value="Insect"></option><option value="Mammal"></option><option value="Bird"></option><option value="Fish"></option><option value="Reptile"></option><option value="Other"></option></datalist>
+            <small id="organism-help">Search this dropdown by typing a group, then choose one of the eight options. Use arrow keys and Enter; choose Other when unsure. No species identification.</small>
+          </div>
           <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label>
             <div class="name-picker"><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help">
             <ul id="name-suggestions" class="name-suggestions" role="listbox" aria-label="Starter species suggestions and custom name" hidden></ul></div>
