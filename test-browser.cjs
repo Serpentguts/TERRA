@@ -592,7 +592,13 @@ async function testDiscoveryHandoff(page, key) {
   await page.reload();
   assert.equal(await page.locator('#discovery-previews img').count(), 0);
   assert.equal(await page.locator('#discovery-region').inputValue(), '');
-  assert.equal(await snapshot(), before);
+  // Journal is restored exactly. The saved record may have unlocked new terrarium items,
+  // which persist by design; earlier grants must be kept unchanged.
+  const after = JSON.parse(await snapshot()), start = JSON.parse(before);
+  const grants = s => JSON.parse(s.local['terra.rewards.v1'] ?? '{"grants":[]}').grants;
+  assert.deepEqual(grants(after).slice(0, grants(start).length), grants(start));
+  delete after.local['terra.rewards.v1']; delete start.local['terra.rewards.v1'];
+  assert.deepEqual(after, start);
   console.log('PASS: manual administrative precision/privacy, all-ranked accessible disclosure, selection guards, cancel/confirmed candidate and custom handoff, date/context/images review, independent URL ownership/replacement/error/removal/pagehide, unchanged save/export schema, failed-save retry, no GPS/network, responsive draft.');
 }
 

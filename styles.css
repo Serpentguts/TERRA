@@ -24,10 +24,31 @@ body { margin: 0; padding-bottom: calc(var(--bottom-nav-height, 170px) + 16px); 
 #profile-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
 #profile-tabs button { min-height: 44px; padding: 10px 18px; border: 1px solid var(--green); border-radius: 8px; color: var(--green); background: white; }
 #profile-tabs [aria-selected="true"] { color: white; background: var(--green); }
-#profile-observations li, #profile-project-list li, #decor-list li { padding: 12px 0; border-bottom: 1px solid var(--line); }
-.rewards-terrarium { position: relative; height: 250px; border: 3px solid #617064; border-radius: 20% 20% 30px 30px; background: linear-gradient(#edf4ec 75%, #c2cdac 75%); overflow: hidden; }
-.rewards-terrarium span { position: absolute; padding: 6px; border-radius: 50%; border: 2px dotted currentColor; background: #ffffff99; }
-#decor-list { padding-left: 20px; }
+#profile-observations li, #profile-project-list li { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.terrarium-intro { color: var(--muted); }
+.rewards-terrarium { position: relative; height: 300px; max-width: 560px; margin: 12px auto 24px; border: 3px solid #9fb3a6; border-top-width: 10px; border-top-color: #8a7a5a; border-radius: 18px 18px 120px 120px / 18px 18px 60px 60px;
+  background: radial-gradient(ellipse at 28% 18%, #ffffffcc 0 6%, transparent 7%), linear-gradient(#eef6f1 0 58%, #6d8f5a 58% 63%, #7a5b3e 63% 82%, #5c4430 82%); box-shadow: inset 0 0 0 6px #ffffff66, 0 6px 18px #243c3122; overflow: hidden; }
+.rewards-terrarium:empty::after { content: "Your terrarium is empty. Record observations to start collecting."; position: absolute; inset: 20% 10% auto; color: var(--muted); text-align: center; }
+.rewards-terrarium span { position: absolute; line-height: 1; transform: translate(-50%, -85%) rotate(var(--tilt, 0deg)); filter: drop-shadow(0 3px 2px #0000004d); cursor: default; transition: transform .2s ease; }
+.rewards-terrarium span:hover { transform: translate(-50%, -85%) rotate(var(--tilt, 0deg)) scale(1.15); }
+.rewards-terrarium span.fresh { animation: terrarium-pop .7s ease-out; }
+@keyframes terrarium-pop { from { opacity: 0; scale: .3; } 70% { scale: 1.25; } to { opacity: 1; scale: 1; } }
+@media (prefers-reduced-motion: reduce) { .rewards-terrarium span, .rewards-terrarium span.fresh { animation: none; transition: none; } }
+.collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, calc(50% - 6px)), 1fr)); gap: 12px; padding: 0; list-style: none; }
+.collection-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 12px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; text-align: center; }
+.collection-card.earned { border-color: #b9cbbd; background: #f3f8f2; }
+.collection-card.fresh { box-shadow: 0 0 0 3px #e0c56e; }
+.collection-group { font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.collection-icon { font-size: 40px; line-height: 1.15; }
+.collection-card.locked .collection-icon { filter: grayscale(1); opacity: .35; }
+.collection-name { font-size: 16px; }
+.collection-card small { color: var(--muted); line-height: 1.35; }
+.collection-goal { flex-grow: 1; }
+.collection-serial { font-variant-numeric: tabular-nums; }
+.collection-card progress { width: 100%; height: 8px; margin-top: 6px; accent-color: var(--green); }
+.collection-card button { width: 100%; min-height: 44px; margin-top: 6px; white-space: normal; }
+.terrarium-rules { margin-top: 20px; color: var(--muted); }
+@media (max-width: 480px) { .rewards-terrarium { height: 240px; } .collection-icon { font-size: 34px; } .collection-card { padding: 12px 8px 10px; } }
 .map-filters option:checked { font-weight: 750; }
 
 .view-controls .close-view { min-width: 44px; min-height: 44px; }
@@ -203,6 +224,7 @@ summary { cursor: pointer; padding: 10px 0; font-size: 13px; font-weight: 650; }
 .projects-panel { margin-top: 32px; min-width: 0; overflow-wrap: anywhere; }
 .projects-panel p { font-size: 14px; }
 .projects-panel input, .projects-panel select, .projects-panel textarea { min-width: 0; max-width: 100%; }
+.project-site-species { min-width: 0; }
 .project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
 .project-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 18px 0; }
 .project-toolbar .field { flex: 1 1 220px; min-width: 0; margin: 0; }
