@@ -203,7 +203,6 @@ summary { cursor: pointer; padding: 10px 0; font-size: 13px; font-weight: 650; }
 .projects-panel { margin-top: 32px; min-width: 0; overflow-wrap: anywhere; }
 .projects-panel p { font-size: 14px; }
 .projects-panel input, .projects-panel select, .projects-panel textarea { min-width: 0; max-width: 100%; }
-.project-site-species { min-width: 0; }
 .project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
 .project-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 18px 0; }
 .project-toolbar .field { flex: 1 1 220px; min-width: 0; margin: 0; }

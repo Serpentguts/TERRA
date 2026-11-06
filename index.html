@@ -256,16 +256,12 @@
         <ul id="observation-list" class="observation-list" aria-label="Saved observations"></ul>
       </section>
     </div>
-    <section class="panel" aria-labelledby="trash-title">
-      <h2 id="trash-title">🗑 Trash · <span id="trash-count">0</span></h2>
-      <p>Delete moves a record here, not out of storage. Restore within 3 days (72 hours). After that Restore is disabled; the record is permanently removed on the next successful journal change. Closing the app pauses cleanup, not the recovery clock. No background service runs. Export includes unexpired Trash; keep backups private. Project references do not count trashed observations.</p>
-      <ul id="trash-list" class="observation-list"></ul>
-    </section>
+
     <section id="projects" class="panel projects-panel" aria-labelledby="projects-title">
       <p class="eyebrow">LOCAL DESCRIPTIVE REPORTING</p>
       <h2 id="projects-title">Projects / Field Summary</h2>
       <p>Collect existing journal observations. This is a count of your selected records, not an AI summary, ecological inference, species verification, or evidence of trends.</p>
-      <p>Membership is always chosen manually, including previous journal entries in the inclusive start/end timeframe. Site rectangles use the same local demo grid as observation locations, not geographic boundaries. Hidden or legacy records without location cannot prove inclusion. Approximate regions must fit entirely inside a boundary.</p>
+
       <p id="project-error" class="error" role="alert" hidden></p>
       <p id="project-status" class="status" role="status" aria-live="polite"></p>
       <div class="project-toolbar">
@@ -276,21 +272,7 @@
         <fieldset id="project-fields">
           <legend>Project details and included records</legend>
           <div class="project-grid">
-            <div class="field"><label for="project-title">Project title</label><input id="project-title" maxlength="120" required></div>
-            <div class="field"><label for="project-type">Group by</label><select id="project-type"><option value="custom">Custom collection</option><option value="day">Project date / day</option><option value="species">Species / name</option><option value="site">Site / name</option></select></div>
-            <div class="field"><label for="project-date">Start date (or single day)</label><input id="project-date" type="text" placeholder="YYYY-MM-DD" maxlength="10" aria-describedby="project-scope-help"></div>
-            <div class="project-site-species" role="group" aria-label="Site and species names" aria-describedby="project-names-help">
-              <div class="field"><label for="project-site">Site name</label><input id="project-site" maxlength="120" aria-describedby="project-names-help"></div>
-              <div class="field"><label for="project-species">Species / name</label><input id="project-species" maxlength="120" aria-describedby="project-scope-help project-names-help"></div>
-              <p id="project-names-help"><small>One shared column, two separate values: site is your manual project label; species is the recorded name used for species-group matching. Both are kept in the saved scope and CSV.</small></p>
-            </div>
-          </div>
-          <div class="field"><label for="project-endDate">End date (inclusive; blank = single day)</label><input id="project-endDate" type="text" placeholder="YYYY-MM-DD" maxlength="10"></div>
-          <div id="project-specific" class="field"><label for="project-group-choice">Group-specific value</label><select id="project-group-choice"></select><small>Choose from prior observations, or Other to enter a new value in the date, species or site fields. Values are stored as text, not HTML.</small></div>
-          <div id="project-other-day-field" class="field" hidden><label for="project-other-day">Other day within timeframe</label><input id="project-other-day" placeholder="YYYY-MM-DD" maxlength="10"></div>
-          <fieldset id="project-boundary-fields" hidden><legend>Site boundary · editable after creation</legend><div id="project-map"></div><p>Saving a changed boundary removes memberships that cannot prove inclusion. Journal records are never deleted. Legacy label-only site projects remain readable; draw a boundary to enforce inclusion.</p></fieldset>
-          <div class="field"><label for="project-notes">Project notes (optional)</label><textarea id="project-notes" rows="2" maxlength="3000"></textarea></div>
-          <p id="project-scope-help">Every project needs a title. Start/end dates filter all groups inclusively; day groups require a start. Species uses an exact, case-sensitive recorded name or Other/manual name. New site groups require a label and drawn boundary. Changing scope removes nonmatching memberships on save, never journal records.</p>
+
           <fieldset><legend>Include existing observations</legend>
             <p id="project-candidate-message"></p>
             <div id="project-candidates" class="project-candidates"></div>
@@ -305,15 +287,7 @@
       <div id="project-report" aria-labelledby="project-report-title"></div>
       <p><small>Projects stay in this browser. Completion locks editing until reopened; it is not a frozen snapshot. Deleting a journal record changes its summaries; missing references are shown, never counted. Journal JSON backups do not include projects. CSV is a readable report, not a project restore file.</small></p>
     </section>
-    <section id="genetic-data" class="panel projects-panel" aria-labelledby="genetic-title">
-      <h2 id="genetic-title">Genetic Data</h2>
-      <p>Unconnected planning preview only. BOLD identification/search and GenBank record search are separate paths. No results, network calls, credentials, sequence submission or outbound data. GenBank submission would be a separate reviewed workflow, not a lookup.</p>
-      <div class="field"><label for="genetic-query">Taxon name or record identifier (optional)</label><input id="genetic-query" maxlength="120" autocomplete="off"></div>
-      <div class="field"><label for="genetic-sequence">Temporary DNA sequence (optional; local validation only)</label><textarea id="genetic-sequence" rows="3" maxlength="10000" autocomplete="off" spellcheck="false" aria-describedby="genetic-help"></textarea><small id="genetic-help">Up to 10,000 input characters. Plain IUPAC DNA or one FASTA record; no RNA, gaps or multiple records. Validation checks syntax, not quality, identity, or biological meaning. Never saved in journal, projects or exports. Clear when finished.</small></div>
-      <div class="restore-actions"><button id="bold-preview" class="secondary-button" type="button">BOLD lookup — future / local preview</button><button id="genbank-preview" class="secondary-button" type="button">GenBank lookup — future / local preview</button><button id="genetic-clear" class="text-button" type="button">Clear genetic inputs</button></div>
-      <p id="genetic-error" class="error" role="alert" hidden></p>
-      <p id="genetic-preview" class="status" role="status" aria-live="polite"></p>
-    </section>
+
     <footer> TERRA <span aria-hidden="true">/</span> A space for curiosity, not a species identification service.</footer>
   </main>
   <script>
@@ -569,33 +543,18 @@
     const types = ["custom", "day", "species", "site"];
     const text = (value, max, required = false) => typeof value === "string" && value.length <= max && (!required || value.trim().length > 0);
     const date = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !value.startsWith("0000") && Number.isFinite(Date.parse(`${value}T12:00:00Z`)) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value;
-    function matches(project, record) {
-      if (record.deletedAt) return false;
-      if (project.date && (record.date < project.date || record.date > (project.endDate || project.date))) return false;
-      if (project.type === "species" && record.name.trim() !== project.species.trim()) return false;
-      if (project.groupValue && project.type === "day" && record.date !== project.groupValue) return false;
-      return !project.boundary || (TerraData.location(record.location, record.privacy) && TerraData.inside(project.boundary, record.location));
-    }
     function valid(project) {
       return project && !Array.isArray(project) && text(project.id, 200, true) && text(project.title, 120, true) && types.includes(project.type) &&
         text(project.date, 10) && (!project.date || date(project.date)) && (project.type !== "day" || date(project.date)) &&
         text(project.site, 120, project.type === "site") && text(project.species, 120, project.type === "species") && text(project.notes, 3000) &&
-        (!Object.hasOwn(project, "endDate") || (date(project.endDate) && date(project.date) && project.endDate >= project.date)) &&
-        (!Object.hasOwn(project, "boundary") || TerraData.boundary(project.boundary)) &&
-        (!Object.hasOwn(project, "groupValue") || (text(project.groupValue, 120, true) && (project.type !== "day" || (date(project.groupValue) && project.groupValue >= project.date && project.groupValue <= (project.endDate || project.date))))) &&
+
         typeof project.complete === "boolean" && Array.isArray(project.observationIds) && project.observationIds.every(id => text(id, Infinity, true)) && new Set(project.observationIds).size === project.observationIds.length;
     }
     function parse(raw) {
       if (raw === null) return [];
       const data = JSON.parse(raw);
       if (!data || data.format !== "terra-projects" || data.version !== 1 || !Array.isArray(data.projects) || !data.projects.every(valid) || new Set(data.projects.map(p => p.id)).size !== data.projects.length) throw new Error("Unsupported or damaged project data");
-      return data.projects.map(({ id, title, type, date, site, species, notes, complete, observationIds, endDate, boundary, groupValue }) => ({ id, title, type, date, site, species, notes, complete, observationIds: [...observationIds], ...(endDate ? { endDate } : {}), ...(boundary ? { boundary: { ...boundary } } : {}), ...(groupValue ? { groupValue } : {}) }));
-    }
-    const encode = projects => JSON.stringify({ format: "terra-projects", version: 1, projects });
-    function summarize(project, journal) {
-      const byId = new Map(journal.filter(record => !record.deletedAt).map(record => [record.id, record]));
-      const records = project.observationIds.map(id => byId.get(id)).filter(record => record && matches(project, record)).sort((a, b) => a.date.localeCompare(b.date) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-      const missing = project.observationIds.filter(id => !byId.has(id) || !matches(project, byId.get(id)));
+
       const group = key => {
         const groups = new Map();
         for (const record of records) {
@@ -608,7 +567,7 @@
       const species = group(record => record.name.trim());
       return { records, missing, total: records.length, uniqueTaxa: species.filter(([name]) => name.toLowerCase() !== "unknown").length, dates: group(record => record.date), species };
     }
-    const scope = p => `${p.type}; date: ${p.date || "not specified"}${p.endDate ? ` through ${p.endDate} (inclusive)` : ""}; species/name: ${p.species || "not specified"}; site label: ${p.site || "not specified"}${p.boundary ? "; local schematic boundary enforced (not geography)" : ""}${p.groupValue ? `; selected value: ${p.groupValue}` : ""}`;
+
     function csv(project, journal) {
       const summary = summarize(project, journal);
       // Quote all fields and neutralize spreadsheet formulas, including leading whitespace.
@@ -624,36 +583,12 @@
       if (!rows.length) rows.push([...prefix, "empty", "", "", "", "", "", ""]);
       return [heading, ...rows].map(row => row.map(cell).join(",")).join("\r\n") + "\r\n";
     }
-    function addMember(projects, projectId, record) {
-      const project = projects.find(p => p.id === projectId);
-      if (!project) throw new Error("Choose an existing TERRA project. Create one below if none exist.");
-      if (project.complete) throw new Error("This project is complete. Reopen it in Projects / Field Summary first.");
-      if (!matches(project, record)) throw new Error("Observation does not match this project's exact day/name scope, date range, or is outside its boundary (or location cannot prove inclusion). Choose another project or edit its scope below.");
-      return projects.map(p => p.id === projectId ? { ...p, observationIds: [...new Set([...p.observationIds, record.id])] } : p);
-    }
-    return { KEY, valid, parse, encode, matches, summarize, scope, csv, addMember };
-  })();
-  </script>
-  <script id="genetic-preview-logic">
-  "use strict";
-  function validateLocalDNA(input) {
-    if (input.length > 10000) throw new Error("Use at most 10,000 input characters.");
-    const lines = input.trim().split(/\r?\n/);
-    if (lines[0].startsWith(">")) {
-      if (!lines[0].slice(1).trim()) throw new Error("A FASTA record needs a header.");
-      lines.shift();
-    }
-    const sequence = lines.join("").replace(/\s/g, "").toUpperCase();
-    if (!sequence || !/^[ACGTRYSWKMBDHVN]+$/.test(sequence)) throw new Error("Enter one DNA record using IUPAC bases ACGTRYSWKMBDHVN only (no RNA, gaps, digits or additional FASTA headers).");
-    return { length: sequence.length, ambiguous: sequence.replace(/[ACGT]/g, "").length };
-  }
-  </script>
+
   <script id="field-summary-ui">
   document.addEventListener("DOMContentLoaded", () => {
     const $ = id => document.getElementById(id);
     const node = (tag, text) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; return el; };
-    const fields = ["title", "type", "date", "site", "species", "notes", "endDate"];
-    let groupValue = "", otherDay = false;
+
     let projects = [], journal = [], selectedId = "", snapshot = null, ready = false;
     let chosen = new Set();
     const error = message => { $("project-error").textContent = message; $("project-error").hidden = !message; };
@@ -662,7 +597,7 @@
         const raw = localStorage.getItem(FieldSummary.KEY);
         const next = FieldSummary.parse(raw);
         const records = readObservations(); // Existing strict validator; never rewrite journal data.
-        projects = next; journal = TerraData.active(records); ready = true;
+
         return raw;
       } catch {
         ready = false;
@@ -672,22 +607,13 @@
     }
     const current = () => projects.find(p => p.id === selectedId);
     function draft() {
-      const p = { id: selectedId || (typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `project-${Date.now()}-${Math.random().toString(36).slice(2)}`), ...Object.fromEntries(fields.map(key => [key, $("project-" + key).value.trim()])), complete: current()?.complete || false, observationIds: [...chosen] };
-      if (!p.endDate) delete p.endDate;
-      if (p.type === "site" && TerraMaps.project.read()) p.boundary = TerraMaps.project.read();
-      if (groupValue && p.type === "day") p.groupValue = groupValue;
-      return p;
+
     }
     function candidates() {
       const p = draft();
       const area = $("project-candidates");
       area.replaceChildren();
-      const needsBoundary = p.type === "site" && !p.boundary && (!current() || current().type !== "site" || current().boundary);
-      const eligible = needsBoundary ? [] : journal.filter(record => FieldSummary.matches(p, record));
-      const eligibleIds = new Set(eligible.map(r => r.id));
-      const known = new Set(journal.map(r => r.id));
-      const excluded = [...chosen].filter(id => known.has(id) && !eligibleIds.has(id)).length;
-      $("project-candidate-message").textContent = !journal.length ? "No suitable observations yet. Save a discovery in the journal, or restore an existing TERRA journal backup, then refresh here. No sample records are invented." : `${eligible.length} eligible of ${journal.length} journal records.${needsBoundary ? " Draw and apply a boundary first." : ""} Check records to include; none are automatically selected.${excluded ? ` ${excluded} previously selected records outside this scope will be removed on save.` : ""}${!eligible.length ? " No records match this exact day/name. Change the scope or add a journal observation." : ""}`;
+
       function checkbox(id, label) {
         const wrapper = node("label");
         const input = node("input"); input.type = "checkbox"; input.value = id; input.checked = chosen.has(id);
@@ -725,7 +651,7 @@
       out.append(node("p", `${p.observationIds.length} references · ${s.total} included observations · ${s.uniqueTaxa} unique taxa labels · ${s.missing.length} missing references (excluded).`));
       out.append(node("p", "Unique taxa means distinct exact, trimmed recorded names, excluding Unknown (any letter case). Common/scientific synonyms and case variants are not resolved. This is not verified biological richness. Each included record counts once; counts do not represent abundance, sampling effort, trends, or ecological condition."));
       if (!s.total) out.append(node("p", "No included observations to summarize. Select existing journal records and save, or reopen this project to change membership. Missing or unselected records cannot contribute to metrics."));
-      if (s.missing.length) out.append(node("p", `Missing record IDs: ${s.missing.join(", ")}. Missing, trashed or currently out-of-scope records are not counted. References reconnect only if the restored records satisfy the current scope. Completion does not freeze the journal.`));
+
       if (s.records.length) {
         out.append(table("Records by date", ["Date", "Count", "Included observation IDs"], s.dates.map(([name, ids]) => [name, ids.length, ids.join(", ")])));
         out.append(table("Records by species / recorded name (including Unknown)", ["Recorded name", "Count", "Included observation IDs"], s.species.map(([name, ids]) => [name, ids.length, ids.join(", ")])));
@@ -742,15 +668,7 @@
       if (resetDraft && ready) {
         snapshot = raw;
         const p = current();
-        for (const key of fields) $("project-" + key).value = p ? (p[key] || "") : key === "type" ? "custom" : "";
-        groupValue = p?.groupValue || "";
-        otherDay = false;
-        TerraMaps.project.set(p?.boundary ? { ...p.boundary, kind: "region" } : null);
-        chosen = new Set(p?.observationIds || []);
-        error("");
-      }
-      groupChoices(); candidates(); report();
-      document.dispatchEvent(new Event("terra:projects-rendered"));
+
     }
     function persist(next) {
       try { localStorage.setItem(FieldSummary.KEY, FieldSummary.encode(next)); return true; }
@@ -764,53 +682,11 @@
     }
     $("project-select").addEventListener("change", event => { selectedId = event.target.value; refresh(true); });
     $("project-refresh").addEventListener("click", () => { refresh(true); $("project-status").textContent = "Latest saved data loaded; unsaved project edits discarded."; });
-    function groupChoices() {
-      const p = draft(), select = $("project-group-choice");
-      select.replaceChildren(new Option(p.type === "day" ? "All dates in timeframe" : "Other / enter a new value", ""));
-      $("project-specific").hidden = p.type === "custom";
-      $("project-boundary-fields").hidden = p.type !== "site";
-      let values = [];
-      if (p.type === "species") values = journal.map(r => r.name.trim());
-      if (p.type === "day") values = journal.filter(r => (!p.date || r.date >= p.date) && (!p.endDate || r.date <= p.endDate) && (p.endDate || !p.date || r.date === p.date)).map(r => r.date);
-      if (p.type === "site") values = projects.filter(p => p.boundary).map(p => p.site);
-      for (const v of [...new Set(values)].sort()) select.add(new Option(v, v));
-      if (p.type === "day") select.add(new Option("Other / enter another day in timeframe", "__other"));
-      select.value = p.type === "day" ? (otherDay || (groupValue && !values.includes(groupValue)) ? "__other" : groupValue) : values.includes(p.type === "species" ? p.species : p.site) ? (p.type === "species" ? p.species : p.site) : "";
-      $("project-other-day-field").hidden = p.type !== "day" || select.value !== "__other";
-      $("project-other-day").value = groupValue;
-    }
-    for (const key of ["type", "date", "endDate", "species"]) $("project-" + key).addEventListener("input", () => { groupValue = ""; otherDay = false; groupChoices(); candidates(); });
-    $("project-group-choice").addEventListener("change", event => {
-      const v = event.target.value, type = $("project-type").value;
-      if (type === "species") { $("project-species").value = v; if (!v) $("project-species").focus(); }
-      if (type === "day") {
-        otherDay = v === "__other";
-        groupValue = otherDay ? "" : v;
-        $("project-other-day-field").hidden = v !== "__other";
-      }
-      if (type === "site") {
-        $("project-site").value = v;
-        const p = projects.find(p => p.site === v && p.boundary);
-        TerraMaps.project.set(p ? { ...p.boundary, kind: "region" } : null);
-        if (!v) $("project-site").focus();
-      }
-      candidates();
-    });
-    $("project-other-day").addEventListener("input", event => { groupValue = event.target.value.trim(); candidates(); });
-    $("project-map").addEventListener("terra:map-changed", candidates);
-    $("project-form").addEventListener("submit", event => {
+
       event.preventDefault(); error("");
       if (!unchanged() || current()?.complete) return;
       const p = draft();
-      if (p.type === "day" && otherDay && !groupValue) { error("Enter the Other day within the start/end timeframe, or choose All dates."); return; }
-      const known = new Map(journal.map(r => [r.id, r]));
-      p.observationIds = p.observationIds.filter(id => !known.has(id) || FieldSummary.matches(p, known.get(id)));
-      if (!FieldSummary.valid(p)) { error("Enter a title (1–120 characters), a valid optional YYYY-MM-DD date (year 0001–9999), and the required date, species/name or site for this group. Notes allow up to 3,000 characters; site/species allow 120."); return; }
-      if (p.type === "site" && !p.boundary && (!current() || current().type !== "site" || current().boundary)) { error("Draw a site boundary before saving. Existing journal records are unchanged."); return; }
-      const removed = [...chosen].filter(id => !p.observationIds.includes(id));
-      const next = selectedId ? projects.map(item => item.id === selectedId ? p : item) : [...projects, p];
-      if (!persist(next)) return;
-      selectedId = p.id; refresh(true); $("project-status").textContent = `Project saved locally. Summary reflects only its saved references to the current journal.${removed.length ? ` Removed ${removed.length} outside / invalid memberships: ${removed.join(", ")}. Journal records were NOT deleted.` : ""}`;
+
     });
     $("project-toggle").addEventListener("click", () => {
       error(""); if (!unchanged() || !current()) return;
@@ -827,7 +703,7 @@
         $("project-status").textContent = "CSV export requested for the saved project, not unsaved edits. Contains notes and site labels; keep it private. Spreadsheet formula-like text is prefixed with an apostrophe.";
       } catch { error("CSV could not be created. Your saved data is unchanged; try again."); }
     });
-    document.addEventListener("terra:project-membership-changed", () => refresh());
+
     document.addEventListener("terra:journal-rendered", () => refresh());
     window.addEventListener("storage", event => { if (event.key === FieldSummary.KEY || event.key === null) refresh(); });
     refresh(true);
