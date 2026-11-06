@@ -39,43 +39,7 @@ let activeChoice = -1;
 let observations = [];
 let storageReady = false;
 let previewUrl = null;
-// Retry identity is in memory only; never add fields to the six-field journal.
-let pendingDiscovery = null;
-const projectObservation = document.querySelector("#project-observation");
-const discoveryProject = document.querySelector("#discovery-project");
-const addProjectButton = document.querySelector("#add-project-button");
 
-function refreshProjectAction() {
-  const selectedRecord = projectObservation.value;
-  const selectedProject = discoveryProject.value;
-  projectObservation.replaceChildren(new Option("Current discovery draft (save once, then add)", ""));
-  for (const r of observations) projectObservation.add(new Option(`${r.name} · ${r.date} · ID: ${r.id}`, r.id));
-  projectObservation.value = observations.some(r => r.id === selectedRecord) ? selectedRecord : "";
-  try {
-    const projects = FieldSummary.parse(localStorage.getItem(FieldSummary.KEY));
-    discoveryProject.replaceChildren(new Option("Choose a project", ""));
-    for (const p of projects) {
-      const option = new Option(`${p.title} (${p.complete ? "complete — reopen first" : FieldSummary.scope(p)})`, p.id);
-      option.disabled = p.complete;
-      discoveryProject.add(option);
-    }
-    discoveryProject.value = projects.some(p => p.id === selectedProject) ? selectedProject : "";
-    addProjectButton.disabled = !storageReady || !projects.some(p => !p.complete);
-    document.querySelector("#add-project-state").textContent = !projects.length ? "No projects yet. Create a local project below, then return here to add your discovery." : projects.every(p => p.complete) ? "All projects are complete. Reopen one below to add observations." : "Select a project and a draft or saved observation. Nothing leaves this browser.";
-  } catch {
-    addProjectButton.disabled = true;
-    document.querySelector("#add-project-state").textContent = "Project data cannot be read. Add is paused; existing data is untouched. Do not clear browser storage.";
-  }
-}
-function projectMembership(record, write = false) {
-  const projects = FieldSummary.parse(localStorage.getItem(FieldSummary.KEY));
-  const next = FieldSummary.addMember(projects, discoveryProject.value, record);
-  if (write) {
-    localStorage.setItem(FieldSummary.KEY, FieldSummary.encode(next));
-    document.dispatchEvent(new Event("terra:project-membership-changed"));
-  }
-}
-document.addEventListener("terra:projects-rendered", refreshProjectAction);
 
 function today() {
   const date = new Date();
@@ -281,6 +245,7 @@ function render() {
 }
 
 function clearPreview() {
+  clearDiscoveryImages();
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = null;
   preview.removeAttribute("src");
@@ -356,6 +321,7 @@ function saveDiscovery(withProject = false) {
   closeSuggestions();
   nameStatus.textContent = "";
   clearPreview();
+  transferStatus.textContent = "";
   render();
   projectObservation.value = observation.id;
   status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist. Image previews are not saved.`;
