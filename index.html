@@ -31,7 +31,7 @@
     </div>
   </header>
   <nav id="bottom-navigation" aria-label="Primary">
-    <a href="#workspace"><span aria-hidden="true">♧</span><span>Workspace</span></a>
+    <a href="#workspace"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 9 5-9 5-9-5Z M3 12.5l9 5 9-5 M3 17l9 5 9-5"/></svg><span>Workspace</span></a>
     <a href="#map"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Z M9 3v16 M15 5v16"/></svg><span>Map</span></a>
     <a href="#profile"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="7" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3"/></svg><span>Profile</span></a>
     <a href="#feed"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10 M7 12h10 M7 17h10"/></svg><span>Feed</span></a>
@@ -113,18 +113,22 @@
         <div role="tablist" aria-label="Local profile sections" id="profile-tabs">
           <button type="button" role="tab" id="posts-tab" aria-selected="true" aria-controls="profile-posts">Posts</button>
           <button type="button" role="tab" id="projects-tab" aria-selected="false" aria-controls="profile-projects" tabindex="-1">Projects</button>
-          <button type="button" role="tab" id="awards-tab" aria-selected="false" aria-controls="profile-awards" tabindex="-1">Awards</button>
+          <button type="button" role="tab" id="awards-tab" aria-selected="false" aria-controls="profile-awards" tabindex="-1">Terrarium</button>
         </div>
         <div role="tabpanel" id="profile-posts" aria-labelledby="posts-tab"><h3>Journal observations</h3><p><a href="#form-title">Record a discovery</a> · <a href="#saved-title">Manage journal / provenance / Trash</a></p><ul id="profile-observations"></ul></div>
         <div role="tabpanel" id="profile-projects" aria-labelledby="projects-tab" hidden><h3>Your projects</h3><ul id="profile-project-list"></ul><a href="#projects-title">Manage projects</a></div>
         <div role="tabpanel" id="profile-awards" aria-labelledby="awards-tab" hidden>
-          <h3>Awards &amp; rewards terrarium</h3>
-          <p>Non-quality participation badges, not identification or conservation credentials. First observation: one active, valid, non-future journal entry. Seven-day fieldbook: entries dated on seven consecutive distinct days (backfilled/imported dates count; not proof of daily uploads). Project completion: one complete project with at least one eligible active observation. Each badge unlocks only once, ever in this local store. Duplicates, repeat events, reopen/complete, delete/restore and reload cannot multiply rewards.</p>
-          <p>No verified-observation badge is available: this prototype has no genuine verification evidence. No rewards for rare species, precise locations, transactions or collecting wildlife. Observe safely without disturbing habitats.</p>
-          <p><strong>Randomized digital collectibles are unique within this local prototype only, not guaranteed unique globally. No cash, trade, NFT, blockchain or financial value.</strong> Local data can be edited or erased; this is not fraud-resistant validation. Profile/rewards are not in journal backups.</p>
-          <p id="rewards-status" role="status" aria-live="polite"></p><ul id="award-list"></ul>
+          <h3>Your terrarium</h3>
+          <p class="terrarium-intro">Every achievement adds a nature item to your terrarium. Each item gets its own look and spot, and you choose which ones to show.</p>
+          <p id="rewards-status" role="status" aria-live="polite"></p>
           <div id="rewards-terrarium" class="rewards-terrarium" role="img" aria-label="Local decorative terrarium"></div>
-          <ul id="decor-list" aria-label="Decorations and placement controls"></ul>
+          <h4 id="collection-title">Collection</h4>
+          <ul id="decor-list" class="collection-grid" aria-labelledby="collection-title"></ul>
+          <details class="terrarium-rules"><summary>How collecting works</summary>
+            <p>Participation achievements, not identification or conservation credentials. Observations count when they are active, valid and not future-dated. Seven-day fieldbook: entries dated on seven consecutive distinct days (backfilled/imported dates count; not proof of daily uploads). Different names count exact, trimmed names, excluding Unknown. Project completion: one complete project with at least one eligible active observation. Each item unlocks only once, ever in this local store. Duplicates, repeat events, reopen/complete, delete/restore and reload cannot multiply rewards.</p>
+            <p>Follower and verified-observation items are shown as goals but stay locked: this prototype has no real accounts or followers and no genuine verification evidence. No rewards for rare species, precise locations, transactions or collecting wildlife. Observe safely without disturbing habitats.</p>
+            <p><strong>Randomized digital collectibles are unique within this local prototype only, not guaranteed unique globally. No cash, trade, NFT, blockchain or financial value.</strong> Local data can be edited or erased; this is not fraud-resistant validation. Profile/rewards are not in journal backups.</p>
+          </details>
         </div>
       </section>
     <section id="feed" class="panel demo-discovery" aria-labelledby="feed-title" tabindex="-1" hidden>

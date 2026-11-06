@@ -52,6 +52,7 @@
       item.tabIndex = active ? 0 : -1;
       $(item.getAttribute("aria-controls")).hidden = !active;
     }
+    if (tab.id === "awards-tab") refresh(); // Lay out the jar now that it has a width.
     if (focus) tab.focus();
   }
   tabs.forEach((tab, index) => {
@@ -74,47 +75,80 @@
   function randomToken() {
     return [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join("");
   }
+  function clearRewards() {
+    $("decor-list").replaceChildren(); $("rewards-terrarium").replaceChildren();
+  }
+  function togglePlacement(grant) {
+    try {
+      const state = TerraRewards.parse(localStorage.getItem(TerraRewards.KEY));
+      const current = state.grants.find(g => g.badge === grant.badge && g.token === grant.token);
+      if (!current) throw Error("Reward changed in another tab");
+      current.placed = !current.placed;
+      localStorage.setItem(TerraRewards.KEY, JSON.stringify(state));
+      refresh();
+      $("decor-list").querySelector(`button[data-badge="${grant.badge}"]`)?.focus();
+    } catch { $("rewards-status").textContent = "Placement could not be saved. Existing rewards kept; reload/check storage."; }
+  }
+  const achievementFor = grant => TerraRewards.CATALOG.find(a => a.id === grant.badge);
+  const textNode = (tag, className, text) => { const el = document.createElement(tag); el.className = className; el.textContent = text; return el; };
+  function collectionCard(achievement, grant, count, fresh) {
+    const li = document.createElement("li");
+    li.className = `collection-card ${grant ? "earned" : "locked"}${fresh ? " fresh" : ""}`;
+    li.dataset.achievement = achievement.id;
+    const icon = textNode("span", "collection-icon", achievement.icon);
+    icon.setAttribute("aria-hidden", "true");
+    li.append(textNode("span", "collection-group", achievement.group), icon, textNode("strong", "collection-name", achievement.item),
+      textNode("small", "collection-goal", achievement.goal));
+    li.title = achievement.label;
+    if (grant) {
+      const serial = textNode("small", "collection-serial", fresh ? "New!" : `Serial ${grant.token.slice(0, 8)}`);
+      serial.title = `Local serial ${grant.token}`;
+      const button = textNode("button", "secondary-button", grant.placed ? "Remove from terrarium" : "Place in terrarium");
+      button.type = "button";
+      button.dataset.badge = grant.badge;
+      button.setAttribute("aria-pressed", String(grant.placed));
+      button.setAttribute("aria-label", `${grant.placed ? "Remove" : "Place"} ${achievement.item} ${grant.placed ? "from" : "in"} terrarium`);
+      button.addEventListener("click", () => togglePlacement(grant));
+      li.append(serial, button);
+    } else if (achievement.source === "unavailable") {
+      li.append(textNode("small", "collection-status", `Locked · ${achievement.lockedReason}`));
+    } else {
+      const shown = Math.min(count, achievement.target);
+      const meter = document.createElement("progress");
+      meter.max = achievement.target; meter.value = shown;
+      meter.setAttribute("aria-label", `${achievement.item} progress, ${shown} of ${achievement.target}`);
+      li.append(meter, textNode("small", "collection-status", `Locked · ${shown} / ${achievement.target}`));
+    }
+    return li;
+  }
   function renderRewards(records, projects) {
-    $("award-list").replaceChildren(); $("decor-list").replaceChildren(); $("rewards-terrarium").replaceChildren();
+    clearRewards();
     try {
       const prior = TerraRewards.parse(localStorage.getItem(TerraRewards.KEY));
       const next = TerraRewards.award(prior, TerraRewards.eligible(records, projects, TerraData.observationDate, FieldSummary.matches), randomToken);
       if (JSON.stringify(prior) !== JSON.stringify(next)) localStorage.setItem(TerraRewards.KEY, JSON.stringify(next));
-      for (const badge of Object.keys(TerraRewards.labels)) {
-        item($("award-list"), `${TerraRewards.labels[badge]} · ${next.grants.some(g => g.badge === badge) ? "earned" : "not yet earned"}`);
+      const fresh = new Set(next.grants.filter(g => !prior.grants.some(p => p.badge === g.badge)).map(g => g.badge));
+      const counts = TerraRewards.progress(records, projects, TerraData.observationDate, FieldSummary.matches);
+      const placed = next.grants.filter(g => g.placed);
+      // Scale spacing and size to the jar so items stay apart on narrow phones.
+      const width = $("rewards-terrarium").clientWidth || 500, scale = Math.min(1, width / 480);
+      for (const item of TerraRewards.layout(placed, Math.max(12, Math.min(20, 4400 / width)))) {
+        const achievement = achievementFor(item.grant);
+        const object = textNode("span", fresh.has(item.grant.badge) ? "fresh" : "", item.icon);
+        object.title = `${achievement.item} · ${achievement.label}`;
+        object.style.cssText = `left:${item.x}%;top:${item.y}%;font-size:${Math.round(item.size * Math.max(.75, scale))}px;--tilt:${item.rotation}deg;z-index:${Math.round(item.y)}`;
+        $("rewards-terrarium").append(object);
       }
-      for (const grant of next.grants) {
-        const decor = TerraRewards.decoration(grant);
-        if (grant.placed) {
-          const object = document.createElement("span");
-          object.textContent = decor.icon;
-          object.title = `${TerraRewards.labels[grant.badge]} · local serial ${grant.token}`;
-          object.style.cssText = `left:${decor.x}%;top:${decor.y}%;font-size:${decor.size}px;color:${decor.color};transform:rotate(${decor.rotation}deg)`;
-          $("rewards-terrarium").append(object);
-        }
-        const li = item($("decor-list"), `${decor.icon} ${TerraRewards.labels[grant.badge]} decoration · local serial ${grant.token} `);
-        const button = document.createElement("button");
-        button.type = "button"; button.className = "secondary-button";
-        button.dataset.badge = grant.badge;
-        button.textContent = grant.placed ? "Remove from terrarium" : "Place in terrarium";
-        button.setAttribute("aria-pressed", String(grant.placed));
-        button.addEventListener("click", () => {
-          try {
-            const state = TerraRewards.parse(localStorage.getItem(TerraRewards.KEY));
-            const current = state.grants.find(g => g.badge === grant.badge && g.token === grant.token);
-            if (!current) throw Error("Reward changed in another tab");
-            current.placed = !current.placed;
-            localStorage.setItem(TerraRewards.KEY, JSON.stringify(state));
-            refresh();
-            $("decor-list").querySelector(`[data-badge="${grant.badge}"]`)?.focus();
-          } catch { $("rewards-status").textContent = "Placement could not be saved. Existing rewards kept; reload/check storage."; }
-        });
-        li.append(button);
+      for (const achievement of TerraRewards.CATALOG) {
+        const grant = next.grants.find(g => g.badge === achievement.id);
+        $("decor-list").append(collectionCard(achievement, grant, counts[achievement.metric] ?? 0, fresh.has(achievement.id)));
       }
-      $("rewards-status").textContent = `${next.grants.length} / 3 badges unlocked · one persistent randomized decoration per badge. Local participation only, not verified quality.`;
-      $("rewards-terrarium").setAttribute("aria-label", `Local decorative terrarium, ${next.grants.filter(g => g.placed).length} objects placed. Full descriptions and controls below.`);
+      const unlocked = next.grants.filter(g => fresh.has(g.badge)).map(g => achievementFor(g).item);
+      $("rewards-status").textContent = (unlocked.length ? `New for your terrarium: ${unlocked.join(", ")}! ` : "") +
+        `${next.grants.length} of ${TerraRewards.CATALOG.length} items collected · ${placed.length} on display. Local participation only, not verified quality.`;
+      $("rewards-terrarium").setAttribute("aria-label", `Your terrarium, ${placed.length} item${placed.length === 1 ? "" : "s"} on display${placed.length ? `: ${placed.map(g => achievementFor(g).item).join(", ")}` : ""}. Collection and placement controls below.`);
     } catch {
-      $("rewards-status").textContent = "Rewards unavailable: local storage blocked/damaged or unlock could not be saved. Existing rewards untouched. Journal is unaffected. Do not clear site data.";
+      $("rewards-status").textContent = "Rewards unavailable or could not be saved: local storage blocked/damaged or unlock could not be saved. Existing rewards untouched. Journal is unaffected. Do not clear site data.";
     }
   }
   function refresh() {
@@ -134,7 +168,7 @@
       renderRewards(records, projects);
     } catch {
       item(posts, "Journal/projects unavailable; existing data untouched. Check storage before editing.");
-      $("award-list").replaceChildren(); $("decor-list").replaceChildren(); $("rewards-terrarium").replaceChildren();
+      clearRewards();
       $("rewards-status").textContent = "Awards paused: journal or project data cannot be validated. No evidence invented.";
     }
   }
