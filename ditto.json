@@ -1,6 +1,5 @@
 {
   "name": "terra-observation-logger",
-  "description": "A browser-only nature journal with integrated dates, starter names and JSON restore, plus a local photo-ID MOCK prototype: ephemeral multi-view images, optional manual administrative location, top-three and all-remaining ranked demo candidates, and an explicitly confirmed discovery-form prefill for review. No automatic save, persistent photos/location, schema change, image upload, real AI, GPS, geocoding, or publishing.",
   "type": "app",
   "entrypoint": "index.html",
   "created": "2026-10-20"
