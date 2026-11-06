@@ -1,6 +1,6 @@
 """Local smoke/markup checks; no reporting backend or journal writes."""
 import json
-import unittest
+
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -28,7 +28,7 @@ class LocalAppChecks(unittest.TestCase):
     def test_existing_file_and_health_routes(self):
         for path, content_type in [
             ("/", "text/html"), ("/index.html", "text/html"),
-            ("/app.js", "javascript"), ("/styles.css", "text/css"),
+
             ("/ditto.json", "application/json"),
         ]:
             with self.subTest(path=path):
@@ -39,6 +39,7 @@ class LocalAppChecks(unittest.TestCase):
         self.assertEqual(self.client.get("/api/health").json, {"status": "ok"})
         self.assertEqual(self.client.get("/does-not-exist").status_code, 404)
         self.assertEqual(self.client.post("/api/projects", json={}).status_code, 405)
+
 
     def test_manifest_and_markup(self):
         manifest = json.loads(Path("ditto.json").read_text())

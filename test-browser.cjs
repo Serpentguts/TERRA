@@ -3,6 +3,10 @@
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 const fs = require('node:fs/promises');
+async function saveObservation(page) {
+  await page.evaluate(() => { if (!TerraMaps.observation.read()) TerraMaps.observation.select(20, 20, 80, 80); });
+  await page.click('#save-button');
+}
 
 async function testRestore(page, key, exported) {
   const raw = () => page.evaluate(k => localStorage.getItem(k), key);
@@ -59,7 +63,7 @@ async function testRestore(page, key, exported) {
     { ...wrapper([]), observations: {} },
     wrapper([record, null]), wrapper([record, []]),
     ...[
-      { id: '' }, { id: 42 }, { id: ' ' }, { type: 'bird' }, { type: ['plant'] },
+      { id: '' }, { id: 42 }, { id: ' ' }, { type: 'unrecognized' }, { type: ['plant'] },
       { name: '' }, { name: ' ' }, { name: 'a'.repeat(121) },
       { notes: null }, { notes: 'a'.repeat(3001) }, { date: '2025-02-29' },
       { date: '0000-01-01' }, { date: '2025-13-01' }, { privacy: 'public' },
@@ -249,6 +253,7 @@ async function testIdentification(page, key) {
   await analyze();
   await error(/valid optional date/);
   await page.fill('#identify-date', '2024-02-29');
+  await page.selectOption('#identify-context', 'broad');
   await page.selectOption('#identify-region', 'North America');
   await analyze();
   assert.equal(await page.locator('#identify-output').isVisible(), true);
@@ -276,12 +281,18 @@ async function testIdentification(page, key) {
   const expectedParts = {
     plant: ['Leaf', 'Flower', 'Fruit', 'Bark', 'Whole organism', 'Other'],
     fungus: ['Cap', 'Gills / underside', 'Stem', 'Whole organism', 'Other'],
-    animal: ['Dorsal / top', 'Ventral / underside', 'Wing', 'Leg', 'Whole organism', 'Other'],
+    insect: ['Dorsal / top', 'Ventral / underside', 'Wing', 'Leg', 'Whole organism', 'Other'],
+    mammal: ['Head', 'Body', 'Tracks', 'Whole organism', 'Other'],
+    bird: ['Head', 'Wing', 'Plumage', 'Whole organism', 'Other'],
+    fish: ['Side', 'Fin', 'Head', 'Whole organism', 'Other'],
+    reptile: ['Head', 'Scales', 'Body', 'Whole organism', 'Other'],
     unsure: ['Whole organism', 'Detail / close-up', 'Other']
   };
-  for (const [group, part, caveat] of [
-    ['fungus', 'Gills / underside', /deadly/], ['animal', 'Dorsal / top', /safe distance/],
-    ['unsure', 'Detail / close-up', /group is unresolved/], ['plant', 'Bark', /look-alike/i]
+  for (const [group, part, caveat, candidate] of [
+    ['fungus', 'Gills / underside', /deadly/, /Fly agaric/], ['insect', 'Dorsal / top', /safe distance/, /Seven-spot ladybird/],
+    ['mammal', 'Tracks', /safe distance/, /Red fox/], ['bird', 'Plumage', /nests/, /European robin/],
+    ['fish', 'Fin', /Do not capture/, /Atlantic salmon/], ['reptile', 'Scales', /never handle/, /Green iguana/],
+    ['unsure', 'Detail / close-up', /group is unresolved/, /Unresolved plant/], ['plant', 'Bark', /look-alike/i, /Common dandelion/]
   ]) {
     await page.selectOption('#identify-group', group);
     assert.equal(await page.locator('#identify-output').isVisible(), false);
@@ -290,6 +301,7 @@ async function testIdentification(page, key) {
     await page.locator('#identify-previews select').selectOption(part);
     await analyze();
     assert.match(await page.locator('#identify-caveat').textContent(), caveat);
+    assert.match(await page.locator('#identify-candidates').textContent(), candidate);
     assert.equal(await page.locator('#identify-candidates > li').count(), 3);
     assert.equal(await page.locator('#identify-remaining > li').count(), 3);
     assert.equal(await page.locator('#identify-more').getAttribute('open'), null);
@@ -360,7 +372,7 @@ async function testIdentification(page, key) {
   assert.equal(await page.locator('#identify-previews img').count(), 0);
   assert.equal(await page.locator('#identify-output').isVisible(), false);
   assert.equal(await snapshot(), before);
-  assert.equal(await page.evaluate(k => JSON.parse(localStorage.getItem(k)).every(item => Object.keys(item).sort().join() === 'date,id,name,notes,privacy,type'), key), true);
+  assert.equal(await page.evaluate(k => JSON.parse(localStorage.getItem(k)).every(item => Object.keys(item).filter(k => k !== 'location').sort().join() === 'date,id,name,notes,privacy,type'), key), true);
   console.log('PASS: local mock identification, all groups/parts/caveats, single/multi-image limits, invalid files, URL cleanup, review controls, safe text, reset/reload, storage isolation, zero mock network calls, populated responsive widths.');
 }
 
@@ -393,6 +405,7 @@ async function testDiscoveryHandoff(page, key) {
     await click;
   };
   assert.equal(await page.locator('#identify-location-detail').isVisible(), false);
+  await page.selectOption('#identify-context', 'broad');
   await page.selectOption('#identify-region', 'North America');
   assert.equal(await page.locator('#identify-location-detail').isVisible(), true);
   assert.equal(await page.locator('#identify-manual-location').isVisible(), false);
@@ -418,7 +431,7 @@ async function testDiscoveryHandoff(page, key) {
   await page.fill('#identify-state', 'Ontario');
   const literal = '<img src=x onerror="window.locationInjected=true">';
   await page.fill('#identify-city', literal);
-  await page.selectOption('#identify-group', 'animal');
+  await page.selectOption('#identify-group', 'insect');
   await page.check('#identify-multiple');
   await page.setInputFiles('#identify-files', [photo('one.png'), photo('two.png')]);
   await ready();
@@ -449,7 +462,7 @@ async function testDiscoveryHandoff(page, key) {
   await confirm(true);
   await ready();
   assert.equal(await page.locator('#name').inputValue(), chosen);
-  assert.equal(await page.locator('input[name=type]:checked').inputValue(), 'other');
+  assert.equal(await page.locator('#organism-choice').inputValue(), 'Insect');
   assert.equal(await page.locator('#date').inputValue(), '2024-02-29');
   assert.equal(await page.locator('#date-picker').inputValue(), '2024-02-29');
   assert.equal(await page.locator('#notes').inputValue(), 'Keep notes');
@@ -489,7 +502,7 @@ async function testDiscoveryHandoff(page, key) {
   await page.locator('#identify-candidates button').first().click();
   await confirm(true);
   assert.equal(await page.locator('#date').inputValue(), '');
-  await page.click('#save-button');
+  await saveObservation(page);
   assert.equal(await snapshot(), before, 'Missing date must not save');
   // Reset of source photos leaves valid independently owned draft previews.
   await page.click('#identify-reset');
@@ -502,17 +515,17 @@ async function testDiscoveryHandoff(page, key) {
     window.handoffSetItem = Storage.prototype.setItem;
     Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); };
   });
-  await page.click('#save-button');
+  await saveObservation(page);
   assert.equal(await page.locator('#form-error').isVisible(), true);
   assert.equal(await page.locator('#discovery-previews img').count(), 2);
   assert.equal(await page.locator('#discovery-city').inputValue(), literal);
   assert.equal(await snapshot(), before);
   await page.evaluate(() => { Storage.prototype.setItem = window.handoffSetItem; });
-  await page.click('#save-button');
+  await saveObservation(page);
   assert.equal(await page.locator('#discovery-previews img').count(), 0);
   assert.equal(await page.locator('#discovery-city').inputValue(), '');
   const records = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key);
-  assert.ok(records.every(item => Object.keys(item).sort().join() === 'date,id,name,notes,privacy,type'));
+  assert.ok(records.every(item => Object.keys(item).filter(k => k !== 'location').sort().join() === 'date,id,name,notes,privacy,type'));
   assert.equal(records[0].date, '2024-02-29');
   assert.equal(records[0].notes, 'Keep notes');
   const downloadPromise = page.waitForEvent('download');
@@ -529,7 +542,7 @@ async function testDiscoveryHandoff(page, key) {
   await analyze();
   await page.locator('#identify-candidates button').first().click();
   await confirm(true);
-  assert.equal(await page.locator('input[name=type]:checked').inputValue(), 'plant');
+  assert.equal(await page.locator('#organism-choice').inputValue(), 'Plant');
   await page.setInputFiles('#photo', photo('replacement.png'));
   assert.equal(await page.locator('#discovery-previews img').count(), 0);
   assert.equal(await page.locator('#preview-wrap').isVisible(), true);
@@ -564,7 +577,7 @@ async function testDiscoveryHandoff(page, key) {
     await dialog.accept();
     await click;
     await ready();
-    assert.equal(await page.locator('input[name=type]:checked').inputValue(), type);
+    assert.equal(await page.locator('#organism-choice').inputValue(), ({ plant: 'Plant', fungus: 'Mushroom', insect: 'Insect', mammal: 'Mammal', bird: 'Bird', fish: 'Fish', reptile: 'Reptile', other: 'Other' })[type]);
     assert.equal(await page.locator('#discovery-previews img').count(), 1);
   }
   // pagehide clears both owners; each object URL must be revoked exactly once.
@@ -666,7 +679,7 @@ async function testDiscoveryHandoff(page, key) {
     await name.press('Enter');
     assert.equal(await name.inputValue(), 'Trichoderma harzianum');
     assert.equal(await page.locator('.observation-card').count(), 0, 'Enter selects without submitting');
-    await page.click('#save-button');
+    await saveObservation(page);
     assert.equal(await page.locator('.observation-card h3').textContent(), 'Trichoderma harzianum');
     assert.match(await page.locator('#status').textContent(), /local journal.*Nothing was published to iNaturalist/);
     await name.fill('Trichoc');
@@ -674,12 +687,12 @@ async function testDiscoveryHandoff(page, key) {
     await suggestionList.getByRole('option', { name: 'Trichocereus bridgesii', exact: true }).click();
     assert.equal(await name.inputValue(), 'Trichocereus bridgesii');
     assert.equal(await page.locator('.observation-card').count(), 1, 'Mouse fills without submitting');
-    await page.click('#save-button');
+    await saveObservation(page);
     await name.fill('Trich');
     await name.press('ArrowUp'); // Last option is the explicit manual choice.
     await name.press('Enter');
     assert.equal(await name.inputValue(), 'Trich');
-    await page.click('#save-button');
+    await saveObservation(page);
     await name.fill('My unlisted organism');
     assert.equal(await suggestionList.getByRole('option').count(), 1);
     assert.match(await page.locator('#name-status').textContent(), /No matching starter species/);
@@ -687,7 +700,7 @@ async function testDiscoveryHandoff(page, key) {
     await suggestionList.getByRole('option').tap();
     assert.equal(await name.inputValue(), 'My unlisted organism');
     assert.equal(await page.locator('.observation-card').count(), 3, 'Manual choice does not submit');
-    await page.click('#save-button');
+    await saveObservation(page);
     const featureRecords = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key);
     assert.deepEqual(featureRecords.map(item => item.name), [
       'My unlisted organism', 'Trich', 'Trichocereus bridgesii', 'Trichoderma harzianum'
@@ -742,14 +755,14 @@ async function testDiscoveryHandoff(page, key) {
     }
     assert.equal(await page.evaluate(() => window.pickerActivations), 2);
     const beforeInvalid = await page.evaluate(k => localStorage.getItem(k), key);
-    for (const invalid of ['', '1900-02-29', '2100-02-29', '2025-02-29', '2024-02-30', '2025-04-31', '0000-01-01', '10000-01-01', '04/02/2025', '2025-4-2', 'not a date']) {
+    for (const invalid of ['', '1900-02-29', '2100-02-29', '2025-02-29', '2024-02-30', '2025-04-31', '0000-01-01', '10000-01-01', '04/02/2025', '2025-4-2', 'not a date', '9999-12-31']) {
       await date.fill(invalid);
-      await page.click('#save-button');
+      await saveObservation(page);
       assert.equal(await date.evaluate(el => el.checkValidity()), false, invalid);
       assert.equal(await page.evaluate(k => localStorage.getItem(k), key), beforeInvalid);
       assert.equal(await page.locator('#date-picker').inputValue(), '');
     }
-    for (const valid of ['2024-02-29', '2000-02-29', '0001-01-01', '9999-12-31']) {
+    for (const valid of ['2024-02-29', '2000-02-29', '0001-01-01']) {
       await date.fill('');
       await date.pressSequentially(valid);
       assert.equal(await date.evaluate(el => el.checkValidity()), true, valid);
@@ -763,28 +776,28 @@ async function testDiscoveryHandoff(page, key) {
     await page.locator('#date-picker').dispatchEvent('change');
     assert.equal(await date.inputValue(), '2025-04-02');
     await name.fill('Calendar date');
-    await page.click('#save-button');
+    await saveObservation(page);
     assert.equal(await page.evaluate(k => JSON.parse(localStorage.getItem(k))[0].date, key), '2025-04-02');
     await date.fill('2024-02-29');
     await name.fill('Typed leap day');
-    await page.click('#save-button');
+    await saveObservation(page);
     await page.reload();
     assert.equal(await page.evaluate(k => JSON.parse(localStorage.getItem(k))[0].date, key), '2024-02-29');
     assert.equal(await page.locator('#date-picker').inputValue(), await date.inputValue());
     await page.evaluate(k => localStorage.removeItem(k), key);
     await page.reload();
-    // Blank names become Unknown, and each privacy option is only a preference.
-    await page.click('#save-button');
+    // Blank names become Unknown; supply a local region for Hidden.
+    await saveObservation(page);
     assert.equal(await page.locator('.observation-card h3').textContent(), 'Unknown');
     await page.reload();
     assert.equal(await page.locator('.observation-card').count(), 1);
     const injection = '<img src=x onerror="window.injected=true">';
     await page.fill('#name', injection);
     await page.fill('#notes', '<script>alert(1)</script>\nA second line.');
-    await page.check('input[value="fungus"]');
+    await page.fill('#organism-choice', 'Mushroom');
     await page.selectOption('#privacy', 'exact');
     await page.fill('#date', '2025-04-02');
-    await page.click('#save-button');
+    await saveObservation(page);
     assert.equal(await page.locator('.observation-card h3').last().textContent(), injection);
     assert.equal(await page.locator('.observation-card img, .observation-card script').count(), 0);
     assert.equal(await page.evaluate(() => window.injected), undefined);
@@ -794,11 +807,11 @@ async function testDiscoveryHandoff(page, key) {
     assert.equal(await page.locator('#preview-wrap').isVisible(), true);
     await page.fill('#name', 'Dandelion');
     await page.selectOption('#privacy', 'approximate');
-    await page.click('#save-button');
+    await saveObservation(page);
     assert.equal(await page.locator('#preview-wrap').isVisible(), false);
     const stored = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key);
     assert.equal(stored.length, 3);
-    assert.deepEqual(Object.keys(stored[0]).sort(), ['date', 'id', 'name', 'notes', 'privacy', 'type']);
+    assert.deepEqual(Object.keys(stored[0]).sort(), ['date', 'id', 'location', 'name', 'notes', 'privacy', 'type']);
     assert.equal(stored[0].privacy, 'approximate');
     const downloadPromise = page.waitForEvent('download');
     await page.click('#export-button');
@@ -811,7 +824,11 @@ async function testDiscoveryHandoff(page, key) {
     assert.equal(await page.locator('.observation-card').count(), 3);
     page.once('dialog', dialog => dialog.accept());
     await page.locator('.observation-card button').first().click();
-    assert.equal(await page.locator('.observation-card').count(), 2);
+    assert.equal(await page.locator('#observation-list .observation-card').count(), 2);
+    assert.equal(await page.locator('#trash-list .observation-card').count(), 1);
+    // Separate isolated restore-merge fixture: omit trashed record to test adding a missing ID.
+    await page.evaluate(k => localStorage.setItem(k, JSON.stringify(JSON.parse(localStorage.getItem(k)).filter(r => !r.deletedAt))), key);
+    await page.reload();
     await page.setInputFiles('#photo', { name: 'not-image.txt', mimeType: 'text/plain', buffer: Buffer.from('no') });
     assert.equal(await page.locator('#photo-error').isVisible(), true);
     await page.setInputFiles('#photo', { name: 'too-big.png', mimeType: 'image/png', buffer: Buffer.alloc(11 * 1024 * 1024) });
@@ -820,14 +837,14 @@ async function testDiscoveryHandoff(page, key) {
     const second = await context.newPage();
     await second.goto('http://127.0.0.1:8080');
     await page.fill('#name', 'Second-tab check');
-    await page.click('#save-button');
+    await saveObservation(page);
     await second.waitForFunction(() => document.querySelector('#count').textContent === '3');
     assert.deepEqual(await second.evaluate(() => window.networkAttempts), []);
     await second.close();
     // Simulate quota exhaustion; form and saved records must survive.
     await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); }; });
     await page.fill('#name', 'Keep this draft');
-    await page.click('#save-button');
+    await saveObservation(page);
     assert.equal(await page.locator('#form-error').isVisible(), true);
     assert.equal(await page.locator('#name').inputValue(), 'Keep this draft');
     assert.equal(await page.locator('.observation-card').count(), 3);
@@ -835,6 +852,28 @@ async function testDiscoveryHandoff(page, key) {
     await testRestore(page, key, exported);
     await testIdentification(page, key);
     await testDiscoveryHandoff(page, key);
+    // All seven choices save and round-trip using the unchanged six-field v1 schema.
+    const choices = { plant: 'Plant', fungus: 'Mushroom', insect: 'Insect', mammal: 'Mammal', bird: 'Bird', fish: 'Fish', reptile: 'Reptile' };
+    assert.deepEqual(await page.locator('#identify-group option').evaluateAll(options => options.slice(1, -1).map(o => o.textContent)), Object.values(choices));
+    for (const [type, label] of Object.entries(choices)) {
+      await page.fill('#organism-choice', label);
+      await name.fill('Trich');
+      assert.deepEqual(await page.locator('#name-suggestions li').allTextContents(), ['Trichocereus bridgesii', 'Trichoderma harzianum', 'Keep “Trich” as my manual name']);
+      await name.fill(`${label} manual record`);
+      await saveObservation(page);
+      const saved = await page.evaluate(k => JSON.parse(localStorage.getItem(k))[0], key);
+      assert.equal(saved.type, type);
+      assert.equal(saved.name, `${label} manual record`);
+      assert.deepEqual(Object.keys(saved).sort(), ['date', 'id', 'location', 'name', 'notes', 'privacy', 'type']);
+      assert.equal(await page.locator('.observation-card').filter({ hasText: `${label} manual record` }).locator('.category').textContent(), label);
+    }
+    const categoryDownload = page.waitForEvent('download'); await page.click('#export-button');
+    const categoryBackup = await fs.readFile(await (await categoryDownload).path(), 'utf8');
+    const categoryRecords = JSON.parse(categoryBackup).observations;
+    await page.evaluate(k => localStorage.removeItem(k), key); await page.reload();
+    await page.setInputFiles('#import-file', { name: 'categories.json', mimeType: 'application/json', buffer: Buffer.from(categoryBackup) });
+    await page.waitForSelector('#import-preview:visible'); await page.click('#confirm-import'); await page.reload();
+    assert.deepEqual(await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key), categoryRecords);
     // Corrupt storage must not be silently overwritten.
     await page.evaluate(k => localStorage.setItem(k, '{broken'), key);
     await page.reload();

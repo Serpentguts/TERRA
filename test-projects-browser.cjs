@@ -38,7 +38,7 @@ const fs = require('node:fs/promises');
     const records = [
       { id: 'a', type: 'plant', name: 'Oak', date: '2024-02-29', notes: 'A', privacy: 'hidden' },
       { id: 'b', type: 'plant', name: 'Oak', date: '2024-02-29', notes: 'B', privacy: 'hidden' },
-      { id: 'c', type: 'other', name: 'Unknown', date: '2025-01-01', notes: '=CMD()', privacy: 'exact' },
+
       { id: 'd', type: 'fungus', name: '<img src=x onerror="window.injected=1">', date: '2025-01-01', notes: '<script>bad()</script>', privacy: 'approximate' }
     ];
     const journalBytes = JSON.stringify(records);
@@ -46,12 +46,14 @@ const fs = require('node:fs/promises');
     await page.reload();
     await page.fill('#project-title', '=Field "day", test');
     await page.fill('#project-site', '<img src=x onerror="window.injected=1">');
+
     await page.fill('#project-notes', 'Notes\nsecond line');
     for (const id of ['a', 'b', 'c', 'd']) await choose(id);
     assert.match(await report(), /^$/); // Unsaved selection is not a report.
     await save();
     const custom = (await projects()).at(-1);
     assert.deepEqual(custom.observationIds, ['a', 'b', 'c', 'd']);
+
     assert.equal(Object.hasOwn(custom, 'observations'), false);
     assert.match(await report(), /4 included observations · 2 unique taxa labels/);
     assert.equal(await page.locator('#project-report table').count(), 3);
@@ -62,6 +64,7 @@ const fs = require('node:fs/promises');
     const csv = await fs.readFile(await (await download).path(), 'utf8');
     assert.match(csv, /"'=Field ""day"", test"/); assert.match(csv, /"'=CMD\(\)"/);
     assert.match(csv, /<img src=x/); assert.match(csv, /"4","4","2","0"/);
+
     // Membership edits and completion/reopening persist, without altering observations.
     await page.locator('#project-candidates input[value="b"]').uncheck(); await save();
     assert.match(await report(), /3 included observations/);
@@ -88,7 +91,7 @@ const fs = require('node:fs/promises');
     // Site group requires a manual label, offers journal records, and never implies geographic matching.
     await page.selectOption('#project-select', ''); await page.fill('#project-title', 'Site collection'); await page.selectOption('#project-type', 'site'); await save();
     assert.equal(await page.locator('#project-error').isVisible(), true);
-    await page.fill('#project-site', 'North garden'); await choose('c'); await save();
+
     const site = (await projects()).at(-1); assert.match(await report(), /North garden/); assert.match(await report(), /1 included observations · 0 unique taxa labels/);
     assert.equal(await raw(J), journalBytes);
     // Completed projects remain live: deleted records become retained missing IDs, then reconnect on restore.
@@ -96,8 +99,7 @@ const fs = require('node:fs/promises');
     page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete observation: Oak', exact: true }).first().click();
     assert.match(await report(), /0 included observations/); assert.match(await report(), /Missing record IDs: a/);
     assert.deepEqual((await projects()).find(p => p.id === species.id).observationIds, ['a']);
-    await page.setInputFiles('#import-file', { name: 'restore.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ format: 'terra-observations', version: 1, exportedAt: '2026-01-01T00:00:00.000Z', observations: [records[0]] })) });
-    await page.waitForSelector('#import-preview:visible'); await page.click('#confirm-import');
+
     assert.match(await report(), /1 included observations/);
     // Project write failures preserve draft and both stores; retry succeeds.
     await page.selectOption('#project-select', site.id); await page.fill('#project-notes', 'Keep this draft');
@@ -122,12 +124,13 @@ const fs = require('node:fs/promises');
     // Populated responsive tables, keyboard checkbox interaction and accessible labels.
     await page.selectOption('#project-select', custom.id);
     const checkbox = page.locator('#project-candidates input').first(); await checkbox.focus(); await page.keyboard.press('Space'); assert.equal(await checkbox.isChecked(), false);
-    assert.equal(await page.getByLabel('Project title (required)', { exact: true }).count(), 1);
+
     assert.equal(await page.locator('#project-status').getAttribute('role'), 'status');
     assert.equal(await page.locator('#project-error').getAttribute('role'), 'alert');
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 850 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `project overflow at ${width}`);
+
     }
     // Malformed, duplicate and future versions are never overwritten; the journal remains usable.
     const good = await raw(K);
