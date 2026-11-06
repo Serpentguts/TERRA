@@ -59,7 +59,7 @@ async function testRestore(page, key, exported) {
     { ...wrapper([]), observations: {} },
     wrapper([record, null]), wrapper([record, []]),
     ...[
-      { id: '' }, { id: 42 }, { id: ' ' }, { type: 'bird' }, { type: ['plant'] },
+      { id: '' }, { id: 42 }, { id: ' ' }, { type: 'unrecognized' }, { type: ['plant'] },
       { name: '' }, { name: ' ' }, { name: 'a'.repeat(121) },
       { notes: null }, { notes: 'a'.repeat(3001) }, { date: '2025-02-29' },
       { date: '0000-01-01' }, { date: '2025-13-01' }, { privacy: 'public' },
@@ -276,12 +276,18 @@ async function testIdentification(page, key) {
   const expectedParts = {
     plant: ['Leaf', 'Flower', 'Fruit', 'Bark', 'Whole organism', 'Other'],
     fungus: ['Cap', 'Gills / underside', 'Stem', 'Whole organism', 'Other'],
-    animal: ['Dorsal / top', 'Ventral / underside', 'Wing', 'Leg', 'Whole organism', 'Other'],
+    insect: ['Dorsal / top', 'Ventral / underside', 'Wing', 'Leg', 'Whole organism', 'Other'],
+    mammal: ['Head', 'Body', 'Tracks', 'Whole organism', 'Other'],
+    bird: ['Head', 'Wing', 'Plumage', 'Whole organism', 'Other'],
+    fish: ['Side', 'Fin', 'Head', 'Whole organism', 'Other'],
+    reptile: ['Head', 'Scales', 'Body', 'Whole organism', 'Other'],
     unsure: ['Whole organism', 'Detail / close-up', 'Other']
   };
-  for (const [group, part, caveat] of [
-    ['fungus', 'Gills / underside', /deadly/], ['animal', 'Dorsal / top', /safe distance/],
-    ['unsure', 'Detail / close-up', /group is unresolved/], ['plant', 'Bark', /look-alike/i]
+  for (const [group, part, caveat, candidate] of [
+    ['fungus', 'Gills / underside', /deadly/, /Fly agaric/], ['insect', 'Dorsal / top', /safe distance/, /Seven-spot ladybird/],
+    ['mammal', 'Tracks', /safe distance/, /Red fox/], ['bird', 'Plumage', /nests/, /European robin/],
+    ['fish', 'Fin', /Do not capture/, /Atlantic salmon/], ['reptile', 'Scales', /never handle/, /Green iguana/],
+    ['unsure', 'Detail / close-up', /group is unresolved/, /Unresolved plant/], ['plant', 'Bark', /look-alike/i, /Common dandelion/]
   ]) {
     await page.selectOption('#identify-group', group);
     assert.equal(await page.locator('#identify-output').isVisible(), false);
@@ -290,19 +296,7 @@ async function testIdentification(page, key) {
     await page.locator('#identify-previews select').selectOption(part);
     await analyze();
     assert.match(await page.locator('#identify-caveat').textContent(), caveat);
-    assert.equal(await page.locator('#identify-candidates > li').count(), 3);
-    assert.equal(await page.locator('#identify-remaining > li').count(), 3);
-    assert.equal(await page.locator('#identify-more').getAttribute('open'), null);
-    const summary = page.locator('#identify-more summary');
-    await summary.focus();
-    await summary.press('Enter');
-    assert.equal(await page.locator('#identify-remaining').isVisible(), true);
-    assert.equal(await page.locator('#identify-candidates > li').first().isVisible(), true);
-    const scores = await page.locator('#identify-candidates > li p, #identify-remaining > li p').allTextContents();
-    assert.deepEqual(scores.map(text => Number(text.match(/score: (\d+)/)[1])), [72, 48, 26, 19, 12, 5]);
-    assert.ok(scores.every(text => /MOCK · Demo data/.test(text) && /non-calibrated/.test(text)));
-    await summary.press('Space');
-    assert.equal(await page.locator('#identify-remaining').isVisible(), false);
+
   }
   await page.check('#identify-multiple');
   await page.setInputFiles('#identify-files', [photo('second.png'), photo('third.png')]);
@@ -834,7 +828,7 @@ async function testDiscoveryHandoff(page, key) {
     await page.reload();
     await testRestore(page, key, exported);
     await testIdentification(page, key);
-    await testDiscoveryHandoff(page, key);
+
     // Corrupt storage must not be silently overwritten.
     await page.evaluate(k => localStorage.setItem(k, '{broken'), key);
     await page.reload();

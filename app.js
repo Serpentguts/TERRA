@@ -2,7 +2,8 @@
 
 // Only these text fields are saved. Photos and coordinates never enter storage.
 const STORAGE_KEY = "terra.observations.v1";
-const categories = { plant: "Plant", fungus: "Fungus", other: "Other" };
+// Keep legacy fungus/other keys readable in existing version-1 journals and backups.
+const categories = { plant: "Plant", fungus: "Mushroom", insect: "Insect", mammal: "Mammal", bird: "Bird", fish: "Fish", reptile: "Reptile", other: "Other" };
 const privacyLabels = { hidden: "Hidden", approximate: "Approximate", exact: "Exact" };
 const form = document.querySelector("#observation-form");
 const list = document.querySelector("#observation-list");
@@ -38,64 +39,7 @@ let activeChoice = -1;
 let observations = [];
 let storageReady = false;
 let previewUrl = null;
-let discoveryImages = [];
-const discoveryPreviews = document.querySelector("#discovery-previews");
-const discoveryImageWrap = document.querySelector("#discovery-images");
-const transferStatus = document.querySelector("#discovery-transfer-status");
 
-function clearDiscoveryImages() {
-  for (const image of discoveryImages) {
-    image.img.onerror = null;
-    image.img.removeAttribute("src");
-    URL.revokeObjectURL(image.url);
-  }
-  discoveryImages = [];
-  discoveryPreviews.replaceChildren();
-  discoveryImageWrap.hidden = true;
-}
-document.querySelector("#discovery-clear-images").addEventListener("click", clearDiscoveryImages);
-// Independent File-backed previews: never borrow URLs owned by Explore a photo.
-// Resetting either area cannot revoke the other area's live previews.
-document.addEventListener("terra:prefill-discovery", event => {
-  const draft = event.detail;
-  if (!draft || typeof draft.name !== "string" || !draft.name.trim() || draft.name.length > 120 ||
-      !Object.hasOwn(categories, draft.type) || (draft.date && !validDate(draft.date)) ||
-      !Array.isArray(draft.files) || !draft.files.length || draft.files.length > 6 ||
-      draft.files.some(file => !(file instanceof File) || !file.type.startsWith("image/") || !file.size || file.size > 10 * 1024 * 1024)) return;
-  clearPreview();
-  nameInput.value = draft.name.trim();
-  closeSuggestions();
-  nameStatus.textContent = "Unverified photo-review name. Review before saving.";
-  form.querySelector(`input[name=type][value="${draft.type}"]`).checked = true;
-  dateInput.value = draft.date; // Missing dates stay blank; never invent an observation date.
-  syncDate();
-  for (const key of ["region", "precision", "country", "state", "city"]) {
-    document.querySelector(`#discovery-${key}`).value = draft.location?.[key] || "";
-  }
-  for (const file of draft.files) {
-    const card = element("li", "identify-photo");
-    const img = element("img");
-    const url = URL.createObjectURL(file);
-    const image = { img, url };
-    img.alt = `Temporary discovery preview: ${file.name}`;
-    img.onerror = () => {
-      img.onerror = null;
-      img.removeAttribute("src");
-      URL.revokeObjectURL(url);
-      discoveryImages = discoveryImages.filter(item => item !== image);
-      card.remove();
-      discoveryImageWrap.hidden = !discoveryImages.length;
-      showError(photoError, "A transferred preview could not be displayed. No image will be saved; choose a supported image to retry.");
-    };
-    discoveryImages.push(image);
-    card.append(img, element("p", "identify-filename", file.name));
-    discoveryPreviews.append(card);
-    img.src = url;
-  }
-  discoveryImageWrap.hidden = false;
-  transferStatus.textContent = "Draft prefilled only. Review name, date, group, temporary images/location, notes and privacy, then Save separately. Images and location detail are not saved or exported. Nothing sent to iNaturalist.";
-  nameInput.focus();
-});
 
 function today() {
   const date = new Date();
@@ -274,6 +218,9 @@ function render() {
     meta.append(element("span", "category", categories[observation.type]), date);
     card.append(meta, element("h3", "", observation.name));
     card.append(element("p", "card-notes", observation.notes || "No field notes added."));
+    const provenance = element("a", "", "Identification provenance: not recorded (staged definitions)");
+    provenance.href = "#identification-plan";
+    card.append(provenance);
     const bottom = element("div", "card-bottom");
     const remove = element("button", "text-button", "Delete");
     remove.type = "button";
@@ -294,6 +241,7 @@ function render() {
     card.append(bottom);
     list.append(card);
   }
+  refreshProjectAction();
 }
 
 function clearPreview() {
@@ -325,8 +273,7 @@ preview.addEventListener("error", () => {
 document.querySelector("#remove-photo").addEventListener("click", clearPreview);
 window.addEventListener("pagehide", clearPreview);
 
-form.addEventListener("submit", event => {
-  event.preventDefault();
+function saveDiscovery(withProject = false) {
   showError(formError, "");
   const data = new FormData(form);
   const observation = {
@@ -341,9 +288,34 @@ form.addEventListener("submit", event => {
     showError(formError, "Check the observation fields and enter a valid date (year 0001–9999).");
     return;
   }
+  // Check scope before creating a record, then recheck before writing membership.
+  if (withProject) {
+    try { projectMembership(observation); }
+    catch (error) { showError(formError, `Nothing added. ${error.message}`); return; }
+  }
   load();
-  if (!storageReady || !persist([observation, ...observations])) return;
+  if (!storageReady) return;
+  const fingerprintOf = ({ id, ...fields }) => JSON.stringify(fields);
+  const fingerprint = fingerprintOf(observation);
+  const previous = pendingDiscovery && observations.find(r => r.id === pendingDiscovery.id);
+  if (previous && pendingDiscovery.fingerprint === fingerprint && fingerprintOf(previous) === fingerprint) {
+    observation.id = previous.id;
+  } else {
+    if (!persist([observation, ...observations])) return;
+    pendingDiscovery = { id: observation.id, fingerprint };
+  }
+  if (withProject) {
+    try { projectMembership(observation, true); }
+    catch (error) {
+      render();
+      showError(formError, `Observation saved in the local journal, but project add failed. Retry Add with this unchanged draft to reuse the same record, or select it from saved observations. ${error.message}`);
+      return;
+    }
+  }
+  pendingDiscovery = null;
+  const targetProject = discoveryProject.value;
   form.reset();
+  discoveryProject.value = targetProject;
   dateInput.value = today();
   syncDate();
   closeSuggestions();
@@ -351,8 +323,26 @@ form.addEventListener("submit", event => {
   clearPreview();
   transferStatus.textContent = "";
   render();
-  status.textContent = `Saved “${observation.name}” to the local journal in this browser. Nothing was published to iNaturalist. Image previews are not saved.`;
+  projectObservation.value = observation.id;
+  status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist. Image previews are not saved.`;
   document.querySelector("#name").focus();
+}
+form.addEventListener("submit", event => { event.preventDefault(); saveDiscovery(); });
+addProjectButton.addEventListener("click", () => {
+  showError(formError, "");
+  if (!projectObservation.value) {
+    if (form.reportValidity()) saveDiscovery(true);
+    return;
+  }
+  const id = projectObservation.value;
+  load();
+  if (!storageReady) return;
+  const record = observations.find(r => r.id === id);
+  if (!record) { showError(formError, "That saved observation no longer exists. Choose another record or the current draft."); return; }
+  try {
+    projectMembership(record, true);
+    status.textContent = `“${record.name}” is in the selected TERRA project. Existing journal record reused; no duplicates or uploads.`;
+  } catch (error) { showError(formError, `Project add failed; journal unchanged. ${error.message}`); }
 });
 
 exportButton.addEventListener("click", () => {
@@ -502,6 +492,38 @@ window.addEventListener("storage", event => {
     status.textContent = "Journal updated from another tab.";
   }
 });
+const geneticQuery = document.querySelector("#genetic-query");
+const geneticSequence = document.querySelector("#genetic-sequence");
+const geneticPreview = document.querySelector("#genetic-preview");
+const geneticError = document.querySelector("#genetic-error");
+function clearGeneticInputs() {
+  geneticQuery.value = "";
+  geneticSequence.value = "";
+  geneticPreview.textContent = "";
+  showError(geneticError, "");
+}
+for (const service of ["bold", "genbank"]) {
+  document.querySelector(`#${service}-preview`).addEventListener("click", () => {
+    geneticPreview.textContent = "";
+    showError(geneticError, "");
+    try {
+      const query = geneticQuery.value.trim();
+      const dna = geneticSequence.value.trim() ? validateLocalDNA(geneticSequence.value) : null;
+      if (!query && !dna) throw new Error("Enter a taxon/record identifier or a temporary DNA sequence to preview a lookup plan.");
+      if (query.length > 120) throw new Error("Use at most 120 characters for a taxon/record identifier.");
+      const source = service === "bold" ? "BOLD" : "GenBank";
+      geneticPreview.textContent = `${source} — UNCONNECTED local plan only. ${query ? `Search text: ${query}. ` : ""}${dna ? `DNA syntax valid: ${dna.length} bases, ${dna.ambiguous} ambiguous bases. ` : ""}${service === "bold" ? "Future barcode identification/record search needs a supported marker and reviewed service terms." : "Future record search/sequence comparison needs a separately designed search workflow; this is NOT GenBank submission."} No search ran, no matches or identification inferred, nothing sent or saved.`;
+    } catch (error) { showError(geneticError, error.message); }
+  });
+}
+for (const input of [geneticQuery, geneticSequence]) input.addEventListener("input", () => {
+  geneticPreview.textContent = "";
+  showError(geneticError, "");
+});
+document.querySelector("#genetic-clear").addEventListener("click", clearGeneticInputs);
+window.addEventListener("pagehide", clearGeneticInputs);
+window.addEventListener("pageshow", clearGeneticInputs);
+
 dateInput.value = today();
 syncDate();
 load();
