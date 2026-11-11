@@ -151,6 +151,43 @@
       $("rewards-status").textContent = "Rewards unavailable or could not be saved: local storage blocked/damaged or unlock could not be saved. Existing rewards untouched. Journal is unaffected. Do not clear site data.";
     }
   }
+  const groupIcons = { plant: "🌿", fungus: "🍄", insect: "🐞", mammal: "🐁", bird: "🐦", fish: "🐟", reptile: "🦎", other: "❧" };
+  function renderHome(records, projects) {
+    const active = TerraData.active(records).filter(r => TerraData.observationDate(r.date));
+    $("home-count").textContent = active.length;
+    $("home-days").textContent = new Set(active.map(r => r.date)).size;
+    const recent = $("home-recent"); recent.replaceChildren();
+    for (const record of [...active].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3)) {
+      const li = document.createElement("li");
+      const icon = textNode("span", "home-recent-icon", groupIcons[record.type] ?? "❧"); icon.setAttribute("aria-hidden", "true");
+      const text = document.createElement("span");
+      text.append(textNode("strong", "", record.name), textNode("small", "", `${categories[record.type] ?? "Other"} · ${record.date}`));
+      li.append(icon, text); recent.append(li);
+    }
+    $("home-empty").hidden = active.length > 0;
+    const next = $("home-next");
+    next.hidden = true;
+    try {
+      const state = TerraRewards.parse(localStorage.getItem(TerraRewards.KEY));
+      $("home-items").textContent = `${state.grants.length} / ${TerraRewards.CATALOG.length}`;
+      const counts = TerraRewards.progress(records, projects, TerraData.observationDate, FieldSummary.matches);
+      // The locked item you're closest to, so there's always something to work toward.
+      const goal = TerraRewards.CATALOG
+        .filter(a => a.source !== "unavailable" && !state.grants.some(g => g.badge === a.id))
+        .map(a => ({ a, done: Math.min(counts[a.metric] ?? 0, a.target) }))
+        .sort((x, y) => y.done / y.a.target - x.done / x.a.target)[0];
+      if (goal) {
+        const icon = textNode("span", "home-next-icon", goal.a.icon); icon.setAttribute("aria-hidden", "true");
+        const meter = document.createElement("progress"); meter.max = goal.a.target; meter.value = goal.done;
+        meter.setAttribute("aria-hidden", "true");
+        const text = document.createElement("span");
+        text.append(textNode("small", "", "Next for your terrarium"), textNode("strong", "", goal.a.item), textNode("small", "", `${goal.a.goal} · ${goal.done} / ${goal.a.target}`), meter);
+        next.replaceChildren(icon, text);
+        next.setAttribute("aria-label", `Next for your terrarium: ${goal.a.item}. ${goal.a.goal}. ${goal.done} of ${goal.a.target}.`);
+        next.hidden = false;
+      }
+    } catch { $("home-items").textContent = "–"; }
+  }
   function refresh() {
     const posts = $("profile-observations"), collections = $("profile-project-list");
     posts.replaceChildren(); collections.replaceChildren();
@@ -166,6 +203,7 @@
       for (const project of projects) item(collections, `${project.title} · ${project.complete ? "complete" : "open"} · ${active.filter(r => project.observationIds.includes(r.id) && FieldSummary.matches(project, r)).length} eligible observations`);
       if (!projects.length) item(collections, "No projects yet.");
       renderRewards(records, projects);
+      renderHome(records, projects);
     } catch {
       item(posts, "Journal/projects unavailable; existing data untouched. Check storage before editing.");
       clearRewards();
@@ -177,5 +215,7 @@
     if (event.key === PROFILE_KEY || event.key === null) loadProfile();
     if ([STORAGE_KEY, FieldSummary.KEY, TerraRewards.KEY, null].includes(event.key)) refresh();
   });
+  // The terrarium lays itself out to the jar's width, which is 0 while Profile is hidden.
+  document.addEventListener("terra:screen-shown", event => { if (event.detail.screen === "profile" || event.detail.screen === "home") refresh(); });
   loadProfile(); refresh();
 })();

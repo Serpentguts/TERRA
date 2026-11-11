@@ -28,72 +28,56 @@ const { chromium } = require('playwright');
     const menu = page.locator('#site-navigation');
     const toggle = page.getByRole('button', { name: 'Navigation', exact: true });
     const bottom = page.getByRole('navigation', { name: 'Primary', exact: true });
-    const views = [
-      ['home', 'Home'], ['map', 'Map'], ['profile', 'Profile'], ['feed', 'Feed'],
-      ['identify-title', 'Explore a photo'], ['form-title', 'Record a discovery'],
-      ['saved-title', 'Your observations'], ['projects-title', 'Projects / Field Summary'],
-      ['genetic-title', 'Genetic Data']
-    ];
-    assert.equal(await page.locator('.close-view').count(), views.length);
-    assert.deepEqual(await menu.locator('a').evaluateAll(links => links.map(link => link.hash.slice(1)).sort()), views.map(([id]) => id).sort());
-    for (const [id, label] of views) {
-      await toggle.click(); await menu.locator(`a[href="#${id}"]`).click();
-      const target = page.locator(`#${id}`);
-      assert.equal(await target.isVisible(), true);
-      const close = page.getByRole('button', { name: `Close ${label} view`, exact: true });
-      const sectionId = await close.getAttribute('aria-controls');
-      assert.equal(await close.getAttribute('aria-describedby'), 'view-stack-help');
-      assert.equal(await close.getAttribute('type'), 'button');
-      const size = await close.boundingBox();
-      assert.ok(size.width >= 44 && size.height >= 44);
-      // Every control supports native keyboard activation, hides only its view,
-      // and returns focus to a visible reopen control rather than hidden content.
-      await close.focus(); await page.keyboard.press(id === 'profile' ? 'Space' : 'Enter');
-      assert.equal(await page.locator(`#${sectionId}`).isVisible(), false);
-      assert.equal(await page.evaluate(() => document.activeElement.closest('[hidden]') === null), true);
-      assert.equal(await page.evaluate(() => document.activeElement.matches('#navigation-toggle, #bottom-navigation a')), true);
-      assert.match(await page.locator('#view-stack-status').textContent(), /view closed\. No data deleted/);
+    const onScreen = selector => page.locator(selector).first().evaluate(el => el.checkVisibility());
+    const screens = { home: '#page-title', journal: '#saved-title', projects: '#projects-title', record: '#form-title', photo: '#identify-title',
+      map: '#map-title', profile: '#profile-title', feed: '#feed-title', genetics: '#genetic-title' };
+    // Opens on Home, with no other screen showing.
+    assert.equal(await onScreen('#home-dashboard'), true);
+    for (const [name, heading] of Object.entries(screens)) if (name !== 'home') assert.equal(await onScreen(heading), false, name);
+    assert.equal(await page.locator('.close-view, .minimize-view, #workspace').count(), 0, 'Old view-stack controls removed');
+    // Every screen in the menu shows exactly its own content, starting at the top.
+    for (const [name, heading] of Object.entries(screens)) {
+      await page.evaluate(() => window.scrollTo(0, 400));
+      await toggle.click(); await menu.locator(`a[href="#${name}"]`).click();
+      for (const [other, otherHeading] of Object.entries(screens)) assert.equal(await onScreen(otherHeading), other === name, `${name} shows ${other}?`);
+      assert.equal(await page.locator(heading).evaluate(el => el === document.activeElement), true, `${name} focuses its heading`);
+      assert.equal(await page.evaluate(() => scrollY), 0, `${name} starts at the top`);
+      assert.equal(await onScreen('#screen-bar'), name !== 'home');
+      if (name !== 'home') assert.equal(await page.locator('#view-stack-status').textContent(), `${(await page.title()).replace(' · TERRA', '')} screen`);
       assert.equal(await bottom.isVisible(), true);
       assert.deepEqual(await storage(), initial);
-      await toggle.click(); await menu.locator(`a[href="#${id}"]`).click();
-      assert.equal(await target.isVisible(), true);
-      assert.equal(await page.locator(`#${sectionId} .close-view`).count(), 1);
     }
-    // Opening Profile adds it to the stack, rather than evicting Map.
-    await bottom.locator('a[href="#map"]').click();
+    // The terrarium link opens Profile on the Terrarium tab.
+    await toggle.click(); await menu.locator('a[href="#terrarium"]').click();
+    assert.equal(await onScreen('#profile-awards'), true);
+    assert.equal(await page.locator('#awards-tab').getAttribute('aria-selected'), 'true');
+    // Switching screens is not a reset, save, delete, project completion or image removal.
     await bottom.locator('a[href="#profile"]').click();
-    assert.equal(await page.locator('#map').isVisible(), true);
-    await page.locator('#profile > details > summary').click();
+    await page.locator('#profile > details:not(.more) > summary').click();
     await page.locator('#profile-description').fill('Unsubmitted local profile draft');
-    await page.getByRole('button', { name: 'Close Profile view', exact: true }).click();
-    assert.equal(await page.locator('#map').isVisible(), true);
-    await bottom.locator('a[href="#profile"]').click();
-    assert.equal(await page.locator('#profile-description').inputValue(), 'Unsubmitted local profile draft');
-    // Closing forms is not a reset, save, delete, project completion or image removal.
+    await bottom.locator('a[href="#record"]').click();
     await page.locator('#name').fill('Unsaved discovery');
     await page.locator('#notes').fill('Unsaved notes');
-    await page.locator('#project-title').fill('Unsaved project edit');
-    await page.locator('#genetic-query').fill('Temporary query');
     const photo = { name: 'tiny.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=', 'base64') };
     await page.setInputFiles('#photo', photo);
     await page.waitForFunction(() => document.querySelector('#photo-preview').naturalWidth > 0);
     const previewUrl = await page.locator('#photo-preview').getAttribute('src');
-    for (const label of ['Explore a photo', 'Record a discovery', 'Your observations', 'Projects / Field Summary', 'Genetic Data']) {
-      await page.getByRole('button', { name: `Close ${label} view`, exact: true }).click();
-    }
-    await bottom.locator('a[href="#identify-title"]').click();
-    assert.equal(await page.locator('#name').isVisible(), true); // Observation reopens both sections.
+    await bottom.locator('a[href="#journal"]').click();
+    await page.locator('.segmented a[href="#projects"]').first().click();
+    await page.locator('#project-title').fill('Unsaved project edit');
+    await toggle.click(); await menu.locator('a[href="#genetics"]').click();
+    await page.locator('#genetic-query').fill('Temporary query');
+    for (const name of ['map', 'home', 'profile']) await bottom.locator(`a[href="#${name}"]`).click();
+    assert.equal(await page.locator('#profile-description').inputValue(), 'Unsubmitted local profile draft');
+    await bottom.locator('a[href="#record"]').click();
     assert.equal(await page.locator('#name').inputValue(), 'Unsaved discovery');
     assert.equal(await page.locator('#notes').inputValue(), 'Unsaved notes');
     assert.equal(await page.locator('#photo-preview').getAttribute('src'), previewUrl);
     assert.equal(await page.locator('#photo-preview').evaluate(img => img.naturalWidth > 0), true);
-    await bottom.locator('a[href="#projects-title"]').click();
-    assert.equal(await page.locator('#observation-list').isVisible(), true); // Projects / Journal reopens both.
+    await page.goto(origin + '/#projects');
     assert.equal(await page.locator('#project-title').inputValue(), 'Unsaved project edit');
-    await bottom.locator('a[href="#genetic-title"]').click();
-    assert.equal(await page.locator('#genetic-query').inputValue(), 'Temporary query');
-    assert.deepEqual(await storage(), initial);
     // Saved discovery subsection, unknown even after a manually supplied name.
+    await page.goto(origin + '/#journal');
     const history = page.locator('#observation-list .identification-history');
     assert.equal(await history.count(), 1);
     assert.equal(await history.locator('summary').textContent(), 'Identification provenance');
@@ -103,35 +87,57 @@ const { chromium } = require('playwright');
     assert.equal(await history.locator('p').textContent(), 'No identification history yet');
     assert.doesNotMatch(await history.textContent(), /AI-suggested|community-identified|expert-confirmed|consensus/);
     assert.equal(await page.locator('nav a[href*="identification"], #identification-plan, #observation-form .identification-history').count(), 0);
-    assert.deepEqual(await storage(), initial);
-    // All views can be closed at once; all essential destinations remain reachable.
-    for (const [, label] of views) await page.getByRole('button', { name: `Close ${label} view`, exact: true }).click();
-    assert.equal(await page.locator('.close-view:visible').count(), 0);
-    assert.equal(await bottom.locator('a:visible').count(), 7);
-    for (const link of await bottom.locator('a').all()) {
-      await link.click();
-      assert.equal(await page.locator(await link.getAttribute('href')).isVisible(), true);
-    }
-    // Direct hashes and back/forward reopen closed destinations too.
-    await page.getByRole('button', { name: 'Close Profile view', exact: true }).click();
-    await page.evaluate(() => { location.hash = 'profile'; });
-    await page.waitForFunction(() => !document.getElementById('profile').hidden);
-    await bottom.locator('a[href="#feed"]').click();
+    // Direct hashes, back/forward and the in-app back link.
+    await page.goto(origin + '/#profile');
+    assert.equal(await onScreen('#profile'), true);
+    await bottom.locator('a[href="#map"]').click();
     await page.goBack();
-    assert.equal(await page.locator('#profile').isVisible(), true);
+    assert.equal(await onScreen('#profile'), true);
+    assert.equal(await onScreen('#map'), false);
     await page.goForward();
-    assert.equal(await page.locator('#feed').isVisible(), true);
-    // Narrow layout: close controls remain within the viewport and keyboard reachable.
+    assert.equal(await onScreen('#map'), true);
+    // The back link is labelled with its parent screen and goes there.
+    assert.equal(await page.locator('#screen-back').textContent(), '← Home');
+    await page.click('#screen-back');
+    assert.equal(await onScreen('#home-dashboard'), true);
+    // When the previous screen is the parent, it steps back through history instead.
+    await bottom.locator('a[href="#journal"]').click();
+    await page.locator('.segmented a[href="#projects"]').first().click();
+    const depth = await page.evaluate(() => history.length);
+    await page.click('#screen-back');
+    await page.waitForFunction(() => location.hash === '#journal');
+    assert.equal(await onScreen('#saved-title'), true);
+    await page.goForward();
+    assert.equal(await onScreen('#projects-title'), true, 'Forward still returns to Projects');
+    assert.equal(await page.evaluate(() => history.length), depth);
+    await page.goto(origin + '/#photo');
+    await page.click('#screen-back');
+    assert.equal(await onScreen('#form-title'), true, 'Without history, back goes up to the parent screen');
+    // Saving shows a confirmation with a way to the journal.
+    await page.locator('#name').fill('Toast check');
+    await page.selectOption('#privacy', 'exact');
+    await page.fill('#observation-map-x1', '12'); await page.fill('#observation-map-y1', '34');
+    await page.locator('#observation-map').getByRole('button', { name: 'Apply map selection' }).click();
+    await page.locator('#observation-form [type="submit"]').click();
+    assert.equal(await onScreen('#toast'), true);
+    assert.match(await page.locator('#toast').textContent(), /Saved “Toast check” to your journal\.\s+View journal/);
+    await page.locator('#toast a').click();
+    assert.equal(await onScreen('#saved-title'), true);
+    // Home summarizes the journal and points at the next terrarium item.
+    await bottom.locator('a[href="#home"]').click();
+    assert.equal(await page.locator('#home-count').textContent(), '2');
+    assert.equal(await page.locator('#home-recent li').count(), 2);
+    assert.match(await page.locator('#home-next').textContent(), /Next for your terrarium/);
+    // Narrow layout: tab bar fits and no screen scrolls sideways.
     await page.setViewportSize({ width: 320, height: 700 });
-    for (const close of await page.locator('.close-view:visible').all()) {
-      await close.focus();
-      const box = await close.boundingBox();
-      assert.ok(box.x >= 0 && box.x + box.width <= 320);
+    for (const name of ['home', 'journal', 'record', 'map', 'profile']) {
+      await bottom.locator(`a[href="#${name}"]`).click();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, name);
+      for (const box of await bottom.locator('a').evaluateAll(links => links.map(a => a.getBoundingClientRect().toJSON()))) assert.ok(box.left >= 0 && box.right <= 320 && box.width >= 44);
     }
-    assert.deepEqual(await storage(), initial);
     assert.deepEqual(outbound, []);
     assert.deepEqual(errors, []);
     await context.close();
-    console.log('PASS: all nine views close/reopen, keyboard/focus/targets/mobile, persistent grouped navigation, stack coexistence/history, drafts/images/journal/projects retained, saved-discovery neutral provenance.');
+    console.log('PASS: one screen at a time, every screen/heading/focus/scroll, tab and menu routing, Terrarium link, drafts/images kept across screens, deep links/back/forward/back link, saved toast, Home summary, saved-discovery neutral provenance, narrow layout.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

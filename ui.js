@@ -75,102 +75,108 @@ const TerraLocation = (() => {
   return Object.freeze({ sync, read, set });
 })();
 
-(() => {
+// One screen at a time. Screens are groups of [data-screen] elements; the URL hash picks
+// the screen, so links, deep links, reloads and the browser's back button all work.
+// Switching screens only hides content: drafts, previews and saved data are untouched.
+const TerraScreens = (() => {
   const toggle = document.getElementById("navigation-toggle");
   const nav = document.getElementById("site-navigation");
   const bottomNav = document.getElementById("bottom-navigation");
+  const bar = document.getElementById("screen-bar");
+  const back = document.getElementById("screen-back");
+  const announcer = document.getElementById("view-stack-status");
   // Reserve the actual bar height, including wrapped labels, zoom and safe area.
   const reserveNavigationSpace = () => document.documentElement.style.setProperty("--bottom-nav-height", `${bottomNav.getBoundingClientRect().height}px`);
   new ResizeObserver(reserveNavigationSpace).observe(bottomNav);
   reserveNavigationSpace();
-  const views = [
-    ["home", "Home"], ["map", "Map"], ["profile", "Profile"], ["feed", "Feed"],
-    ["identify-title", "Explore a photo"], ["form-title", "Record a discovery"],
-    ["saved-title", "Your observations"], ["projects-title", "Projects / Field Summary"],
-    ["genetic-title", "Genetic Data"]
-  ].map(([id, label]) => ({ id, label, section: document.getElementById(id).closest("section") }));
-  const aliases = { projects: "projects-title", "genetic-data": "genetic-title", discover: "home" };
-  const destinationFor = id => ({ "form-title": "identify-title", "saved-title": "projects-title" }[id] || id);
-  const stackStatus = document.getElementById("view-stack-status");
-  function markCurrent(id) {
+
+  // name: [title, bottom tab, parent screen for the back link]
+  const SCREENS = {
+    home: ["Home", "home", null],
+    journal: ["Journal", "journal", "home"],
+    projects: ["Projects", "journal", "journal"],
+    record: ["Record a discovery", "record", "home"],
+    photo: ["Explore a photo", "record", "record"],
+    map: ["Map", "map", "home"],
+    profile: ["Profile", "profile", "home"],
+    feed: ["Feed", null, "home"],
+    genetics: ["Genetic data", null, "home"]
+  };
+  // Short names and older links (e.g. #form-title) keep working.
+  const ALIASES = { terrarium: "profile", discover: "home", workspace: "home", "genetic-data": "genetics" };
+  const parts = [...document.querySelectorAll("[data-screen]")];
+  document.documentElement.classList.add("screens");
+  let current = null;
+  const trail = []; // In-app history, so the back link can mirror the browser's back button.
+
+  function resolve(hash) {
+    const id = decodeURIComponent(hash.replace(/^#/, ""));
+    if (!id) return { screen: "home" };
+    if (Object.hasOwn(SCREENS, id)) return { screen: id };
+    if (Object.hasOwn(ALIASES, id)) return { screen: ALIASES[id], alias: id };
+    const target = document.getElementById(id);
+    const screen = target?.closest("[data-screen]")?.dataset.screen;
+    return screen ? { screen, target } : null;
+  }
+  function show(screen) {
+    if (!Object.hasOwn(SCREENS, screen)) return false;
+    const changed = screen !== current;
+    current = screen;
+    for (const part of parts) part.hidden = part.dataset.screen !== screen;
+    const [title, tab, parent] = SCREENS[screen];
     for (const link of bottomNav.querySelectorAll("a")) {
-      if (link.hash === `#${destinationFor(id)}`) link.setAttribute("aria-current", "location");
+      if (link.hash === `#${tab}`) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");
     }
-  }
-  function selectArea(id, grouped = false) {
-    id = aliases[id] || id;
-    // Feed profile/composer deep links reopen the same non-destructive Feed pane.
-    if (id.startsWith("demo-profile-") || document.getElementById(id)?.closest("#feed")) id = "feed";
-    const view = views.find(view => view.id === id);
-    if (!view) return;
-    const reveal = view => {
-      view.section.hidden = false;
-      view.section.classList.remove("minimized");
-      view.section.querySelector(".minimize-view").setAttribute("aria-expanded", "true");
-    };
-    reveal(view);
-    // Persistent destinations restore both related sections, including minimized drafts.
-    if (grouped && id === "identify-title") reveal(views.find(view => view.id === "form-title"));
-    if (grouped && id === "projects-title") reveal(views.find(view => view.id === "saved-title"));
-    updateWorkspace();
-    markCurrent(id);
-  }
-  for (const view of views) {
-    if (!view.section.id) view.section.id = `${view.id}-view`;
-    const controls = document.createElement("div");
-    controls.className = "view-controls";
-    const close = document.createElement("button");
-    close.type = "button";
-    close.className = "secondary-button close-view";
-    close.textContent = "Close view";
-    close.setAttribute("aria-label", `Close ${view.label} view`);
-    close.setAttribute("aria-controls", view.section.id);
-    close.setAttribute("aria-describedby", "view-stack-help");
-    close.addEventListener("click", () => {
-      // Visibility only: do not reset forms, remove nodes, revoke images or write storage.
-      view.section.hidden = true;
-      updateWorkspace();
-      // Clear the closed location without a hashchange that could reopen it.
-      history.replaceState(null, "", `${location.pathname}${location.search}`);
-      markCurrent("");
-      stackStatus.textContent = `${view.label} view closed. No data deleted. Reopen from the menu or bottom navigation.`;
-      const reopen = bottomNav.querySelector(`a[href="#${destinationFor(view.id)}"]`) || toggle;
-      reopen.focus();
-    });
-    const minimize = document.createElement("button");
-    minimize.type = "button";
-    minimize.className = "secondary-button minimize-view";
-    minimize.textContent = "Minimize / expand";
-    minimize.setAttribute("aria-label", `Minimize or expand ${view.label} view`);
-    minimize.setAttribute("aria-expanded", "true");
-    minimize.setAttribute("aria-controls", view.section.id);
-    minimize.addEventListener("click", () => {
-      const minimized = view.section.classList.toggle("minimized");
-      minimize.setAttribute("aria-expanded", String(!minimized));
-      updateWorkspace();
-    });
-    controls.append(minimize, close);
-    view.section.prepend(controls);
-  }
-  function updateWorkspace() {
-    const list = document.getElementById("workspace-views");
-    list.replaceChildren();
-    for (const view of views) {
-      const item = document.createElement("li");
-      const open = document.createElement("a");
-      open.href = `#${view.id}`;
-      open.textContent = `${view.label} · ${view.section.hidden ? "closed" : view.section.classList.contains("minimized") ? "minimized" : "open"}`;
-      item.append(open);
-      list.append(item);
+    for (const link of nav.querySelectorAll("a")) {
+      if (link.hash === `#${screen}`) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
     }
+    bar.hidden = !parent;
+    if (parent) {
+      back.href = `#${parent}`;
+      document.getElementById("screen-back-label").textContent = SCREENS[parent][0];
+    }
+    document.title = screen === "home" ? "TERRA · Your field journal" : `${title} · TERRA`;
+    if (changed) document.dispatchEvent(new CustomEvent("terra:screen-shown", { detail: { screen } }));
+    return changed;
   }
-  updateWorkspace();
-  document.getElementById("workspace-close").addEventListener("click", () => {
-    document.getElementById("workspace").hidden = true;
-    history.replaceState(null, "", `${location.pathname}${location.search}`);
-    markCurrent("");
-    bottomNav.querySelector('a[href="#workspace"]').focus();
+  function route({ focus = true } = {}) {
+    const found = resolve(location.hash) || { screen: "home" };
+    const changed = show(found.screen);
+    if (found.alias === "terrarium") document.getElementById("awards-tab").click();
+    const target = found.target && !found.target.matches("[data-screen]") ? found.target : null;
+    if (target) {
+      target.scrollIntoView({ block: "start" });
+      if (focus) { if (!target.matches("a, button, input, select, textarea, [tabindex]")) target.tabIndex = -1; target.focus({ preventScroll: true }); }
+    } else if (changed || focus) {
+      window.scrollTo(0, 0);
+      if (focus) {
+        const heading = document.querySelector(`[data-screen="${found.screen}"]:not([hidden]) :is(h1, h2):not(.visually-hidden)`);
+        if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
+      }
+    }
+    if (focus && changed) announcer.textContent = `${SCREENS[found.screen][0]} screen`;
+  }
+  window.addEventListener("hashchange", () => {
+    const hash = location.hash || "#home";
+    if (trail.length > 1 && trail[trail.length - 2] === hash) trail.pop(); else trail.push(hash);
+    route();
+    closeNavigation();
+  });
+  // Route in-app links right away (hashchange is async), including links to the current hash.
+  // Listen on window so feature handlers on document see the click first.
+  window.addEventListener("click", event => {
+    const link = event.target.closest("a[href^='#']");
+    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (link === back && trail.length > 1 && trail[trail.length - 2] === back.hash) {
+      event.preventDefault(); history.back(); return;
+    }
+    if (!resolve(link.hash)) return;
+    event.preventDefault();
+    if (link.hash !== location.hash) { history.pushState(null, "", link.hash); trail.push(link.hash); }
+    route();
+    closeNavigation();
   });
   function closeNavigation() {
     nav.hidden = true;
@@ -193,30 +199,41 @@ const TerraLocation = (() => {
   document.querySelector(".site-navigation").addEventListener("focusout", event => {
     if (!event.currentTarget.contains(event.relatedTarget)) closeNavigation();
   });
-  function followLink(event) {
-    const link = event.target.closest("a");
-    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const id = link.hash.slice(1);
-    if (id === "workspace") { document.getElementById("workspace").hidden = false; updateWorkspace(); markCurrent("workspace"); }
-    const target = document.getElementById(id);
-    if (!target) return;
-    selectArea(id, bottomNav.contains(link));
-    target.tabIndex = -1;
-    target.focus();
-    closeNavigation();
-  }
-  // Include in-content project links, including repeated links to a closed view.
-  document.addEventListener("click", followLink);
-  function followHash() {
-    const id = window.location.hash.slice(1);
-    if (id === "workspace") { document.getElementById("workspace").hidden = false; updateWorkspace(); markCurrent(id); }
-    selectArea(id);
-  }
-  window.addEventListener("hashchange", followHash);
-  // A confirmed photo handoff must also reveal a previously closed draft.
-  document.addEventListener("terra:prefill-discovery", () => selectArea("form-title"));
-  followHash();
+  // A confirmed photo handoff continues on the Record screen.
+  document.addEventListener("terra:prefill-discovery", () => {
+    if (current === "record") return;
+    // pushState, not a hash change, so the draft's own focus handling isn't overridden.
+    history.pushState(null, "", "#record"); trail.push("#record");
+    show("record"); window.scrollTo(0, 0);
+  });
 
+  // Short confirmation that floats above the tab bar.
+  const toastEl = document.getElementById("toast");
+  let toastTimer;
+  function toast(message, link) {
+    toastEl.replaceChildren(document.createTextNode(message));
+    if (link) {
+      const a = document.createElement("a");
+      a.href = link.href; a.textContent = link.label;
+      toastEl.append(" ", a);
+    }
+    toastEl.hidden = false;
+    toastEl.classList.remove("leaving");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toastEl.classList.add("leaving"); toastTimer = setTimeout(() => { toastEl.hidden = true; }, 250); }, 5000);
+  }
+  document.addEventListener("terra:observation-saved", event => {
+    toast(`Saved “${event.detail.name}” to your journal.`, current === "journal" ? null : { href: "#journal", label: "View journal" });
+  });
+
+  trail.push(location.hash || "#home");
+  route({ focus: false });
+  // Reveal the screen holding an element (used by automated tests that act on any control).
+  const reveal = element => { const screen = element?.closest?.("[data-screen]")?.dataset.screen; if (screen && screen !== current) show(screen); };
+  return Object.freeze({ show, reveal, toast, get current() { return current; } });
+})();
+
+(() => {
   // Fictional observations are deliberately separate from the private journal.
   const samples = [
     { category: "fungus", icon: "🍄", type: "Mushroom", name: "Woodland mushroom", setting: "natural", note: "A cap among fallen leaves." },

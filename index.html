@@ -22,44 +22,53 @@
     <span class="header-note">A little closer to nature.</span>
     <div class="site-navigation">
       <button id="navigation-toggle" class="secondary-button" type="button" aria-label="Navigation" aria-expanded="false" aria-controls="site-navigation"><span aria-hidden="true">☰</span></button>
-      <nav id="site-navigation" aria-label="TERRA areas" hidden>
-        <a href="#home">Home</a><a href="#map">Map</a><a href="#profile">Profile · local demo</a>
-        <a href="#identify-title">Explore a photo</a><a href="#form-title">Record a discovery</a>
-        <a href="#saved-title">Your observations</a><a href="#projects-title">Projects / Field Summary</a>
-        <a href="#feed">Feed · local demo</a><a href="#genetic-title">Genetic Data</a>
+      <nav id="site-navigation" aria-label="All of TERRA" hidden>
+        <a href="#home">Home</a><a href="#journal">Journal</a><a href="#projects">Projects</a>
+        <a href="#record">Record a discovery</a><a href="#photo">Explore a photo</a>
+        <a href="#map">Map</a><a href="#profile">Profile</a><a href="#terrarium">Terrarium</a>
+        <span class="menu-label">Previews</span>
+        <a href="#feed">Feed <small>demo</small></a><a href="#genetics">Genetic data <small>preview</small></a>
       </nav>
     </div>
   </header>
   <nav id="bottom-navigation" aria-label="Primary">
-    <a href="#workspace"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 9 5-9 5-9-5Z M3 12.5l9 5 9-5 M3 17l9 5 9-5"/></svg><span>Workspace</span></a>
+    <a href="#home"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11 12 4l9 7 M5 9.5V20h5v-6h4v6h5V9.5"/></svg><span>Home</span></a>
+    <a href="#journal"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5C9 3 5 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z M12 5v16"/></svg><span>Journal</span></a>
+    <a href="#record" class="record-tab"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14 M5 12h14"/></svg><span>Record</span></a>
     <a href="#map"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Z M9 3v16 M15 5v16"/></svg><span>Map</span></a>
     <a href="#profile"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="7" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3"/></svg><span>Profile</span></a>
-    <a href="#feed"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10 M7 12h10 M7 17h10"/></svg><span>Feed</span></a>
-    <a href="#identify-title" aria-current="location"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h4l2-3h6l2 3h4v14H3Z"/><circle cx="12" cy="13" r="4"/></svg><span>Observation</span></a>
-    <a href="#genetic-title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 2c0 10 12 10 12 20 M18 2C18 12 6 12 6 22 M7 5h10 M9 9h6 M9 15h6 M7 19h10"/></svg><span>Genetics</span></a>
-    <a href="#projects-title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5C9 3 5 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z M12 5v16"/></svg><span>Projects / Journal</span></a>
   </nav>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <main id="main">
-    <section id="home" class="intro" aria-labelledby="page-title" tabindex="-1">
+    <div id="screen-bar" class="screen-bar" hidden><a id="screen-back" class="back-link" href="#home"><span aria-hidden="true">←</span> <span id="screen-back-label">Home</span></a></div>
+    <p id="view-stack-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+    <section id="home" class="intro" data-screen="home" aria-labelledby="page-title" tabindex="-1">
       <p class="eyebrow">YOUR PERSONAL FIELD JOURNAL</p>
       <h1 id="page-title">Small discoveries.<br>A growing connection.</h1>
       <p>Notice a leaf, a mushroom, something new. Give your observations a place to take root.</p>
       <div class="local-badge"><span aria-hidden="true">●</span> Browser-only · No account needed</div>
     </section>
-    <aside class="privacy-note" aria-labelledby="privacy-title">
+    <section id="home-dashboard" class="home-dashboard" data-screen="home" aria-labelledby="home-glance-title">
+      <h2 id="home-glance-title" class="visually-hidden">Your journal at a glance</h2>
+      <a href="#record" class="primary-button home-record"><span aria-hidden="true">＋</span> Record a discovery</a>
+      <ul class="home-stats">
+        <li><a href="#journal"><strong id="home-count">0</strong><span>observations</span></a></li>
+        <li><a href="#journal"><strong id="home-days">0</strong><span>days in the field</span></a></li>
+        <li><a href="#terrarium"><strong id="home-items">0</strong><span>terrarium items</span></a></li>
+      </ul>
+      <a id="home-next" class="home-next" href="#terrarium" hidden></a>
+      <div class="home-recent-heading"><h3>Recent finds</h3><a href="#journal">See all</a></div>
+      <ul id="home-recent" class="home-recent"></ul>
+      <p id="home-empty" class="home-empty" hidden>Nothing recorded yet. Your first find will show up here.</p>
+    </section>
+    <aside class="privacy-note" data-screen="home" aria-labelledby="privacy-title">
       <span class="note-icon" aria-hidden="true">↳</span>
       <div><strong id="privacy-title">Your journal stays with you.</strong>
       <p>Saved only in this browser on this device. Nothing is synced, backed up, or submitted to iNaturalist. Clearing browser data can erase your journal—export a copy to keep it.</p></div>
     </aside>
-    <section id="workspace" class="panel" aria-labelledby="workspace-title" tabindex="-1" hidden>
-      <h2 id="workspace-title">Your workspace</h2><p>Open, minimize or close a section without deleting data or clearing drafts. Map remains a separate destination.</p>
-      <ul id="workspace-views" class="workspace-views"></ul><button type="button" id="workspace-close" class="secondary-button">Close workspace overview</button>
-    </section>
-    <p id="view-stack-help">Opened views stay in the main screen stack until closed. Minimize collapses a section’s content; open restores it. Close view only hides a section; it does not delete saved data or clear drafts. Reopen any view from the menu or persistent bottom navigation. Observation opens photo review and the discovery draft; Projects / Journal opens projects and saved observations.</p>
-    <p id="view-stack-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
 
-      <section id="map" class="panel demo-discovery" aria-labelledby="map-title" tabindex="-1" hidden>
-        <h2 id="map-title">Map · local schematic</h2>
+      <section id="map" data-screen="map" class="panel demo-discovery" aria-labelledby="map-title" tabindex="-1" hidden>
+        <h2 id="map-title">Map <span class="tag">Example data</span></h2>
         <p id="map-help">Imaginary layout only — not geography, coordinates, distances, or organism ranges. No GPS, tiles, geocoding, or journal locations are used.</p>
         <div id="map-canvas">
           <h4>Observation markers · fictional</h4>
@@ -70,7 +79,9 @@
         </div>
         <fieldset class="map-filters" aria-describedby="map-filter-help">
           <legend>Refine Map results</legend>
+          <details class="more"><summary>Filter tips</summary>
           <p id="map-filter-help">Choose multiple in either list (Ctrl/Command + click, or Shift + arrow keys). Any selected organism AND any selected color match. All or an empty selection means unrestricted. Fictional markers only, never your journal.</p>
+          </details>
           <div class="field"><label for="map-purpose">Color / entry purpose</label><select id="map-purpose" multiple size="4">
             <option value="all">All colors / purposes</option>
             <option value="natural">Green · natural observations</option>
@@ -96,9 +107,11 @@
         </ul>
         <p>Organism icons: <span aria-hidden="true">🍄</span> Mushroom · <span aria-hidden="true">🌿</span> Plant · <span aria-hidden="true">🐦</span> Bird · <span aria-hidden="true">🐍</span> Snake / reptile · <span aria-hidden="true">🐁</span> Mouse / mammal · <span aria-hidden="true">🐞</span> Bug / insect. Every marker also has a text label.</p>
       </section>
-      <section id="profile" class="panel demo-discovery" aria-labelledby="profile-title" tabindex="-1" hidden>
-        <h2 id="profile-title">Your local profile</h2>
+      <section id="profile" data-screen="profile" class="panel demo-discovery" aria-labelledby="profile-title" tabindex="-1" hidden>
+        <h2 id="profile-title">Your profile</h2>
+        <details class="more"><summary>About your profile</summary>
         <p id="profile-help">Not an account or public page. Profile details and rewards stay in this browser only: no upload, account sync or real follows. Posts read the same local journal; projects read the same ID-only collections. Nothing is stored twice. Journal photos remain temporary and are not displayed here.</p>
+        </details>
         <div class="profile-heading"><span id="profile-avatar" class="profile-avatar" aria-label="Symbolic profile avatar">🌿</span><div><h3 id="profile-name">Local explorer</h3><p id="profile-bio"></p><p id="profile-credentials">Credentials: none · user-entered / unverified</p><p><strong>0</strong> followers · <strong>0</strong> following · not connected</p></div></div>
         <details><summary>Edit local profile</summary>
           <form id="profile-form">
@@ -131,10 +144,12 @@
           </details>
         </div>
       </section>
-    <section id="feed" class="panel demo-discovery" aria-labelledby="feed-title" tabindex="-1" hidden>
-      <h2 id="feed-title">Feed · local demo</h2>
+    <section id="feed" data-screen="feed" class="panel demo-discovery" aria-labelledby="feed-title" tabindex="-1" hidden>
+      <h2 id="feed-title">Feed <span class="tag">Demo</span></h2>
       <p class="demo-badge">DEMO · Not published · No live community connection</p>
+      <details class="more"><summary>About this demo</summary>
       <p>Mock profiles and sample posts are fictional. Follow/unfollow is a local preference only: nobody is notified, and there are no real followers, likes, sales or uploads. Your journal is never automatically shared.</p>
+      </details>
       <details><summary>Observation, discovery, or post?</summary><p>An <strong>observation</strong> is the underlying record: what you saw, when and where (subject to privacy). A <strong>discovery / identification</strong> is the organism or finding attached to that record, not proof of a verified identification. A <strong>post</strong> is a separate shareable presentation with its own caption, linked to a saved observation when relevant. Sharing here only creates a local demo.</p></details>
       <p><a href="#feed-compose-title">Create a local demo post / preparation</a> · <a href="#feed-profiles-title">Explore mock profiles</a></p>
       <p id="feed-storage-error" class="error" role="alert" hidden></p>
@@ -160,8 +175,8 @@
       <h3 id="feed-profiles-title" tabindex="-1">Mock profiles · not real accounts</h3><p id="feed-follow-summary"></p><div id="feed-profiles"></div>
       <p>Future idea only: music on posts. No music or audio feature is implemented.</p>
     </section>
-    <noscript><p>Enable JavaScript to display the local Map, Profile and unconnected Feed previews. Observation, Genetics and Projects / Journal links lead to the sections below.</p></noscript>
-    <section class="panel identification-panel" aria-labelledby="identify-title">
+    <noscript><p>Enable JavaScript to use the Map, Profile and Feed previews. The photo explorer, journal, projects and genetic data preview appear below.</p></noscript>
+    <section class="panel identification-panel" data-screen="photo" aria-labelledby="identify-title">
       <div class="identify-heading"><div><p class="eyebrow">A CLOSER LOOK · LOCAL PROTOTYPE</p><h2 id="identify-title">Explore a photo</h2><p>Practice an identification review, without uploading a thing.</p></div><span class="demo-badge">MOCK · Not real AI</span></div>
       <p id="identify-privacy" class="identify-notice">Images are not uploaded. Previews and location detail stay temporary. Only after your explicit confirmation can a name, photos, date, and location context prefill Record a discovery for review; nothing is automatically saved or sent to iNaturalist.</p>
       <noscript><p class="error">Enable JavaScript to use the local photo prototype.</p></noscript>
@@ -198,8 +213,9 @@
       </div>
     </section>
     <div class="journal-layout">
-      <section class="panel" aria-labelledby="form-title">
-        <div class="section-heading"><span class="step" aria-hidden="true">01</span><div><h2 id="form-title">Record a discovery</h2><p>You don’t need to know its name to notice it.</p></div></div>
+      <section class="panel" data-screen="record" aria-labelledby="form-title">
+        <div class="section-heading"><div><h2 id="form-title">Record a discovery</h2><p>You don’t need to know its name to notice it.</p></div></div>
+        <p class="photo-hint"><a href="#photo">Have a photo? Explore it first <span aria-hidden="true">→</span></a></p>
         <noscript><p class="error">JavaScript is needed to save observations. Enable it in your browser to use this journal.</p></noscript>
         <form id="observation-form">
           <div class="field"><label for="organism-choice">What did you find?</label>
@@ -241,10 +257,13 @@
           <p class="integration-note">iNaturalist publishing is a future integration only: review your saved observation and privacy, then explicitly approve publishing. No connection or publishing is available now.</p>
         </form>
       </section>
-      <section class="saved-section" aria-labelledby="saved-title">
+      <section class="saved-section" data-screen="journal" aria-labelledby="saved-title">
+        <nav class="segmented" aria-label="Journal sections"><a href="#journal" aria-current="page">Observations</a><a href="#projects">Projects</a></nav>
         <div class="saved-heading"><div><p class="eyebrow">THE THINGS YOU NOTICED</p><h2 id="saved-title">Your observations <span id="count" class="count">0</span></h2></div><button id="export-button" class="secondary-button" type="button" disabled>Export JSON <span aria-hidden="true">↓</span></button></div>
         <p id="status" class="status" role="status" aria-live="polite"></p>
         <p id="storage-error" class="error" role="alert" hidden></p>
+        <div id="empty-state" class="empty-state"><div class="empty-illustration" aria-hidden="true">❧</div><h3>Every journal starts with a first find.</h3><p>Add an observation and it will appear here.<br>There’s a whole world worth noticing.</p><span class="empty-caption">LOOK CLOSELY. START SMALL.</span></div>
+        <ul id="observation-list" class="observation-list" aria-label="Saved observations"></ul>
         <section class="restore-panel" aria-labelledby="restore-title">
           <h3 id="restore-title">Restore a JSON backup</h3>
           <div class="field"><label for="import-file">Choose a TERRA JSON export</label><input id="import-file" type="file" accept=".json,application/json" aria-describedby="import-help" disabled><small id="import-help">Up to 5 MB. Preview first, then confirm. Duplicate IDs are skipped, never overwritten. Files stay in your browser.</small></div>
@@ -256,20 +275,23 @@
             <div class="restore-actions"><button id="confirm-import" class="secondary-button" type="button" disabled>Confirm merge</button><button id="cancel-import" class="text-button" type="button">Cancel restore</button></div>
           </div>
         </section>
-        <div id="empty-state" class="empty-state"><div class="empty-illustration" aria-hidden="true">❧</div><h3>Every journal starts with a first find.</h3><p>Add an observation and it will appear here.<br>There’s a whole world worth noticing.</p><span class="empty-caption">LOOK CLOSELY. START SMALL.</span></div>
-        <ul id="observation-list" class="observation-list" aria-label="Saved observations"></ul>
       </section>
     </div>
-    <section class="panel" aria-labelledby="trash-title">
+    <section class="panel" data-screen="journal" aria-labelledby="trash-title">
       <h2 id="trash-title">🗑 Trash · <span id="trash-count">0</span></h2>
+      <details class="more"><summary>How Trash works</summary>
       <p>Delete moves a record here, not out of storage. Restore within 3 days (72 hours). After that Restore is disabled; the record is permanently removed on the next successful journal change. Closing the app pauses cleanup, not the recovery clock. No background service runs. Export includes unexpired Trash; keep backups private. Project references do not count trashed observations.</p>
+      </details>
       <ul id="trash-list" class="observation-list"></ul>
     </section>
-    <section id="projects" class="panel projects-panel" aria-labelledby="projects-title">
+    <nav class="segmented" data-screen="projects" aria-label="Journal sections"><a href="#journal">Observations</a><a href="#projects" aria-current="page">Projects</a></nav>
+    <section id="projects" data-screen="projects" class="panel projects-panel" aria-labelledby="projects-title">
       <p class="eyebrow">LOCAL DESCRIPTIVE REPORTING</p>
-      <h2 id="projects-title">Projects / Field Summary</h2>
+      <h2 id="projects-title">Projects</h2>
       <p>Collect existing journal observations. This is a count of your selected records, not an AI summary, ecological inference, species verification, or evidence of trends.</p>
+      <details class="more"><summary>How projects work</summary>
       <p>Membership is always chosen manually, including previous journal entries in the inclusive start/end timeframe. Site rectangles use the same local demo grid as observation locations, not geographic boundaries. Hidden or legacy records without location cannot prove inclusion. Approximate regions must fit entirely inside a boundary.</p>
+      </details>
       <p id="project-error" class="error" role="alert" hidden></p>
       <p id="project-status" class="status" role="status" aria-live="polite"></p>
       <div class="project-toolbar">
@@ -307,11 +329,15 @@
         <button id="project-csv" class="secondary-button" type="button" disabled>Export summary CSV</button>
       </div>
       <div id="project-report" aria-labelledby="project-report-title"></div>
+      <details class="more"><summary>Saving and completion</summary>
       <p><small>Projects stay in this browser. Completion locks editing until reopened; it is not a frozen snapshot. Deleting a journal record changes its summaries; missing references are shown, never counted. Journal JSON backups do not include projects. CSV is a readable report, not a project restore file.</small></p>
+      </details>
     </section>
-    <section id="genetic-data" class="panel projects-panel" aria-labelledby="genetic-title">
-      <h2 id="genetic-title">Genetic Data</h2>
+    <section id="genetic-data" data-screen="genetics" class="panel projects-panel" aria-labelledby="genetic-title">
+      <h2 id="genetic-title">Genetic data <span class="tag">Preview</span></h2>
+      <details class="more"><summary>About this preview</summary>
       <p>Unconnected planning preview only. BOLD identification/search and GenBank record search are separate paths. No results, network calls, credentials, sequence submission or outbound data. GenBank submission would be a separate reviewed workflow, not a lookup.</p>
+      </details>
       <div class="field"><label for="genetic-query">Taxon name or record identifier (optional)</label><input id="genetic-query" maxlength="120" autocomplete="off"></div>
       <div class="field"><label for="genetic-sequence">Temporary DNA sequence (optional; local validation only)</label><textarea id="genetic-sequence" rows="3" maxlength="10000" autocomplete="off" spellcheck="false" aria-describedby="genetic-help"></textarea><small id="genetic-help">Up to 10,000 input characters. Plain IUPAC DNA or one FASTA record; no RNA, gaps or multiple records. Validation checks syntax, not quality, identity, or biological meaning. Never saved in journal, projects or exports. Clear when finished.</small></div>
       <div class="restore-actions"><button id="bold-preview" class="secondary-button" type="button">BOLD lookup — future / local preview</button><button id="genbank-preview" class="secondary-button" type="button">GenBank lookup — future / local preview</button><button id="genetic-clear" class="text-button" type="button">Clear genetic inputs</button></div>

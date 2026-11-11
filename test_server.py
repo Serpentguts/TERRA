@@ -54,12 +54,12 @@ class LocalAppChecks(unittest.TestCase):
             for control in ["identify-record", "identify-more", "discovery-previews",
                             "discovery-location", "add-project-button", "project-form",
                             "observation-map", "project-map", "trash-list", "project-endDate",
-                            "project-group-choice", "view-stack-help", "genetic-data", "navigation-toggle",
+                            "project-group-choice", "screen-back", "genetic-data", "navigation-toggle",
                             "site-navigation", "bottom-navigation", "home", "map", "feed",
                             "profile", "profile-form", "feed-form", "feed-type", "feed-source",
                             "feed-to-terra", "feed-to-inat", "feed-preparations", "feed-profiles",
                             "profile-tabs", "profile-observations", "rewards-terrarium",
-                            "workspace", "workspace-views", "organism-choice", "organism-options",
+                            "home-dashboard", "toast", "organism-choice", "organism-options",
                             "map-purpose", "map-organism", "map-results", "map-reset",
                             "identify-location", "demo-map", "demo-listings"]:
                 with self.subTest(control=control):
