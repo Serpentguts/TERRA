@@ -1,5 +1,6 @@
 // Run with Flask on :8080. Fresh isolated storage; no external/network APIs permitted.
 const assert = require('node:assert/strict');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 const fs = require('node:fs/promises');
 (async () => {

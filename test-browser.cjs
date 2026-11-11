@@ -1,6 +1,7 @@
 // Optional development check: npm install --no-save --package-lock=false playwright
 // Start python3 server.py, then run node test-browser.cjs.
 const assert = require('node:assert/strict');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 const fs = require('node:fs/promises');
 async function saveObservation(page) {
