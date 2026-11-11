@@ -53,7 +53,7 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#awards-tab').getAttribute('aria-selected'), 'true');
     // Switching screens is not a reset, save, delete, project completion or image removal.
     await bottom.locator('a[href="#profile"]').click();
-    await page.locator('#profile > details:not(.more) > summary').click();
+    await page.locator('#profile-edit > summary').click();
     await page.locator('#profile-description').fill('Unsubmitted local profile draft');
     await bottom.locator('a[href="#record"]').click();
     await page.locator('#name').fill('Unsaved discovery');

@@ -5,12 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#214c3c">
   <title>TERRA · Your field journal</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="styles.css">
   <script src="local-data.js" defer></script>
   <script src="local-map.js" defer></script>
   <script src="ui.js" defer></script>
+  <script src="vendor/leaflet/leaflet.js" defer></script>
+  <script src="vendor/topojson-client/topojson-client.min.js" defer></script>
+  <script src="map.js" defer></script>
   <script src="app.js" defer></script>
   <script src="rewards.js" defer></script>
+  <script src="avatars.js" defer></script>
   <script src="profile.js" defer></script>
   <script src="feed-data.js" defer></script>
   <script src="feed.js" defer></script>
@@ -67,58 +72,69 @@
       <p>Saved only in this browser on this device. Nothing is synced, backed up, or submitted to iNaturalist. Clearing browser data can erase your journal—export a copy to keep it.</p></div>
     </aside>
 
-      <section id="map" data-screen="map" class="panel demo-discovery" aria-labelledby="map-title" tabindex="-1" hidden>
+      <section id="map" data-screen="map" class="panel map-screen" aria-labelledby="map-title" tabindex="-1" hidden>
         <h2 id="map-title">Map <span class="tag">Example data</span></h2>
-        <p id="map-help">Imaginary layout only — not geography, coordinates, distances, or organism ranges. No GPS, tiles, geocoding, or journal locations are used.</p>
-        <div id="map-canvas">
-          <h4>Observation markers · fictional</h4>
-          <ul id="demo-map" class="schematic-map" aria-label="Fictional observation schematic" aria-describedby="map-help"></ul>
-          <h4>Demo for-sale listings · not observations</h4>
-          <p>Separate illustration only. No seller, ordering, payment, contact, or external posting.</p>
-          <ul id="demo-listings" class="demo-feed" aria-label="Fictional for-sale listings"></ul>
+        <p id="map-help">Example observations around the San Francisco Bay Area, for trying out the map. Your own journal entries don't have map locations yet.</p>
+        <div class="map-shell">
+          <form id="map-search" class="map-search" role="search" aria-label="Search the map">
+            <div class="map-search-field"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="map-query" type="search" placeholder="Search organisms" autocomplete="off" aria-label="Search organisms on the map"></div>
+            <button id="map-filters-toggle" class="map-filters-button" type="button" aria-expanded="false" aria-controls="map-filter-panel"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16 M7 12h10 M10 18h4"/></svg><span>Filters</span> <span id="map-filter-count" class="map-filter-count" hidden></span></button>
+          </form>
+          <div id="map-filter-panel" class="map-filter-panel map-filters" hidden>
+            <fieldset><legend>Organisms</legend><div class="chip-row"><label class="chip"><input type="checkbox" name="map-organism" value="fungus"><span><span aria-hidden="true">🍄</span> Mushroom</span></label><label class="chip"><input type="checkbox" name="map-organism" value="plant"><span><span aria-hidden="true">🌿</span> Plant</span></label><label class="chip"><input type="checkbox" name="map-organism" value="bird"><span><span aria-hidden="true">🐦</span> Bird</span></label><label class="chip"><input type="checkbox" name="map-organism" value="reptile"><span><span aria-hidden="true">🐍</span> Snake / reptile</span></label><label class="chip"><input type="checkbox" name="map-organism" value="mammal"><span><span aria-hidden="true">🐁</span> Mouse / mammal</span></label><label class="chip"><input type="checkbox" name="map-organism" value="insect"><span><span aria-hidden="true">🐞</span> Bug / insect</span></label></div></fieldset>
+            <fieldset><legend>Show</legend><div class="chip-row"><label class="chip"><input type="checkbox" name="map-purpose" value="natural"><span><span class="legend-swatch natural" aria-hidden="true"></span> Natural setting</span></label><label class="chip"><input type="checkbox" name="map-purpose" value="cultivated"><span><span class="legend-swatch cultivated" aria-hidden="true"></span> Cultivated / garden</span></label><label class="chip"><input type="checkbox" name="map-purpose" value="sale"><span><span class="legend-swatch sale" aria-hidden="true"></span> For-sale listings</span></label></div></fieldset>
+            <div class="map-filter-actions"><button id="map-reset" class="text-button" type="button">Reset filters</button><button id="map-filters-done" class="secondary-button" type="button">Done</button></div>
+          </div>
+          <div id="map-active" class="map-active" aria-label="Active filters"></div>
+          <div id="map-view" class="map-view" role="region" aria-label="Map of example observations" aria-describedby="map-help"></div>
+          <div class="map-options">
+            <label class="map-street"><input id="map-street" type="checkbox"> Street map</label>
+            <small id="map-street-note">Loads map images from OpenStreetMap. The outline map works offline.</small>
+          </div>
         </div>
-        <fieldset class="map-filters" aria-describedby="map-filter-help">
-          <legend>Refine Map results</legend>
-          <details class="more"><summary>Filter tips</summary>
-          <p id="map-filter-help">Choose multiple in either list (Ctrl/Command + click, or Shift + arrow keys). Any selected organism AND any selected color match. All or an empty selection means unrestricted. Fictional markers only, never your journal.</p>
-          </details>
-          <div class="field"><label for="map-purpose">Color / entry purpose</label><select id="map-purpose" multiple size="4">
-            <option value="all">All colors / purposes</option>
-            <option value="natural">Green · natural observations</option>
-            <option value="cultivated">Yellow · cultivated observations</option>
-            <option value="sale">Red · for-sale listings (not observations)</option>
-          </select></div>
-          <div class="field"><label for="map-organism">Organism icon / category</label><select id="map-organism" multiple size="7">
-            <option value="all">All organisms</option>
-            <option value="fungus">🍄 Mushroom</option><option value="plant">🌿 Plant</option>
-            <option value="bird">🐦 Bird</option><option value="reptile">🐍 Snake / reptile</option>
-            <option value="mammal">🐁 Mouse / mammal</option><option value="insect">🐞 Bug / insect</option>
-          </select></div>
-          <p id="map-selected" role="status" aria-live="polite"></p>
-          <button id="map-reset" class="secondary-button" type="button">Reset Map filters</button>
-        </fieldset>
-        <p id="map-results" role="status" aria-live="polite" aria-atomic="true"></p>
-        <p id="map-empty" hidden>No matching Map results. Try another category or reset the filters.</p>
-        <h4>Color legend · entry purpose</h4>
-        <ul class="map-legend" aria-label="Map color meanings">
-          <li><span class="legend-swatch natural" aria-hidden="true"></span><strong>Green:</strong> observation in a natural setting</li>
-          <li><span class="legend-swatch cultivated" aria-hidden="true"></span><strong>Yellow:</strong> observation in a cultivated setting</li>
-          <li><span class="legend-swatch sale" aria-hidden="true"></span><strong>Red:</strong> for-sale listing, never an observation</li>
-        </ul>
-        <p>Organism icons: <span aria-hidden="true">🍄</span> Mushroom · <span aria-hidden="true">🌿</span> Plant · <span aria-hidden="true">🐦</span> Bird · <span aria-hidden="true">🐍</span> Snake / reptile · <span aria-hidden="true">🐁</span> Mouse / mammal · <span aria-hidden="true">🐞</span> Bug / insect. Every marker also has a text label.</p>
+        <p id="map-selected" class="visually-hidden" role="status" aria-live="polite"></p>
+        <p id="map-results" class="map-results" role="status" aria-live="polite" aria-atomic="true"></p>
+        <p id="map-empty" hidden>Nothing matches. Try another search or <button type="button" class="text-button" data-map-reset>reset the filters</button>.</p>
+        <div id="map-canvas" class="map-list">
+          <h3>Observations</h3>
+          <ul id="demo-map" class="schematic-map" aria-label="Example observations"></ul>
+          <h3>For-sale listings</h3>
+          <p class="map-listing-note">Example only. No seller, ordering, payment, contact or posting.</p>
+          <ul id="demo-listings" class="demo-feed" aria-label="Example for-sale listings"></ul>
+        </div>
+        <details class="more"><summary>Map key</summary>
+          <ul class="map-legend" aria-label="Map color meanings">
+            <li><span class="legend-swatch natural" aria-hidden="true"></span><strong>Green:</strong> observation in a natural setting</li>
+            <li><span class="legend-swatch cultivated" aria-hidden="true"></span><strong>Yellow:</strong> observation in a cultivated setting</li>
+            <li><span class="legend-swatch sale" aria-hidden="true"></span><strong>Red:</strong> for-sale listing, never an observation</li>
+          </ul>
+          <p>Pins show the organism: 🍄 Mushroom · 🌿 Plant · 🐦 Bird · 🐍 Snake / reptile · 🐁 Mouse / mammal · 🐞 Bug / insect. Outline map from Natural Earth; street map © OpenStreetMap contributors.</p>
+        </details>
       </section>
       <section id="profile" data-screen="profile" class="panel demo-discovery" aria-labelledby="profile-title" tabindex="-1" hidden>
         <h2 id="profile-title">Your profile</h2>
         <details class="more"><summary>About your profile</summary>
         <p id="profile-help">Not an account or public page. Profile details and rewards stay in this browser only: no upload, account sync or real follows. Posts read the same local journal; projects read the same ID-only collections. Nothing is stored twice. Journal photos remain temporary and are not displayed here.</p>
         </details>
-        <div class="profile-heading"><span id="profile-avatar" class="profile-avatar" aria-label="Symbolic profile avatar">🌿</span><div><h3 id="profile-name">Local explorer</h3><p id="profile-bio"></p><p id="profile-credentials">Credentials: none · user-entered / unverified</p><p><strong>0</strong> followers · <strong>0</strong> following · not connected</p></div></div>
-        <details><summary>Edit local profile</summary>
+        <div class="profile-heading"><span id="profile-avatar" class="profile-avatar" role="img" aria-label="Profile picture: Leaf"></span><div><h3 id="profile-name">Local explorer</h3><p id="profile-bio"></p><p id="profile-credentials">Credentials: none · user-entered / unverified</p><p><strong>0</strong> followers · <strong>0</strong> following · not connected</p></div></div>
+        <details id="avatar-picker" class="avatar-picker"><summary>Change picture</summary>
+          <fieldset class="avatar-choices">
+            <legend>Pick an icon or use your own photo</legend>
+            <div id="avatar-grid" class="avatar-grid"></div>
+          </fieldset>
+          <div class="avatar-upload">
+            <input id="avatar-photo-input" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">
+            <label class="secondary-button" for="avatar-photo-input">Upload a photo</label>
+            <button id="avatar-remove-photo" class="text-button" type="button" hidden>Remove photo</button>
+          </div>
+          <small>Photos are cropped to a square, shrunk, and kept only in this browser. Location details stored in the file are dropped.</small>
+          <p id="avatar-status" role="status" aria-live="polite"></p>
+        </details>
+        <details id="profile-edit"><summary>Edit local profile</summary>
           <form id="profile-form">
             <div class="field"><label for="profile-display-name">Display name</label><input id="profile-display-name" maxlength="80" required value="Local explorer"></div>
             <div class="field"><label for="profile-description">Description</label><textarea id="profile-description" maxlength="500"></textarea></div>
             <div class="field"><label for="profile-credential-input">Credentials · user-entered / unverified</label><input id="profile-credential-input" maxlength="300"><small>No LinkedIn connection or credential verification. Avoid private details.</small></div>
-            <div class="field"><label for="profile-avatar-input">Symbolic avatar · no photo stored</label><select id="profile-avatar-input"><option>🌿</option><option>🍄</option><option>🐦</option><option>❧</option></select></div>
             <button type="submit" class="secondary-button">Save local profile</button>
           </form>
         </details>
