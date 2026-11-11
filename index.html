@@ -11,6 +11,7 @@
   <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
   <script src="rewards.js" defer></script>
+  <script src="avatars.js" defer></script>
   <script src="profile.js" defer></script>
   <script src="feed-data.js" defer></script>
   <script src="feed.js" defer></script>
@@ -112,13 +113,25 @@
         <details class="more"><summary>About your profile</summary>
         <p id="profile-help">Not an account or public page. Profile details and rewards stay in this browser only: no upload, account sync or real follows. Posts read the same local journal; projects read the same ID-only collections. Nothing is stored twice. Journal photos remain temporary and are not displayed here.</p>
         </details>
-        <div class="profile-heading"><span id="profile-avatar" class="profile-avatar" aria-label="Symbolic profile avatar">🌿</span><div><h3 id="profile-name">Local explorer</h3><p id="profile-bio"></p><p id="profile-credentials">Credentials: none · user-entered / unverified</p><p><strong>0</strong> followers · <strong>0</strong> following · not connected</p></div></div>
-        <details><summary>Edit local profile</summary>
+        <div class="profile-heading"><span id="profile-avatar" class="profile-avatar" role="img" aria-label="Profile picture: Leaf"></span><div><h3 id="profile-name">Local explorer</h3><p id="profile-bio"></p><p id="profile-credentials">Credentials: none · user-entered / unverified</p><p><strong>0</strong> followers · <strong>0</strong> following · not connected</p></div></div>
+        <details id="avatar-picker" class="avatar-picker"><summary>Change picture</summary>
+          <fieldset class="avatar-choices">
+            <legend>Pick an icon or use your own photo</legend>
+            <div id="avatar-grid" class="avatar-grid"></div>
+          </fieldset>
+          <div class="avatar-upload">
+            <input id="avatar-photo-input" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">
+            <label class="secondary-button" for="avatar-photo-input">Upload a photo</label>
+            <button id="avatar-remove-photo" class="text-button" type="button" hidden>Remove photo</button>
+          </div>
+          <small>Photos are cropped to a square, shrunk, and kept only in this browser. Location details stored in the file are dropped.</small>
+          <p id="avatar-status" role="status" aria-live="polite"></p>
+        </details>
+        <details id="profile-edit"><summary>Edit local profile</summary>
           <form id="profile-form">
             <div class="field"><label for="profile-display-name">Display name</label><input id="profile-display-name" maxlength="80" required value="Local explorer"></div>
             <div class="field"><label for="profile-description">Description</label><textarea id="profile-description" maxlength="500"></textarea></div>
             <div class="field"><label for="profile-credential-input">Credentials · user-entered / unverified</label><input id="profile-credential-input" maxlength="300"><small>No LinkedIn connection or credential verification. Avoid private details.</small></div>
-            <div class="field"><label for="profile-avatar-input">Symbolic avatar · no photo stored</label><select id="profile-avatar-input"><option>🌿</option><option>🍄</option><option>🐦</option><option>❧</option></select></div>
             <button type="submit" class="secondary-button">Save local profile</button>
           </form>
         </details>

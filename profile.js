@@ -4,14 +4,13 @@
 (() => {
   const $ = id => document.getElementById(id);
   const PROFILE_KEY = "terra.profile.v1";
-  const avatars = ["🌿", "🍄", "🐦", "❧"];
-  const defaults = { version: 1, name: "Local explorer", bio: "", credentials: "", avatar: "🌿" };
+  const defaults = { version: 1, name: "Local explorer", bio: "", credentials: "", avatar: "leaf" };
   function readProfile() {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (raw === null) return { ...defaults };
     const p = JSON.parse(raw);
     if (!p || p.version !== 1 || typeof p.name !== "string" || !p.name.trim() || p.name.length > 80 ||
-        typeof p.bio !== "string" || p.bio.length > 500 || typeof p.credentials !== "string" || p.credentials.length > 300 || !avatars.includes(p.avatar)) throw Error("Unsupported profile data");
+        typeof p.bio !== "string" || p.bio.length > 500 || typeof p.credentials !== "string" || p.credentials.length > 300 || !TerraAvatars.isValid(p.avatar, p.photo)) throw Error("Unsupported profile data");
     return p;
   }
   let profileReadable = false;
@@ -22,25 +21,94 @@
       $("profile-name").textContent = p.name;
       $("profile-bio").textContent = p.bio;
       $("profile-credentials").textContent = `Credentials: ${p.credentials || "none"} · user-entered / unverified`;
-      $("profile-avatar").textContent = p.avatar;
+      renderAvatar(p);
       $("profile-display-name").value = p.name;
       $("profile-description").value = p.bio;
       $("profile-credential-input").value = p.credentials;
-      $("profile-avatar-input").value = p.avatar;
       $("profile-status").textContent = "Profile stays on this device only. Nothing published.";
     } catch {
       profileReadable = false;
       $("profile-status").textContent = "Profile storage blocked or damaged. Editing paused; existing data untouched. Do not clear site data.";
     }
     $("profile-form").querySelector("button").disabled = !profileReadable;
+    for (const control of $("avatar-picker").querySelectorAll("input, button")) control.disabled = !profileReadable;
   }
+  // Profile picture: one of the drawn icons, or the person's own photo.
+  const avatarGrid = $("avatar-grid");
+  function choiceFor(value, label) {
+    const option = document.createElement("label");
+    option.className = "avatar-option";
+    option.title = label;
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = "avatar-choice"; input.value = value;
+    input.className = "visually-hidden";
+    const face = document.createElement("span");
+    face.className = "avatar-face";
+    const name = document.createElement("span");
+    name.className = "avatar-name"; name.textContent = label;
+    option.append(input, face, name);
+    input.addEventListener("change", () => saveAvatar({ avatar: value }));
+    return { option, face, input };
+  }
+  for (const icon of TerraAvatars.ICONS) {
+    const { option, face } = choiceFor(icon.id, icon.label);
+    TerraAvatars.render(face, icon.id);
+    avatarGrid.append(option);
+  }
+  const photoChoice = choiceFor("photo", "Your photo");
+  photoChoice.option.hidden = true;
+  avatarGrid.prepend(photoChoice.option);
+  function renderAvatar(p) {
+    const avatar = p.avatar === "photo" ? "photo" : TerraAvatars.iconId(p.avatar);
+    TerraAvatars.render($("profile-avatar"), avatar, p.photo);
+    $("profile-avatar").setAttribute("aria-label", `Profile picture: ${TerraAvatars.labelFor(avatar, p.photo)}`);
+    photoChoice.option.hidden = !p.photo;
+    if (p.photo) TerraAvatars.render(photoChoice.face, "photo", p.photo);
+    $("avatar-remove-photo").hidden = !p.photo;
+    for (const input of avatarGrid.querySelectorAll("input")) input.checked = input.value === avatar;
+  }
+  // Writes only the picture fields, keeping whatever name and bio are already saved.
+  function saveAvatar(change, message) {
+    try {
+      const current = readProfile();
+      const next = { ...current, avatar: TerraAvatars.iconId(current.avatar) ?? current.avatar, ...change };
+      if (next.photo === undefined) delete next.photo;
+      if (!TerraAvatars.isValid(next.avatar, next.photo)) throw Error("invalid");
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+      loadProfile();
+      $("avatar-status").textContent = message ?? `Picture changed to ${TerraAvatars.labelFor(next.avatar, next.photo)}.`;
+    } catch {
+      loadProfile();
+      $("avatar-status").textContent = "The picture couldn't be saved. Your previous picture is unchanged; check that this browser allows site storage.";
+    }
+  }
+  $("avatar-photo-input").addEventListener("change", async event => {
+    const file = event.target.files[0];
+    event.target.value = "";
+    if (!file) return;
+    $("avatar-status").textContent = "Preparing your photo…";
+    try {
+      const photo = await TerraAvatars.photoFromFile(file);
+      saveAvatar({ avatar: "photo", photo }, "Photo set as your profile picture.");
+    } catch (error) {
+      $("avatar-status").textContent = error.message.startsWith("Choose") || error.message.startsWith("That") ? error.message : "That image couldn't be used. Try a different file.";
+    }
+  });
+  $("avatar-remove-photo").addEventListener("click", () => {
+    const current = (() => { try { return readProfile(); } catch { return null; } })();
+    const fallback = current && current.avatar !== "photo" ? TerraAvatars.iconId(current.avatar) : "leaf";
+    saveAvatar({ avatar: fallback, photo: undefined }, "Photo removed from this browser.");
+    $("avatar-photo-input").focus();
+  });
   $("profile-form").addEventListener("submit", event => {
     event.preventDefault();
     if (!profileReadable || !$("profile-display-name").value.trim()) return;
     try {
-      readProfile(); // Do not overwrite damaged data from another tab.
-      localStorage.setItem(PROFILE_KEY, JSON.stringify({ version: 1, name: $("profile-display-name").value.trim(),
-        bio: $("profile-description").value, credentials: $("profile-credential-input").value, avatar: $("profile-avatar-input").value }));
+      const current = readProfile(); // Do not overwrite damaged data from another tab.
+      const next = { version: 1, name: $("profile-display-name").value.trim(), bio: $("profile-description").value,
+        credentials: $("profile-credential-input").value, avatar: TerraAvatars.iconId(current.avatar) ?? current.avatar };
+      if (current.photo) next.photo = current.photo;
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
       loadProfile();
     } catch { $("profile-status").textContent = "Profile could not be saved. Draft kept; existing data untouched. Check browser storage."; }
   });
