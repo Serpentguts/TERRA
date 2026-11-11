@@ -45,7 +45,7 @@ const { chromium } = require('playwright');
     assert.equal(await bottom.locator('svg[aria-hidden="true"][focusable="false"]').count(), 5, "Every destination has a matching line icon");
     assert.equal(await bottom.evaluate(el => !el.closest('main, header, #discover')), true);
     assert.match(await page.locator('meta[name="viewport"]').getAttribute('content'), /viewport-fit=cover/);
-    const bottomRule = await page.evaluate(() => [...document.styleSheets[0].cssRules].find(rule => rule.selectorText === '#bottom-navigation').cssText);
+    const bottomRule = await page.evaluate(() => [...[...document.styleSheets].find(sheet => sheet.href?.endsWith('/styles.css')).cssRules].find(rule => rule.selectorText === '#bottom-navigation').cssText);
     for (const inset of ['bottom', 'left', 'right']) assert.ok(bottomRule.includes(`env(safe-area-inset-${inset})`));
     for (const label of ['Home', 'Journal', 'Record', 'Map', 'Profile']) {
       assert.equal(await bottom.getByRole('link', { name: label, exact: true }).isVisible(), true);
@@ -124,6 +124,16 @@ const { chromium } = require('playwright');
     await page.waitForFunction(() => location.hash === '#journal');
     assert.equal(await onScreen('#saved-title'), true);
     await bottom.locator('a[href="#map"]').click();
+    // A real, zoomable map with one pin per example; the outline map needs no network.
+    await page.waitForFunction(() => document.querySelectorAll('#map-view .leaflet-marker-icon').length === 7);
+    await page.waitForFunction(() => document.querySelector('#map-view .leaflet-overlay-pane path'));
+    assert.equal(await page.locator('#map-view .leaflet-tile').count(), 0, 'No street tiles until asked');
+    const pins = page.locator('#map-view .leaflet-marker-icon');
+    assert.equal(await pins.first().getAttribute('role'), 'button');
+    assert.match(await pins.first().getAttribute('aria-label'), /near/);
+    await pins.first().focus(); await page.keyboard.press('Enter');
+    assert.match(await page.locator('.map-popup').textContent(), /Near .+\./);
+    await page.locator('#map .more > summary').click();
     assert.match(await page.locator('.map-legend').textContent(), /Green:.*natural setting.*Yellow:.*cultivated setting.*Red:.*for-sale listing, never an observation/s);
     assert.equal(await page.locator('.map-legend').isVisible(), true);
     assert.equal(await page.locator('#demo-map .demo-card').count(), 6);
@@ -139,35 +149,69 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#demo-listings a, #demo-listings button').count(), 0);
     assert.equal(new Set(await page.locator('#demo-map .natural, #demo-map .cultivated, #demo-listings .sale').evaluateAll(els => els.map(el => getComputedStyle(el).borderLeftColor))).size, 3);
     assert.deepEqual(await page.evaluate(() => window.outbound), []);
-    await page.goto(origin + '/#map');
-    assert.equal(await page.locator('#map').isVisible(), true);
-    // Both native dropdowns combine with AND, for observations AND sale listings.
-    for (const [purpose, observations, listings] of [['natural', 4, 0], ['cultivated', 2, 0], ['sale', 0, 1], ['all', 6, 1]]) {
-      await page.selectOption('#map-purpose', purpose);
-      assert.equal(await page.locator('#demo-map .demo-card:visible').count(), observations);
-      assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), listings);
+    // Search bar with a Filters popover, like iNaturalist. Organism and setting chips combine with AND.
+    const visibleCards = list => page.locator(`#${list} .demo-card:visible`).count();
+    const chip = (name, value) => page.locator(`#map-filter-panel input[name="map-${name}"][value="${value}"]`);
+    const filters = page.locator('#map-filters-toggle');
+    assert.equal(await page.locator('#map-filter-panel').isVisible(), false);
+    await filters.click();
+    assert.equal(await filters.getAttribute('aria-expanded'), 'true');
+    assert.equal(await chip('organism', 'fungus').evaluate(el => el === document.activeElement), true);
+    for (const [purpose, observations, listings] of [['natural', 4, 0], ['cultivated', 2, 0], ['sale', 0, 1]]) {
+      await chip('purpose', purpose).check();
+      assert.equal(await visibleCards('demo-map'), observations);
+      assert.equal(await visibleCards('demo-listings'), listings);
+      assert.equal(await pins.count(), observations + listings, 'Pins follow the filters');
+      await chip('purpose', purpose).uncheck();
     }
     for (const category of ['fungus', 'plant', 'bird', 'reptile', 'mammal', 'insect']) {
-      await page.selectOption('#map-organism', category);
-      assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 1);
-      assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), category === 'plant' ? 1 : 0);
+      await chip('organism', category).check();
+      assert.equal(await visibleCards('demo-map'), 1);
+      assert.equal(await visibleCards('demo-listings'), category === 'plant' ? 1 : 0);
+      await chip('organism', category).uncheck();
     }
-    await page.selectOption('#map-purpose', 'sale');
+    await chip('organism', 'fungus').check(); await chip('organism', 'plant').check();
+    await chip('purpose', 'natural').check(); await chip('purpose', 'cultivated').check();
+    assert.equal(await visibleCards('demo-map'), 2);
+    assert.equal(await page.locator('#map-filter-count').textContent(), '4');
+    assert.match(await page.locator('#map-selected').textContent(), /natural, cultivated.*fungus, plant/);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#map-filter-panel').isVisible(), false);
+    assert.equal(await filters.evaluate(el => el === document.activeElement), true);
+    // Active filters show as removable chips under the search bar.
+    assert.deepEqual(await page.locator('#map-active .active-chip').evaluateAll(els => els.map(el => el.getAttribute('aria-label'))),
+      ['Remove filter: 🍄 Mushroom', 'Remove filter: 🌿 Plant', 'Remove filter: Natural setting', 'Remove filter: Cultivated / garden']);
+    await page.getByRole('button', { name: 'Remove filter: Cultivated / garden' }).click();
+    assert.equal(await visibleCards('demo-map'), 1);
+    // Search matches names, groups and places, and combines with the filters.
+    await page.fill('#map-query', 'woodland');
+    assert.equal(await visibleCards('demo-map'), 1);
+    await page.fill('#map-query', 'garden');
     assert.equal(await page.locator('#map-empty').isVisible(), true);
-    assert.match(await page.locator('#map-results').textContent(), /0 observation markers and 0 for-sale listings/);
-    await page.selectOption('#map-organism', 'plant');
-    assert.equal(await page.locator('#map-empty').isVisible(), false);
-    assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), 1);
-    await page.selectOption('#map-purpose', 'natural');
-    assert.equal(await page.locator('#map-empty').isVisible(), true);
-    await page.locator('#map-reset').click();
-    assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 6);
-    assert.equal(await page.locator('#map-purpose').inputValue(), 'all');
-    assert.equal(await page.locator('#map-organism').inputValue(), 'all');
-    await page.locator('#map-purpose').focus();
-    await page.keyboard.press('Home'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');
-    assert.equal(await page.locator('#map-purpose').inputValue(), 'natural');
-    await page.locator('#map-reset').click();
+    assert.match(await page.locator('#map-results').textContent(), /0 example observations and 0 for-sale listings/);
+    await page.locator('#map-empty button').click();
+    assert.equal(await page.locator('#map-query').inputValue(), '');
+    await page.fill('#map-query', 'GARDEN');
+    assert.equal(await visibleCards('demo-map'), 2, 'Search ignores case');
+    assert.equal(await page.locator('#map-active .active-chip').count(), 1);
+    await page.fill('#map-query', 'Muir');
+    assert.equal(await visibleCards('demo-map'), 1, 'Search matches places');
+    await filters.click(); await page.locator('#map-reset').click();
+    assert.equal(await visibleCards('demo-map'), 6);
+    assert.equal(await page.locator('#map-query').inputValue(), '');
+    assert.equal(await page.locator('#map-active .active-chip').count(), 0);
+    assert.equal(await page.locator('#map-filter-count').isVisible(), false);
+    await page.click('#map-filters-done');
+    // Street map is opt-in; it requests OpenStreetMap tiles and falls back to the outline if they fail.
+    assert.equal(network.some(url => url.includes('openstreetmap')), false);
+    await page.check('#map-street');
+    await page.waitForFunction(() => /couldn't load/.test(document.getElementById('map-street-note').textContent));
+    assert.ok(network.some(url => url.startsWith('https://tile.openstreetmap.org/')));
+    assert.equal(await page.locator('#map-view .leaflet-overlay-pane path').count() > 0, true, 'Outline stays when tiles fail');
+    assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('terra.map.v1'))).street, true);
+    await page.uncheck('#map-street');
+    await page.evaluate(() => localStorage.removeItem('terra.map.v1'));
+    network.length = 0;
     await page.evaluate(() => { location.hash = 'home'; });
     await page.waitForFunction(() => !document.getElementById('home').hidden);
     assert.equal(await onScreen('.map-legend'), false);

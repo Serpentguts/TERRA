@@ -25,24 +25,24 @@ const { chromium } = require('playwright');
     assert.equal(await state(R), null, 'No empty-store startup rewrite');
     assert.equal(await state(U), null);
     await page.click('#bottom-navigation a[href="#map"]');
+    // Search bar and filters sit above the map; the list and key follow it.
     assert.equal(await page.evaluate(() => {
       const before = (a, b) => Boolean(document.querySelector(a).compareDocumentPosition(document.querySelector(b)) & Node.DOCUMENT_POSITION_FOLLOWING);
-      return before('#map-canvas', '.map-filters') && before('.map-filters', '.map-legend');
+      return before('#map-search', '#map-view') && before('#map-view', '#map-canvas') && before('#map-canvas', '.map-legend');
     }), true);
-    await page.selectOption('#map-organism', ['fungus', 'plant']);
-    await page.selectOption('#map-purpose', ['natural', 'cultivated']);
+    await page.click('#map-filters-toggle');
+    for (const value of ['fungus', 'plant']) await page.check(`#map-filter-panel input[name="map-organism"][value="${value}"]`);
+    for (const value of ['natural', 'cultivated']) await page.check(`#map-filter-panel input[name="map-purpose"][value="${value}"]`);
     assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 2);
     assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), 0);
     assert.match(await page.locator('#map-selected').textContent(), /natural, cultivated.*fungus, plant/);
-    await page.selectOption('#map-purpose', ['cultivated', 'sale']);
+    await page.uncheck('#map-filter-panel input[value="natural"]'); await page.check('#map-filter-panel input[value="sale"]');
     assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 1);
     assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), 1);
-    await page.selectOption('#map-organism', []); await page.selectOption('#map-purpose', []);
-    assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 6);
-    await page.selectOption('#map-purpose', ['all', 'sale']);
-    assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 6, 'All explicitly overrides individual choices');
     await page.click('#map-reset');
-    assert.match(await page.locator('#map-selected').textContent(), /colors: all.*organisms: all/);
+    assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 6);
+    assert.match(await page.locator('#map-selected').textContent(), /all settings.*organisms: all/);
+    await page.click('#map-filters-done');
     assert.equal(await state(J), null);
 
     // One native searchable dropdown; old schema keys survive all eight labels.
