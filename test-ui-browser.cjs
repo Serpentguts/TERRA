@@ -124,10 +124,14 @@ const { chromium } = require('playwright');
     await page.waitForFunction(() => location.hash === '#journal');
     assert.equal(await onScreen('#saved-title'), true);
     await bottom.locator('a[href="#map"]').click();
-    // A real, zoomable map with one pin per example; the outline map needs no network.
+    // A real, zoomable map with one pin per example. Streets is the default style; tiles are answered
+    // with blank images by the test helper, so the street layer counts as loaded.
     await page.waitForFunction(() => document.querySelectorAll('#map-view .leaflet-marker-icon').length === 7);
-    await page.waitForFunction(() => document.querySelector('#map-view .leaflet-overlay-pane path'));
-    assert.equal(await page.locator('#map-view .leaflet-tile').count(), 0, 'No street tiles until asked');
+    await page.waitForFunction(() => document.querySelectorAll('#map-view .leaflet-tile-loaded').length > 0);
+    assert.ok(global.terraTileRequests.some(url => url.startsWith('https://tile.openstreetmap.org/')));
+    assert.deepEqual(await page.locator('#map-view .basemap-switch button').allTextContents(), ['Streets', 'Terrain', 'Outline']);
+    assert.equal(await page.locator('#map-view .basemap-switch [aria-pressed="true"]').textContent(), 'Streets');
+    assert.match(await page.locator('#map-street-note').textContent(), /Streets map from OpenStreetMap/);
     const pins = page.locator('#map-view .leaflet-marker-icon');
     assert.equal(await pins.first().getAttribute('role'), 'button');
     assert.match(await pins.first().getAttribute('aria-label'), /near/);
@@ -202,14 +206,19 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#map-active .active-chip').count(), 0);
     assert.equal(await page.locator('#map-filter-count').isVisible(), false);
     await page.click('#map-filters-done');
-    // Street map is opt-in; it requests OpenStreetMap tiles and falls back to the outline if they fail.
-    assert.equal(network.some(url => url.includes('openstreetmap')), false);
-    await page.check('#map-street');
-    await page.waitForFunction(() => /couldn't load/.test(document.getElementById('map-street-note').textContent));
-    assert.ok(network.some(url => url.startsWith('https://tile.openstreetmap.org/')));
-    assert.equal(await page.locator('#map-view .leaflet-overlay-pane path').count() > 0, true, 'Outline stays when tiles fail');
-    assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('terra.map.v1'))).street, true);
-    await page.uncheck('#map-street');
+    // Map styles: Terrain loads topographic tiles, Outline uses only the bundled data, and the choice is remembered.
+    global.terraTileRequests.length = 0;
+    await page.locator('#map-view .basemap-switch button', { hasText: 'Terrain' }).click();
+    await page.waitForFunction(() => /Terrain map from OpenTopoMap/.test(document.getElementById('map-street-note').textContent));
+    assert.ok(global.terraTileRequests.some(url => /^https:\/\/[abc]\.tile\.opentopomap\.org\//.test(url)));
+    assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('terra.map.v1'))).base, 'terrain');
+    await page.locator('#map-view .basemap-switch button', { hasText: 'Outline' }).click();
+    await page.waitForFunction(() => document.querySelector('#map-view .leaflet-overlay-pane path'));
+    assert.equal(await page.locator('#map-view .leaflet-tile').count(), 0, 'Outline uses no map images');
+    global.terraTileRequests.length = 0;
+    await page.reload(); await page.waitForFunction(() => document.querySelectorAll('#map-view .leaflet-marker-icon').length === 7);
+    assert.equal(await page.locator('#map-view .basemap-switch [aria-pressed="true"]').textContent(), 'Outline');
+    assert.deepEqual(global.terraTileRequests, [], 'Outline choice is remembered and loads no map images');
     await page.evaluate(() => localStorage.removeItem('terra.map.v1'));
     network.length = 0;
     await page.evaluate(() => { location.hash = 'home'; });

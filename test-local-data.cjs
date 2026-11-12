@@ -66,3 +66,27 @@ test('all membership paths reject outside/deleted; boundary edit summaries never
   assert.equal(F.summarize(project, journal).total, 1);
   assert.equal(JSON.stringify(journal), bytes);
 });
+
+test('real-world locations follow the same privacy rules as the old grid, and the two never mix', () => {
+  const D = require('./local-data.js');
+  const geo = { version: 1, space: D.GEO };
+  assert.equal(D.location({ ...geo, kind: 'point', x: -122.58111, y: 37.897 }, 'exact'), true);
+  assert.equal(D.location({ ...geo, kind: 'point', x: -122.581111, y: 37.897 }, 'exact'), false, 'At most 5 decimal places');
+  assert.equal(D.location({ ...geo, kind: 'point', x: 10, y: 95 }, 'exact'), false, 'Latitude stays within ±90');
+  assert.equal(D.location({ ...geo, kind: 'point', x: 181, y: 0 }, 'exact'), false);
+  assert.equal(D.location({ ...geo, kind: 'region', x1: -122.6, y1: 37.8, x2: -122.4, y2: 38 }, 'approximate'), true);
+  assert.equal(D.location({ ...geo, kind: 'region', x1: -122.6, y1: 37.8, x2: -122.5, y2: 38 }, 'approximate'), false, 'At least 0.2° each way');
+  assert.equal(D.location({ ...geo, kind: 'region', x1: -122.61, y1: 37.8, x2: -122.4, y2: 38 }, 'approximate'), false, 'Snapped to 0.1° cells');
+  assert.equal(D.location({ ...geo, kind: 'point', x: 1, y: 1 }, 'approximate'), false, 'Approximate never keeps a point');
+  assert.equal(D.location({ ...geo, kind: 'withheld' }, 'hidden'), true);
+  assert.equal(D.location({ ...geo, kind: 'withheld', x: 1 }, 'hidden'), false);
+  const site = { ...geo, x1: -123, y1: 37, x2: -122, y2: 38 };
+  assert.equal(D.boundary(site), true);
+  assert.equal(D.inside(site, { ...geo, kind: 'point', x: -122.5, y: 37.5 }), true);
+  assert.equal(D.inside(site, { ...geo, kind: 'point', x: -121.5, y: 37.5 }), false);
+  assert.equal(D.inside(site, { ...geo, kind: 'region', x1: -122.6, y1: 37.4, x2: -122.4, y2: 37.6 }), true);
+  const grid = { version: 1, space: D.SPACE };
+  assert.equal(D.inside({ ...grid, x1: 0, y1: 0, x2: 100, y2: 100 }, { ...geo, kind: 'point', x: 50, y: 50 }), false, 'Grid sites never match real places');
+  assert.equal(D.inside(site, { ...grid, kind: 'point', x: 50, y: 50 }), false);
+  assert.equal(D.inside({ ...grid, x1: 0, y1: 0, x2: 60, y2: 60 }, { ...grid, kind: 'point', x: 50, y: 50 }), true, 'Older grid records still work with grid sites');
+});

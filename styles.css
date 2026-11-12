@@ -1,6 +1,6 @@
 .local-map { display: block; width: min(100%, 320px); aspect-ratio: 1; border: 2px solid #386d5d; cursor: crosshair; touch-action: manipulation; }
 .map-coordinates { display: flex; flex-wrap: wrap; gap: .6rem; margin-block: .6rem; }
-.map-coordinates label { flex: 1 1 65px; max-width: 100px; }
+.map-coordinates label { flex: 1 1 130px; max-width: 200px; }
 .map-coordinates input { width: 100%; min-width: 0; }
 #observation-map, #project-map { min-width: 0; }
 
@@ -25,12 +25,6 @@ body { margin: 0; padding-bottom: calc(var(--bottom-nav-height, 170px) + 16px); 
 .terrarium-intro { color: var(--muted); }
 .rewards-terrarium { position: relative; height: 300px; max-width: 560px; margin: 12px auto 24px; border: 3px solid #9fb3a6; border-top-width: 10px; border-top-color: #8a7a5a; border-radius: 18px 18px 120px 120px / 18px 18px 60px 60px;
   background: radial-gradient(ellipse at 28% 18%, #ffffffcc 0 6%, transparent 7%), linear-gradient(#eef6f1 0 58%, #6d8f5a 58% 63%, #7a5b3e 63% 82%, #5c4430 82%); box-shadow: inset 0 0 0 6px #ffffff66, 0 6px 18px #243c3122; overflow: hidden; }
-.rewards-terrarium:empty::after { content: "Your terrarium is empty. Record observations to start collecting."; position: absolute; inset: 20% 10% auto; color: var(--muted); text-align: center; }
-.rewards-terrarium span { position: absolute; line-height: 1; transform: translate(-50%, -85%) rotate(var(--tilt, 0deg)); filter: drop-shadow(0 3px 2px #0000004d); cursor: default; transition: transform .2s ease; }
-.rewards-terrarium span:hover { transform: translate(-50%, -85%) rotate(var(--tilt, 0deg)) scale(1.15); }
-.rewards-terrarium span.fresh { animation: terrarium-pop .7s ease-out; }
-@keyframes terrarium-pop { from { opacity: 0; scale: .3; } 70% { scale: 1.25; } to { opacity: 1; scale: 1; } }
-@media (prefers-reduced-motion: reduce) { .rewards-terrarium span, .rewards-terrarium span.fresh { animation: none; transition: none; } }
 .collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, calc(50% - 6px)), 1fr)); gap: 12px; padding: 0; list-style: none; }
 .collection-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 12px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; text-align: center; }
 .collection-card.earned { border-color: #b9cbbd; background: #f3f8f2; }
@@ -370,3 +364,28 @@ details.more[open] > summary { margin-bottom: 4px; }
 .demo-place { font-weight: 600; }
 /* Screens receive focus only as a fallback target; their headings show focus instead. */
 section[data-screen][tabindex="-1"]:focus { outline: none; }
+
+/* Location picker and map style switch */
+.location-picker { display: grid; gap: 8px; }
+.picker-note { margin: 0; color: var(--muted); }
+.picker-map { height: min(52vh, 380px); min-height: 260px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #cfe1e7; z-index: 0; cursor: crosshair; }
+.picker-map-note { color: var(--muted); }
+.basemap-switch { display: flex; overflow: hidden; background: #fff; }
+.basemap-switch button { min-height: 34px; padding: 0 12px; border: 0; border-left: 1px solid #d5dccf; background: #fff; color: var(--ink); font: 600 12px/1 system-ui, sans-serif; cursor: pointer; }
+.basemap-switch button:first-child { border-left: 0; }
+.basemap-switch button[aria-pressed="true"] { background: var(--green); color: #fff; }
+.basemap-switch button:focus-visible { outline: 3px solid #a06c25; outline-offset: -3px; }
+
+/* Living terrarium */
+.rewards-terrarium { height: 320px; padding: 0; overflow: hidden; background: #dcebdc; }
+.rewards-terrarium canvas { display: block; touch-action: none; cursor: pointer; border-radius: inherit; }
+.rewards-terrarium canvas:focus-visible { outline: 3px solid #a06c25; outline-offset: -3px; }
+.terrarium-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; max-width: 560px; margin: 8px auto 0; }
+.terrarium-speed { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; background: #fff; }
+.terrarium-speed button { min-width: 44px; min-height: 40px; padding: 0 10px; border: 0; border-left: 1px solid var(--line); background: #fff; color: var(--green); font: 650 13px/1 system-ui, sans-serif; cursor: pointer; }
+.terrarium-speed button:first-child { border-left: 0; }
+.terrarium-speed button[aria-pressed="true"] { background: var(--green); color: #fff; }
+.sandbox-note { max-width: 560px; margin: 8px auto 0; padding: 8px 12px; border-radius: 8px; background: #fbf3dc; color: #6b4e12; font-size: 14px; }
+.terrarium-caption { max-width: 560px; min-height: 2.8em; margin: -12px auto 18px; color: var(--muted); text-align: center; font-size: 14px; }
+.collection-find { margin-top: 2px; font-size: 13px; }
+@media (max-width: 480px) { .rewards-terrarium { height: 270px; } }

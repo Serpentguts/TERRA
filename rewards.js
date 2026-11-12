@@ -16,22 +16,28 @@ const TerraRewards = (() => {
     { id: "week", group: "Habits", label: "Seven-day fieldbook", goal: "Observations dated on 7 days in a row", metric: "streak", target: 7, item: "Snail", icon: "🐌" },
     { id: "groups3", group: "Variety", label: "Branching out", goal: "Observe 3 different organism groups", metric: "groups", target: 3, item: "Butterfly", icon: "🦋", layer: "air" },
     { id: "names10", group: "Variety", label: "Ten different names", goal: "Record 10 different named organisms", metric: "names", target: 10, item: "Ladybug", icon: "🐞" },
-    { id: "project", group: "Projects", label: "Project completion", goal: "Complete a project with an observation in it", metric: "projects", target: 1, item: "Spiral shell", icon: "🐚" },
+    { id: "project", group: "Projects", label: "Project completion", goal: "Complete a project with an observation in it", metric: "projects", target: 1, item: "Spiral shell", icon: "🐚", kind: "decoration" },
+    { id: "projects3", group: "Projects", label: "Three projects", goal: "Complete 3 projects with observations in them", metric: "projects", target: 3, item: "Stone statue", icon: "🗿", kind: "decoration" },
+    { id: "days30", group: "Habits", label: "Thirty field days", goal: "Observe on 30 different days", metric: "days", target: 30, item: "Garden bench", icon: "🪑", kind: "decoration" },
+    { id: "groups5", group: "Variety", label: "Five groups", goal: "Observe 5 different organism groups", metric: "groups", target: 5, item: "Mossy rock", icon: "🪨", kind: "decoration" },
     { id: "followers10", group: "Community", label: "Ten followers", goal: "Reach 10 followers", metric: "followers", target: 10, item: "Songbird", icon: "🐦", layer: "air", source: "unavailable", lockedReason: "Coming with real accounts" },
-    { id: "verified1", group: "Community", label: "First verified observation", goal: "Get 1 observation verified", metric: "verified", target: 1, item: "Quartz crystal", icon: "💎", source: "unavailable", lockedReason: "Coming with identification review" }
-  ].map(Object.freeze));
+    { id: "verified1", group: "Community", label: "First verified observation", goal: "Get 1 observation verified", metric: "verified", target: 1, item: "Quartz crystal", icon: "💎", kind: "decoration", source: "unavailable", lockedReason: "Coming with identification review" }
+  ].map(a => Object.freeze({ kind: "living", ...a })));
   const byId = Object.fromEntries(CATALOG.map(a => [a.id, a]));
   const labels = Object.freeze(Object.fromEntries(CATALOG.map(a => [a.id, a.label])));
   const isUnknown = name => typeof name !== "string" || !name.trim() || name.trim().toLowerCase() === "unknown";
 
+  // Optional saved spot for an item you've moved in the terrarium: fractions of the jar (0–1).
+  const fraction = n => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1;
+  const spot = g => (g.x === undefined && g.y === undefined) || (fraction(g.x) && fraction(g.y));
   function parse(raw) {
     if (raw === null) return { version: 1, grants: [] };
     const state = JSON.parse(raw);
     if (!state || state.version !== 1 || !Array.isArray(state.grants) || state.grants.length > CATALOG.length ||
         state.grants.some(g => !g || !Object.hasOwn(byId, g.badge) || byId[g.badge].source === "unavailable" ||
-          !/^[a-f0-9]{32}$/.test(g.token) || typeof g.placed !== "boolean") ||
+          !/^[a-f0-9]{32}$/.test(g.token) || typeof g.placed !== "boolean" || !spot(g)) ||
         new Set(state.grants.map(g => g.badge)).size !== state.grants.length || new Set(state.grants.map(g => g.token)).size !== state.grants.length) throw Error("Unsupported or damaged rewards data");
-    return { version: 1, grants: state.grants.map(({ badge, token, placed }) => ({ badge, token, placed })) };
+    return { version: 1, grants: state.grants.map(({ badge, token, placed, x, y }) => ({ badge, token, placed, ...(x === undefined ? {} : { x, y }) })) };
   }
   // Counts only from active, valid, non-future journal records. Self-reported fields such as
   // `verified` or `followers` on records are ignored: they are not evidence.
@@ -47,6 +53,7 @@ const TerraRewards = (() => {
     }
     return {
       observations: active.length,
+      days: days.length,
       streak,
       groups: new Set(active.map(r => r.type).filter(t => t && t !== "other")).size,
       names: new Set(active.filter(r => !isUnknown(r.name)).map(r => r.name.trim())).size,
@@ -92,6 +99,11 @@ const TerraRewards = (() => {
       return { grant, ...d, x };
     });
   }
-  return Object.freeze({ KEY, CATALOG, labels, parse, progress, eligible, award, decoration, layout });
+  // Store where an item was moved to (rounded so the file stays small).
+  function move(state, badge, x, y) {
+    const grants = state.grants.map(g => g.badge === badge ? { ...g, x: Math.round(Math.min(1, Math.max(0, x)) * 1000) / 1000, y: Math.round(Math.min(1, Math.max(0, y)) * 1000) / 1000 } : { ...g });
+    return { version: 1, grants };
+  }
+  return Object.freeze({ KEY, CATALOG, labels, parse, progress, eligible, award, decoration, layout, move });
 })();
 if (typeof module !== "undefined") module.exports = TerraRewards;
