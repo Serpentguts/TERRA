@@ -8,13 +8,15 @@
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="styles.css">
   <script src="local-data.js" defer></script>
-  <script src="local-map.js" defer></script>
-  <script src="ui.js" defer></script>
   <script src="vendor/leaflet/leaflet.js" defer></script>
   <script src="vendor/topojson-client/topojson-client.min.js" defer></script>
+  <script src="basemap.js" defer></script>
+  <script src="local-map.js" defer></script>
+  <script src="ui.js" defer></script>
   <script src="map.js" defer></script>
   <script src="app.js" defer></script>
   <script src="rewards.js" defer></script>
+  <script src="terrarium.js" defer></script>
   <script src="avatars.js" defer></script>
   <script src="profile.js" defer></script>
   <script src="feed-data.js" defer></script>
@@ -87,10 +89,7 @@
           </div>
           <div id="map-active" class="map-active" aria-label="Active filters"></div>
           <div id="map-view" class="map-view" role="region" aria-label="Map of example observations" aria-describedby="map-help"></div>
-          <div class="map-options">
-            <label class="map-street"><input id="map-street" type="checkbox"> Street map</label>
-            <small id="map-street-note">Loads map images from OpenStreetMap. The outline map works offline.</small>
-          </div>
+          <p class="map-options"><small id="map-street-note">Loading the map…</small> <small>Streets and Terrain load map images from OpenStreetMap/OpenTopoMap, which can see the area you view; Outline works offline.</small></p>
         </div>
         <p id="map-selected" class="visually-hidden" role="status" aria-live="polite"></p>
         <p id="map-results" class="map-results" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -108,7 +107,7 @@
             <li><span class="legend-swatch cultivated" aria-hidden="true"></span><strong>Yellow:</strong> observation in a cultivated setting</li>
             <li><span class="legend-swatch sale" aria-hidden="true"></span><strong>Red:</strong> for-sale listing, never an observation</li>
           </ul>
-          <p>Pins show the organism: 🍄 Mushroom · 🌿 Plant · 🐦 Bird · 🐍 Snake / reptile · 🐁 Mouse / mammal · 🐞 Bug / insect. Outline map from Natural Earth; street map © OpenStreetMap contributors.</p>
+          <p>Pins show the organism: 🍄 Mushroom · 🌿 Plant · 🐦 Bird · 🐍 Snake / reptile · 🐁 Mouse / mammal · 🐞 Bug / insect. Map styles: Streets (© OpenStreetMap contributors), Terrain (OpenTopoMap) and Outline (Natural Earth, bundled with the app).</p>
         </details>
       </section>
       <section id="profile" data-screen="profile" class="panel demo-discovery" aria-labelledby="profile-title" tabindex="-1" hidden>
@@ -148,9 +147,21 @@
         <div role="tabpanel" id="profile-projects" aria-labelledby="projects-tab" hidden><h3>Your projects</h3><ul id="profile-project-list"></ul><a href="#projects-title">Manage projects</a></div>
         <div role="tabpanel" id="profile-awards" aria-labelledby="awards-tab" hidden>
           <h3>Your terrarium</h3>
-          <p class="terrarium-intro">Every achievement adds a nature item to your terrarium. Each item gets its own look and spot, and you choose which ones to show.</p>
+          <p class="terrarium-intro">A small living ecosystem. Plants grow with every achievement, mushrooms fruit and return to the soil, and creatures wander. Tap anything to see what it's doing; drag decorations to move them.</p>
           <p id="rewards-status" role="status" aria-live="polite"></p>
-          <div id="rewards-terrarium" class="rewards-terrarium" role="img" aria-label="Local decorative terrarium"></div>
+          <div class="terrarium-controls">
+            <button id="terrarium-sandbox" class="secondary-button" type="button" aria-pressed="false">Try every item</button>
+            <div class="terrarium-speed" role="group" aria-label="Time speed">
+              <button type="button" data-speed="0" aria-pressed="false" aria-label="Pause">❚❚</button>
+              <button type="button" data-speed="1" aria-pressed="true" aria-label="Normal speed">1×</button>
+              <button type="button" data-speed="4" aria-pressed="false" aria-label="Four times speed">4×</button>
+              <button type="button" data-speed="16" aria-pressed="false" aria-label="Sixteen times speed">16×</button>
+            </div>
+          </div>
+          <p id="terrarium-sandbox-note" class="sandbox-note" hidden>Sandbox: every item is in the jar so you can play with them. Nothing here is earned or saved; turn it off to see your own collection.</p>
+          <div id="rewards-terrarium" class="rewards-terrarium"></div>
+          <p id="terrarium-live" class="visually-hidden" role="status" aria-live="polite"></p>
+          <p id="terrarium-caption" class="terrarium-caption">Tap an item, or pick one in your collection, to see what it's up to.</p>
           <h4 id="collection-title">Collection</h4>
           <ul id="decor-list" class="collection-grid" aria-labelledby="collection-title"></ul>
           <details class="terrarium-rules"><summary>How collecting works</summary>
@@ -261,7 +272,7 @@
           <div id="discovery-images" hidden><p>Transferred photo previews · temporary only. Choosing a new journal photo replaces all transferred views. Resetting Explore a photo does not clear this independent draft; remove here, save, or reload to clear.</p><ul id="discovery-previews" class="identify-previews" aria-label="Temporary discovery photo previews"></ul><button id="discovery-clear-images" class="text-button" type="button">Remove all transferred previews</button></div>
           <p id="discovery-transfer-status" class="status" role="status" aria-live="polite"></p>
           <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">Choose a location below. Exact retains a local schematic pin; Approximate retains only a coarse region. Hidden discards location entirely. No GPS or real geographic accuracy.</small></div>
-          <fieldset><legend>Required location · local schematic only</legend><div id="observation-map"></div><div class="field"><label for="location-project-site">Saved project site (Approximate / Hidden)</label><select id="location-project-site"></select></div></fieldset>
+          <fieldset class="location-picker"><legend>Where was it? (required)</legend><div id="observation-map"></div><div class="field"><label for="location-project-site">Or use a saved project site (Approximate / Hidden)</label><select id="location-project-site"></select></div></fieldset>
           <p id="form-error" class="error" role="alert" hidden></p>
           <button id="save-button" class="primary-button" type="submit" disabled>Save to local journal <span aria-hidden="true">↗</span></button>
           <div class="field"><label for="project-observation">Observation to add</label><select id="project-observation" aria-describedby="add-project-help"><option value="">Current discovery draft (save once, then add)</option></select></div>
@@ -306,7 +317,7 @@
       <h2 id="projects-title">Projects</h2>
       <p>Collect existing journal observations. This is a count of your selected records, not an AI summary, ecological inference, species verification, or evidence of trends.</p>
       <details class="more"><summary>How projects work</summary>
-      <p>Membership is always chosen manually, including previous journal entries in the inclusive start/end timeframe. Site rectangles use the same local demo grid as observation locations, not geographic boundaries. Hidden or legacy records without location cannot prove inclusion. Approximate regions must fit entirely inside a boundary.</p>
+      <p>Membership is always chosen manually, including previous journal entries in the inclusive start/end timeframe. Site areas are drawn on the same real map as observation locations, not geographic boundaries. Hidden or legacy records without location cannot prove inclusion. Approximate regions must fit entirely inside a boundary.</p>
       </details>
       <p id="project-error" class="error" role="alert" hidden></p>
       <p id="project-status" class="status" role="status" aria-live="polite"></p>

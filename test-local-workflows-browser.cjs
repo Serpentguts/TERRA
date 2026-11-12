@@ -54,12 +54,16 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#identify-output').isVisible(), false);
     await page.click('#identify-reset');
     await save('Oak', 'exact', [50, 50]);
-    assert.deepEqual((await records())[0].location, { version: 1, space: 'terra-local-grid-v1', kind: 'point', x: 50, y: 50 });
+    assert.deepEqual((await records())[0].location, { version: 1, space: 'terra-geo-v1', kind: 'point', x: 50, y: 50 });
     assert.equal(await page.locator('#location-project-site').isDisabled(), false, 'Form reset restores Hidden site-selection controls');
     await save('Birch', 'approximate', [43, 42, 49, 49], '2024-03-01');
-    const approx = (await records())[0]; assert.deepEqual(approx.location, { version: 1, space: 'terra-local-grid-v1', kind: 'region', x1: 40, y1: 40, x2: 60, y2: 60 });
+    const approx = (await records())[0]; assert.deepEqual(approx.location, { version: 1, space: 'terra-geo-v1', kind: 'region', x1: 43, y1: 42, x2: 49, y2: 49 });
+    // Approximate snaps outward to 0.1° cells and is at least 0.2° each way.
+    await page.selectOption('#privacy', 'approximate'); await map('observation-map', [-122.583, 37.897, -122.58, 37.9]);
+    assert.deepEqual(await page.evaluate(() => TerraMaps.observation.read()), { version: 1, space: 'terra-geo-v1', kind: 'region', x1: -122.6, y1: 37.8, x2: -122.4, y2: 38 });
+    await page.click('#observation-map >> text=Clear map selection');
     await save('Private', 'hidden', [41, 42, 48, 49], '2024-03-02');
-    assert.deepEqual((await records())[0].location, { version: 1, space: 'terra-local-grid-v1', kind: 'withheld' });
+    assert.deepEqual((await records())[0].location, { version: 1, space: 'terra-geo-v1', kind: 'withheld' });
     // Switching tiers clears the previous precise selection, including pending UI values.
     await page.selectOption('#privacy', 'exact'); await map('observation-map', [12, 34]);
     await page.selectOption('#privacy', 'approximate');
@@ -108,13 +112,13 @@ const { chromium } = require('playwright');
     await page.click('#project-save'); const site = (await projects()).at(-1); assert.equal(site.observationIds.length, 2);
     // Approximate can reuse a site; no exact clicked point is retained.
     await page.selectOption('#privacy', 'approximate'); await page.selectOption('#location-project-site', site.id);
-    assert.match(await page.locator('#observation-map').textContent(), /Local region: 20–80/);
+    assert.match(await page.locator('#observation-map').textContent(), /Area: 20° N, 20° E to 80° N, 80° E/);
     // Outside addition through discovery action must fail without deleting/duplicating a record.
-    await save('Outside', 'exact', [95, 95]);
+    await save('Outside', 'exact', [95, 85]);
     await page.selectOption('#discovery-project', site.id); await page.click('#add-project-button');
     assert.match(await page.locator('#form-error').textContent(), /outside its boundary/);
     const beforeEdit = JSON.stringify(await records());
-    await map('project-map', [20, 20, 55, 55]);
+    await map('project-map', [45, 45, 55, 55]);
     assert.match(await page.locator('#project-candidate-message').textContent(), /previously selected records outside this scope/);
     await page.click('#project-save'); assert.equal((await projects()).at(-1).observationIds.length, 1);
     assert.match(await page.locator('#project-status').textContent(), /Removed 1.*NOT deleted/);
@@ -148,7 +152,7 @@ const { chromium } = require('playwright');
     await page.evaluate(({ J, id }) => { const a = JSON.parse(localStorage.getItem(J)); a.find(r => r.id === id).deletedAt = new Date(Date.now() - 72 * 3600 * 1000).toISOString(); localStorage.setItem(J, JSON.stringify(a)); }, { J, id: oak.id });
     await page.reload(); assert.equal(await page.locator('#trash-list button').isDisabled(), true);
     assert.equal((await records()).length, 4);
-    await save('Triggers local retention', 'hidden', [0, 0, 100, 100]);
+    await save('Triggers local retention', 'hidden', [0, 0, 80, 80]);
     assert.equal((await records()).some(r => r.id === oak.id), false);
     // Backup preserves optional fields, rejects privacy leaks/future dates, reads legacy records unchanged.
     const download = page.waitForEvent('download'); await page.click('#export-button');

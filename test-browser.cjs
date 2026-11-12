@@ -206,7 +206,8 @@ async function testIdentification(page, key) {
   const snapshot = () => page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
   const before = await snapshot();
   const requests = [];
-  const capture = request => requests.push(request.url());
+  // Map images and the bundled outline map load whenever a map is on screen; anything else is unexpected.
+  const capture = request => { const url = request.url(); if (!/^https:\/\/([abc]\.)?tile\.(openstreetmap|opentopomap)\.org\//.test(url) && !url.endsWith('/data/world-outline.js')) requests.push(url); };
   page.on('request', capture);
   // Count URLs as well as DOM images to verify reset/removal/decode-failure cleanup.
   await page.evaluate(() => {
@@ -384,7 +385,8 @@ async function testDiscoveryHandoff(page, key) {
   const before = await snapshot();
   const raw = await page.evaluate(k => localStorage.getItem(k), key);
   const requests = [];
-  const capture = request => requests.push(request.url());
+  // Map images and the bundled outline map load whenever a map is on screen; anything else is unexpected.
+  const capture = request => { const url = request.url(); if (!/^https:\/\/([abc]\.)?tile\.(openstreetmap|opentopomap)\.org\//.test(url) && !url.endsWith('/data/world-outline.js')) requests.push(url); };
   page.on('request', capture);
   await page.evaluate(() => {
     window.handoffUrls = { created: [], revoked: [] };
@@ -919,7 +921,7 @@ async function testDiscoveryHandoff(page, key) {
     assert.deepEqual(externalRequests, []);
     assert.deepEqual(networkAttempts, []);
     assert.deepEqual(errors, []);
-    assert.equal(requests.every(url => url.startsWith('http://127.0.0.1:8080/') || url.startsWith('blob:')), true);
+    assert.equal(requests.every(url => url.startsWith('http://127.0.0.1:8080/') || url.startsWith('blob:') || /^https:\/\/([abc]\.)?tile\.(openstreetmap|opentopomap)\.org\//.test(url)), true, 'Only the app, local previews and map images load');
     await context.close();
     console.log('PASS: integrated date bar, native keyboard activation, manual/calendar sync, strict/leap dates, substring autocomplete, custom names; save/reload, safe text, previews, privacy, export/restore round-trip, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, storage-write preservation and retry, corrupt/blocked storage, changed-journal reconfirmation, cross-tab updates, labels, mobile widths, no external requests.');
 

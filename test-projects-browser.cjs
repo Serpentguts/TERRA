@@ -39,7 +39,7 @@ const fs = require('node:fs/promises');
     const records = [
       { id: 'a', type: 'plant', name: 'Oak', date: '2024-02-29', notes: 'A', privacy: 'hidden' },
       { id: 'b', type: 'plant', name: 'Oak', date: '2024-02-29', notes: 'B', privacy: 'hidden' },
-      { id: 'c', type: 'other', name: 'Unknown', date: '2025-01-01', notes: '=CMD()', privacy: 'exact', location: { version: 1, space: 'terra-local-grid-v1', kind: 'point', x: 50, y: 50 } },
+      { id: 'c', type: 'other', name: 'Unknown', date: '2025-01-01', notes: '=CMD()', privacy: 'exact', location: { version: 1, space: 'terra-geo-v1', kind: 'point', x: 50, y: 50 } },
       { id: 'd', type: 'fungus', name: '<img src=x onerror="window.injected=1">', date: '2025-01-01', notes: '<script>bad()</script>', privacy: 'approximate' }
     ];
     const journalBytes = JSON.stringify(records);
@@ -95,7 +95,7 @@ const fs = require('node:fs/promises');
     await page.selectOption('#project-select', ''); await page.fill('#project-title', 'Site collection'); await page.selectOption('#project-type', 'site'); await save();
     assert.equal(await page.locator('#project-error').isVisible(), true);
     await page.fill('#project-site', 'North garden');
-    await page.evaluate(() => TerraMaps.project.select(0, 0, 100, 100));
+    await page.evaluate(() => TerraMaps.project.select(0, 0, 80, 80));
     await choose('c'); await save();
     const site = (await projects()).at(-1); assert.match(await report(), /North garden/); assert.match(await report(), /1 included observations · 0 unique taxa labels/);
     assert.equal(await raw(J), journalBytes);

@@ -2,7 +2,7 @@
 
 // Shared ephemeral controls. No storage, coordinates, metadata, or network access.
 const TerraLocation = (() => {
-  const keys = ["context", "setting", "region", "precision", "country", "state", "city"];
+  const keys = ["context", "setting", "region", "precision", "country", "state", "county", "city"];
   const control = (prefix, key) => document.getElementById(`${prefix}-${key}`);
   function sync(prefix) {
     const context = control(prefix, "context").value;
@@ -23,6 +23,7 @@ const TerraLocation = (() => {
     reveal("location-detail", active && Boolean(region));
     const precision = control(prefix, "precision").value;
     reveal("manual-location", active && Boolean(region) && Boolean(precision));
+    reveal("county-field", active && Boolean(region) && (precision === "county" || precision === "city"));
     reveal("city-field", active && Boolean(region) && precision === "city");
   }
   function read(prefix) {
@@ -50,10 +51,11 @@ const TerraLocation = (() => {
         <div id="${prefix}-setting-field" class="field" hidden><label id="${prefix}-setting-label" for="${prefix}-setting">Garden / cultivation details (optional, temporary)</label><input id="${prefix}-setting" maxlength="120" autocomplete="off"></div>
         <div class="field"><label for="${prefix}-region">Broad region (optional, temporary)</label><select id="${prefix}-region"><option value="">Prefer not to say</option><option>Africa</option><option>Antarctica</option><option>Asia</option><option>Europe</option><option>North America</option><option>Oceania</option><option>South America</option></select></div>
         <fieldset id="${prefix}-location-detail" hidden><legend>Optional manual locality · no lookup</legend>
-          <div class="field"><label for="${prefix}-precision">Location precision</label><select id="${prefix}-precision"><option value="">Broad region only · no finer detail</option><option value="state">Enter state / province manually</option><option value="city">Enter city / locality manually</option></select></div>
+          <div class="field"><label for="${prefix}-precision">Location precision</label><select id="${prefix}-precision"><option value="">Broad region only · no finer detail</option><option value="state">Enter state / province manually</option><option value="county">Enter county / district manually</option><option value="city">Enter city / locality manually</option></select></div>
           <div id="${prefix}-manual-location" hidden>
             <div class="field"><label for="${prefix}-country">Country / territory (optional, temporary)</label><input id="${prefix}-country" maxlength="120" autocomplete="off"></div>
             <div class="field"><label for="${prefix}-state">State / province (optional, temporary)</label><input id="${prefix}-state" maxlength="120" autocomplete="off"></div>
+            <div id="${prefix}-county-field" class="field" hidden><label for="${prefix}-county">County / district (optional, temporary)</label><input id="${prefix}-county" maxlength="120" autocomplete="off"></div>
             <div id="${prefix}-city-field" class="field" hidden><label for="${prefix}-city">City / locality (optional, temporary)</label><input id="${prefix}-city" maxlength="120" autocomplete="off"></div>
           </div>
         </fieldset>
