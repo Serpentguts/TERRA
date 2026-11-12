@@ -290,6 +290,59 @@
       }
     } catch { $("home-items").textContent = "–"; }
   }
+  // Posts: a 3-column grid of your observations, with photos where you saved them.
+  let postUrls = [];
+  const revokePosts = () => { postUrls.forEach(url => URL.revokeObjectURL(url)); postUrls = []; };
+  function renderPosts(list, records) {
+    revokePosts();
+    list.className = "post-grid";
+    if (!records.length) { item(list, "No observations yet. Save in your journal to see them here.").className = "post-empty"; return; }
+    for (const record of records) {
+      const li = document.createElement("li");
+      const tile = document.createElement("button");
+      tile.type = "button"; tile.className = "post-tile"; tile.dataset.observation = record.id;
+      tile.setAttribute("aria-label", `${record.name}, ${categories[record.type]}, ${record.date}`);
+      const face = textNode("span", "post-face", groupIcons[record.type] ?? "❧"); face.setAttribute("aria-hidden", "true");
+      tile.append(face, textNode("span", "post-label", `${categories[record.type]} · ${record.name} · ${record.date}`));
+      tile.addEventListener("click", () => openPost(record));
+      li.append(tile); list.append(li);
+    }
+    if (typeof TerraPhotos === "undefined") return;
+    TerraPhotos.covers(records.map(r => r.id)).then(covers => {
+      for (const tile of list.querySelectorAll(".post-tile")) {
+        const blob = covers.get(tile.dataset.observation);
+        if (!blob || !tile.isConnected) continue;
+        const url = URL.createObjectURL(blob); postUrls.push(url);
+        const img = document.createElement("img"); img.src = url; img.alt = "";
+        tile.classList.add("has-photo"); tile.prepend(img);
+      }
+    }).catch(() => { /* Photos unavailable: tiles keep their icons. */ });
+  }
+  let viewerUrls = [];
+  async function openPost(record) {
+    const dialog = $("post-viewer"), box = $("post-viewer-photos");
+    viewerUrls.forEach(url => URL.revokeObjectURL(url)); viewerUrls = [];
+    box.replaceChildren();
+    $("post-viewer-title").textContent = record.name;
+    $("post-viewer-meta").textContent = `${categories[record.type]} · ${record.date}`;
+    $("post-viewer-journal").href = "#journal";
+    if (!dialog.open) dialog.showModal(); // Open right away; the photo fills in when read.
+    try {
+      const photos = typeof TerraPhotos === "undefined" ? [] : await TerraPhotos.forObservation(record.id);
+      for (const photo of photos) {
+        const url = URL.createObjectURL(photo.full); viewerUrls.push(url);
+        const img = document.createElement("img"); img.src = url; img.alt = `Photo of ${record.name}`;
+        box.append(img);
+      }
+      if (!photos.length) box.append(textNode("p", "post-viewer-none", "No photo saved for this observation."));
+    } catch { box.append(textNode("p", "post-viewer-none", "Photos can't be read in this browser right now.")); }
+  }
+  $("post-viewer").addEventListener("close", () => { viewerUrls.forEach(url => URL.revokeObjectURL(url)); viewerUrls = []; });
+  $("post-viewer").addEventListener("click", event => { if (event.target === $("post-viewer")) $("post-viewer").close(); });
+  $("post-viewer-journal").addEventListener("click", () => $("post-viewer").close());
+  document.addEventListener("terra:photos-changed", () => refresh());
+  // Release thumbnail and viewer images when leaving the page.
+  window.addEventListener("pagehide", () => { revokePosts(); viewerUrls.forEach(url => URL.revokeObjectURL(url)); viewerUrls = []; });
   function refresh() {
     const posts = $("profile-observations"), collections = $("profile-project-list");
     posts.replaceChildren(); collections.replaceChildren();
@@ -297,11 +350,7 @@
       const records = readObservations();
       const projects = FieldSummary.parse(localStorage.getItem(FieldSummary.KEY));
       const active = TerraData.active(records);
-      for (const record of [...active].sort((a, b) => b.date.localeCompare(a.date))) {
-        const li = item(posts, `${categories[record.type]} · ${record.name} · ${record.date} · `);
-        const link = document.createElement("a"); link.href = "#saved-title"; link.textContent = "View journal details / provenance"; li.append(link);
-      }
-      if (!active.length) item(posts, "No observations yet. Save in your journal to see them here.");
+      renderPosts(posts, [...active].sort((a, b) => b.date.localeCompare(a.date)));
       for (const project of projects) item(collections, `${project.title} · ${project.complete ? "complete" : "open"} · ${active.filter(r => project.observationIds.includes(r.id) && FieldSummary.matches(project, r)).length} eligible observations`);
       if (!projects.length) item(collections, "No projects yet.");
       renderRewards(records, projects);

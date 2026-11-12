@@ -35,6 +35,28 @@ const TerraTerrarium = (() => {
   const world = { plant: null, flowers: null, tree: null, fungus: null, leaves: null, snail: null, ladybug: null, butterfly: null, bird: null, decor: new Map(), sparkles: [] };
   const say = text => { if (caption && text) caption.textContent = text; };
 
+  // An oak leaf: rounded lobes along both sides of a midrib, on a 1-unit length pointing along +x.
+  const OAK_LEAF = (() => {
+    const path = new Path2D(), lobes = 4, pts = 48, top = [], bottom = [];
+    for (let i = 0; i <= pts; i++) {
+      const t = i / pts;
+      const envelope = Math.sin(Math.PI * Math.min(1, t * 1.08)) ** 0.7 * (0.32 - 0.08 * t);
+      const lobe = 0.55 + 0.45 * Math.abs(Math.sin(t * lobes * Math.PI));
+      top.push([t, -envelope * lobe]); bottom.push([t, envelope * lobe]);
+    }
+    path.moveTo(0, 0);
+    for (const [x, y] of top) path.lineTo(x, y);
+    for (const [x, y] of bottom.reverse()) path.lineTo(x, y);
+    path.closePath();
+    return path;
+  })();
+  function oakLeaf(x, y, size, angle, color, vein = "rgba(40,60,30,.35)") {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.scale(size, size);
+    ctx.fillStyle = color; ctx.fill(OAK_LEAF);
+    ctx.strokeStyle = vein; ctx.lineWidth = 0.04; ctx.beginPath(); ctx.moveTo(-0.08, 0); ctx.lineTo(0.92, 0); ctx.stroke();
+    ctx.restore();
+  }
+
   // ---------- layout ----------
   function resize() {
     const box = host.getBoundingClientRect();
@@ -81,31 +103,42 @@ const TerraTerrarium = (() => {
     if (!spots.length) spots.push(0.25, 0.45, 0.7);
     return spots.map(x => clamp(x + rand(-0.03, 0.03), 0.06, 0.94));
   }
+  // Mycelium grows on a triangular lattice (60° steps), so the network looks geometric.
+  // Nodes are lattice coordinates [i, j]; pixel positions are worked out when drawn.
+  const LATTICE = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, -1], [-1, 1]];
+  const gap = () => Math.max(12, W * 0.034);
+  const nodePx = (f, [i, j]) => ({ x: X(f.origin.x) + (i + j / 2) * gap(), y: ground + 10 + f.origin.y * (H - ground - 16) + j * gap() * 0.866 });
+  const inSoil = (f, node) => { const p = nodePx(f, node); return p.x > 8 && p.x < W - 8 && p.y > ground + 8 && p.y < H - 6; };
+  const key = ([i, j]) => `${i},${j}`;
   function seedMycelium() {
     const f = world.fungus, x = fruitingSpots()[0];
-    f.origin = { x, y: 0.25 };
-    f.links = [{ x1: x, y1: 0.25, x2: x + 0.02, y2: 0.3 }];
-    for (let i = 0; i < 40; i++) growMycelium();
+    f.origin = { x, y: 0.15 };
+    f.nodes = [[0, 0]]; f.seen = new Set(["0,0"]); f.links = []; f.pulses = [];
+    for (let i = 0; i < 45; i++) growMycelium();
     spawnFruit(x);
   }
-  // Mycelium lives in fractions of the soil band (y: 0 = surface, 1 = bottom).
+  function nearestNode(f, xFrac) {
+    return f.nodes.reduce((best, n) => Math.abs(nodePx(f, n).x - X(xFrac)) < Math.abs(nodePx(f, best).x - X(xFrac)) ? n : best, f.nodes[0]);
+  }
   function growMycelium(toward) {
     const f = world.fungus;
-    if (f.links.length > 220) f.links.shift();
-    const from = toward ? f.links.reduce((best, l) => Math.abs(l.x2 - toward) < Math.abs(best.x2 - toward) ? l : best, f.links[0]) : pick(f.links);
-    const goal = toward ?? from.x2 + rand(-0.1, 0.1);
-    const angle = Math.atan2(rand(-0.06, 0.08), goal - from.x2 || rand(-1, 1));
-    const len = rand(0.025, 0.05);
-    const x2 = clamp(from.x2 + Math.cos(angle) * len, 0.03, 0.97), y2 = clamp(from.y2 + Math.sin(angle) * len * 1.6 + rand(-0.03, 0.03), 0.08, 0.92);
-    f.links.push({ x1: from.x2, y1: from.y2, x2, y2 });
-    return { x: x2, y: y2 };
+    if (f.links.length > 200) { const [gone] = f.links.splice(0, 1); void gone; }
+    const from = toward !== undefined ? nearestNode(f, toward) : pick(f.nodes);
+    const options = LATTICE.map(([di, dj]) => [from[0] + di, from[1] + dj]).filter(n => inSoil(f, n));
+    if (!options.length) return nodePx(f, from);
+    let next;
+    if (toward !== undefined && Math.random() < 0.8) next = options.reduce((best, n) => Math.abs(nodePx(f, n).x - X(toward)) < Math.abs(nodePx(f, best).x - X(toward)) ? n : best);
+    else next = pick(options.filter(n => Math.abs(n[1]) <= 3).length ? options.filter(n => Math.abs(n[1]) <= 3) : options);
+    const link = [key(from), key(next)].sort().join("|");
+    if (!f.links.some(l => l.id === link)) f.links.push({ id: link, a: from, b: next });
+    if (!f.seen.has(key(next))) { f.seen.add(key(next)); f.nodes.push(next); }
+    return nodePx(f, next);
   }
   function spawnFruit(x) {
     const f = world.fungus;
     if (f.fruits.length >= 3) return;
     // The network grows out to the new spot first, then a pin pushes up.
-    let tip = { x: f.links.at(-1).x2 };
-    for (let i = 0; i < 6 && Math.abs(tip.x - x) > 0.02; i++) tip = growMycelium(x);
+    for (let i = 0; i < 12 && Math.abs(nodePx(f, nearestNode(f, x)).x - X(x)) > gap() * 0.6; i++) growMycelium(x);
     f.fruits.push({ x, phase: "pin", age: 0, species: Math.random() < 0.7 ? "amanita" : "brown", size: rand(0.85, 1.2), spores: [] });
     say(`A mushroom is pinning ${world.tree && Math.abs(x - world.tree.x) < 0.16 ? "under the oak" : world.plant && Math.abs(x - world.plant.x) < 0.12 ? "beside the plant" : "in the soil"}.`);
   }
@@ -113,6 +146,10 @@ const TerraTerrarium = (() => {
   function updateFungus(dt) {
     const f = world.fungus;
     if (Math.random() < dt * 0.6) growMycelium();
+    // Signals travel along the strands (visible in X-ray).
+    if (f.links.length && Math.random() < dt * 3) f.pulses.push({ link: pick(f.links), t: 0 });
+    for (const p of f.pulses) p.t += dt * 1.6;
+    f.pulses = f.pulses.filter(p => p.t < 1);
     for (const fruit of f.fruits) {
       fruit.age += dt;
       if (fruit.age >= PHASES[fruit.phase]) {
@@ -159,7 +196,7 @@ const TerraTerrarium = (() => {
       case "perch":
         if (b.timer <= 0) {
           const fruits = world.fungus?.fruits.filter(f => f.phase === "growing" || f.phase === "mature") ?? [];
-          if (Math.random() < 0.6) fly(b, { x: fruits.length && Math.random() < 0.7 ? X(pick(fruits).x) + rand(-14, 14) : rand(W * 0.1, W * 0.9), y: ground - 2, landing: "ground" });
+          if (Math.random() < 0.6) fly(b, { x: fruits.length && Math.random() < 0.3 ? X(pick(fruits).x) + rand(-14, 14) : rand(W * 0.1, W * 0.9), y: ground - 2, landing: "ground" });
           else fly(b, { ...pick(perches()), landing: "perch" });
         }
         break;
@@ -174,7 +211,7 @@ const TerraTerrarium = (() => {
       case "ground": {
         b.hop = (b.hop ?? 0) + dt;
         const near = world.fungus?.fruits.find(f => (f.phase === "growing" || f.phase === "mature") && Math.abs(X(f.x) - b.x) < 16);
-        if (near && Math.random() < dt * 0.8) { b.state = "peck"; b.timer = 1.6; b.target = near; b.dir = X(near.x) >= b.x ? 1 : -1; say("The bird is pecking at a mushroom."); break; }
+        if (near && Math.random() < dt * 0.12) { b.state = "peck"; b.timer = 1.6; b.target = near; b.dir = X(near.x) >= b.x ? 1 : -1; say("The bird is pecking at a mushroom."); break; }
         if (b.hop > 0.9) { b.hop = 0; b.x = clamp(b.x + rand(-14, 14), 12, W - 12); b.dir = Math.random() < 0.5 ? -1 : 1; }
         if (b.timer <= 0) fly(b, { ...pick(perches()), landing: "perch" });
         break;
@@ -204,8 +241,14 @@ const TerraTerrarium = (() => {
   function updateCreatures(dt) {
     const s = world.snail;
     if (s) {
-      if (s.pause > 0) s.pause -= dt;
+      if (s.eating > 0) {
+        s.eating -= dt;
+        if (s.eating <= 0 && s.meal && s.meal.phase !== "gone") { s.meal.phase = "decaying"; s.meal.age = PHASES.decaying * 0.3; s.meal = null; say("The snail finished its mushroom snack."); }
+      } else if (s.pause > 0) s.pause -= dt;
       else {
+        // Snails sometimes stop to nibble a mushroom they bump into.
+        const meal = world.fungus?.fruits.find(f => (f.phase === "growing" || f.phase === "mature") && Math.abs(f.x - s.x) < 0.02);
+        if (meal && Math.random() < dt * 0.25) { s.eating = rand(5, 8); s.meal = meal; s.dir = meal.x >= s.x ? 1 : -1; say("The snail is nibbling a mushroom."); }
         s.x += s.dir * dt * 0.012;
         if (s.x > 0.94 || s.x < 0.06) s.dir *= -1;
         if (Math.random() < dt * 0.05) s.pause = rand(2, 6);
@@ -293,17 +336,25 @@ const TerraTerrarium = (() => {
   function drawMycelium() {
     const f = world.fungus;
     const xray = selected === "obs5", resting = !f.fruits.length;
-    const alpha = xray ? 0.95 : resting ? 0.42 : 0.16;
-    if (xray) { ctx.fillStyle = "rgba(20,26,40,.42)"; ctx.fillRect(0, ground + 4, W, H - ground - 4); }
+    const alpha = xray ? 0.95 : resting ? 0.45 : 0.18;
+    if (xray) { ctx.fillStyle = "rgba(20,26,40,.45)"; ctx.fillRect(0, ground + 4, W, H - ground - 4); }
     ctx.save(); ctx.lineCap = "round";
-    ctx.strokeStyle = `rgba(245,240,225,${alpha})`; ctx.lineWidth = xray ? 1.6 : 1.1;
+    ctx.strokeStyle = `rgba(245,240,225,${alpha})`; ctx.lineWidth = xray ? 1.4 : 1;
     if (xray) { ctx.shadowColor = "#fff8d8"; ctx.shadowBlur = 6; }
-    const band = H - ground - 6, y = v => ground + 6 + v * band;
     ctx.beginPath();
-    for (const l of f.links) { ctx.moveTo(X(l.x1), y(l.y1)); ctx.lineTo(X(l.x2), y(l.y2)); }
-    // Each fruit is fed by a strand from the network up to the surface.
-    for (const fruit of f.fruits) { const near = f.links.reduce((b, l) => Math.abs(l.x2 - fruit.x) < Math.abs(b.x2 - fruit.x) ? l : b, f.links[0]); ctx.moveTo(X(near.x2), y(near.y2)); ctx.quadraticCurveTo(X(fruit.x), y(0.1), X(fruit.x), ground + 2); }
-    ctx.stroke(); ctx.restore();
+    for (const l of f.links) { const a = nodePx(f, l.a), b = nodePx(f, l.b); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
+    // Each fruit is fed by a straight strand from the nearest node up to the surface.
+    for (const fruit of f.fruits) { const n = nodePx(f, nearestNode(f, fruit.x)); ctx.moveTo(n.x, n.y); ctx.lineTo(X(fruit.x), ground + 2); }
+    ctx.stroke();
+    // Nodes where strands meet.
+    ctx.fillStyle = `rgba(255,250,230,${xray ? 1 : alpha})`;
+    const used = new Set(f.links.flatMap(l => [key(l.a), key(l.b)]));
+    for (const n of f.nodes) if (used.has(key(n))) { const p = nodePx(f, n); ctx.beginPath(); ctx.arc(p.x, p.y, xray ? 1.8 : 1.2, 0, 7); ctx.fill(); }
+    if (xray) {
+      ctx.fillStyle = "#fff6c2"; ctx.shadowColor = "#ffe98a"; ctx.shadowBlur = 10;
+      for (const p of f.pulses) { const a = nodePx(f, p.link.a), b = nodePx(f, p.link.b); ctx.beginPath(); ctx.arc(lerp(a.x, b.x, p.t), lerp(a.y, b.y, p.t), 2.2, 0, 7); ctx.fill(); }
+    }
+    ctx.restore();
   }
   function drawMushroom(fruit) {
     const g = mushroomGrowth(fruit) * fruit.size, x = X(fruit.x);
@@ -361,11 +412,27 @@ const TerraTerrarium = (() => {
     ctx.fillStyle = "#6b4a2f";
     ctx.beginPath(); ctx.moveTo(t.x - 7, ground + 3); ctx.quadraticCurveTo(t.x - 4, t.trunkTop, t.x - 3, t.top + t.r); ctx.lineTo(t.x + 3, t.top + t.r); ctx.quadraticCurveTo(t.x + 4, t.trunkTop, t.x + 8, ground + 3); ctx.fill();
     ctx.strokeStyle = "#6b4a2f"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(t.x - 2, t.top + t.r * 1.3); ctx.lineTo(t.x - t.r * 0.55, t.top + t.r * 1.05); ctx.stroke();
-    const sway = Math.sin(time * 0.9) * 2;
-    for (const [dx, dy, rr, c] of [[-0.55, 0.55, 0.62, "#3f7a46"], [0.5, 0.5, 0.6, "#3a7040"], [0, 0.25, 0.72, "#4a8a4f"], [-0.2, 0.75, 0.55, "#447f49"], [0.3, 0.8, 0.5, "#3f7a46"]]) {
-      ctx.fillStyle = c; ctx.beginPath(); ctx.arc(t.x + dx * t.r + sway * (1 - dy), t.top + dy * t.r, rr * t.r, 0, 7); ctx.fill();
+    const sway = Math.sin(time * 0.9) * 0.02;
+    // Canopy: clusters of oak leaves, darker inside, lighter at the edges; it sways from the trunk.
+    ctx.save(); ctx.translate(t.x, t.top + t.r * 1.4); ctx.rotate(sway); ctx.translate(-t.x, -(t.top + t.r * 1.4));
+    const rnd = seeded(21), shades = ["#2f6438", "#3a7040", "#3f7a46", "#4a8a4f", "#5a9a52", "#6aa85a"];
+    const blobs = [[-0.55, 0.6, 0.62], [0.5, 0.55, 0.6], [0, 0.3, 0.72], [-0.2, 0.8, 0.55], [0.3, 0.85, 0.5]];
+    ctx.fillStyle = "#2d5d35";
+    for (const [dx, dy, rr] of blobs) { ctx.beginPath(); ctx.arc(t.x + dx * t.r, t.top + dy * t.r, rr * t.r * 0.8, 0, 7); ctx.fill(); }
+    for (let layer = 0; layer < 3; layer++) for (const [dx, dy, rr] of blobs) {
+      for (let k = 0; k < 9; k++) {
+        const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * rr * t.r * (0.55 + layer * 0.2);
+        const lx = t.x + dx * t.r + Math.cos(a) * d, ly = t.top + dy * t.r + Math.sin(a) * d;
+        oakLeaf(lx, ly, t.r * (0.2 + rnd() * 0.08), a + rnd() - 0.5, shades[Math.min(5, layer * 2 + Math.floor(rnd() * 2))]);
+      }
     }
-    ctx.fillStyle = "#2f5f3a"; for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(t.x + Math.cos(i * 2.4) * t.r * 0.7 + sway, t.top + t.r * 0.55 + Math.sin(i * 2.4) * t.r * 0.45, 3, 0, 7); ctx.fill(); }
+    // A few acorns hanging in the canopy.
+    for (const [dx, dy] of [[-0.35, 0.95], [0.4, 0.9], [0.05, 1.05]]) {
+      const ax = t.x + dx * t.r, ay = t.top + dy * t.r;
+      ctx.fillStyle = "#a8742f"; ctx.beginPath(); ctx.ellipse(ax, ay + 3, 2.6, 3.4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = "#6b4a2f"; ctx.beginPath(); ctx.ellipse(ax, ay, 3.2, 1.8, 0, Math.PI, 0); ctx.fill();
+    }
+    ctx.restore();
     if (world.bird) { const n = nestSpot(); ctx.fillStyle = "#8b6a3e"; ctx.beginPath(); ctx.ellipse(n.x, n.y + 2, 11, 5, 0, 0, Math.PI); ctx.fill(); ctx.strokeStyle = "#5f4426"; ctx.lineWidth = 1; for (let i = -9; i < 10; i += 3) { ctx.beginPath(); ctx.moveTo(n.x + i, n.y + 1); ctx.lineTo(n.x + i + 3, n.y + 5); ctx.stroke(); } }
   }
   function drawBench(x, y) {
@@ -383,7 +450,7 @@ const TerraTerrarium = (() => {
     const s = world.snail;
     if (s) {
       ctx.fillStyle = "rgba(220,230,240,.35)"; for (const p of s.trail) { ctx.globalAlpha = p.life * 0.5; ctx.fillRect(X(p.x) - 2, ground + 1, 4, 1.5); } ctx.globalAlpha = 1;
-      emoji("🐌", X(s.x), ground + 4, 22, { flip: s.dir > 0 });
+      emoji("🐌", X(s.x), ground + 4, 22, { flip: s.dir > 0, rotate: s.eating > 0 ? Math.sin(time * 8) * 0.06 : 0 });
     }
     if (world.ladybug) emoji("🐞", X(world.ladybug.x), ground + 3, 13, { flip: world.ladybug.dir > 0 });
     const bf = world.butterfly;
@@ -403,7 +470,7 @@ const TerraTerrarium = (() => {
   }
   function drawLeaves() {
     const lv = world.leaves;
-    const leaf = (x, y, r, c) => { ctx.save(); ctx.translate(x, y); ctx.rotate(r); ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(0, 0, 5, 2.4, 0, 0, 7); ctx.fill(); ctx.restore(); };
+    const leaf = (x, y, r, c) => oakLeaf(x - 5, y, 11, r, c, "rgba(90,50,20,.4)");
     for (const l of lv.ground) leaf(X(l.x), ground + 2, l.r, l.c);
     for (const f of lv.falling) leaf(f.x, f.y, f.r, f.c);
   }
@@ -413,7 +480,7 @@ const TerraTerrarium = (() => {
       case "first": return world.plant && { x: X(world.plant.x), y: ground - plantHeight() / 2, r: Math.max(24, plantHeight() / 1.6) };
       case "obs25": return world.flowers && { x: X(world.flowers.x), y: ground - 30, r: 34 };
       case "obs50": return world.tree && (t => ({ x: t.x, y: t.top + t.r * 0.9, r: t.r * 1.2 }))(treeShape());
-      case "obs5": { const f = world.fungus; if (!f) return null; const fr = f.fruits[0]; return fr ? { x: X(fr.x), y: ground - 10, r: 22 } : { x: X(f.origin.x), y: ground + (H - ground) * 0.4, r: 40 }; }
+      case "obs5": { const f = world.fungus; if (!f) return null; const fr = f.fruits[0]; return fr ? { x: X(fr.x), y: ground - 10, r: 22 } : (p => ({ x: p.x, y: p.y, r: 40 }))(nodePx(f, [0, 0])); }
       case "obs10": return world.leaves && { x: W * 0.5, y: ground, r: 30 };
       case "week": return world.snail && { x: X(world.snail.x), y: ground - 8, r: 18 };
       case "names10": return world.ladybug && { x: X(world.ladybug.x), y: ground - 5, r: 14 };
@@ -427,6 +494,7 @@ const TerraTerrarium = (() => {
     if (id === "obs5") { const f = world.fungus, n = f.fruits.filter(x => x.phase !== "decaying").length; return n ? `${name}: ${n} mushroom${n === 1 ? "" : "s"} fruiting from the mycelium below.` : `${name}: resting as mycelium underground (shown in X-ray). It will pin again near a tree or plant.`; }
     if (id === "first") return `${name}: growth stage ${1 + Math.round(plantGrowth() * 5)} of 6. It grows with every achievement you unlock.`;
     if (id === "followers10") { const s = world.bird.state; return `${name}: ${({ perch: "perched", fly: "flying", ground: "hopping on the ground", peck: "pecking a mushroom", sick: "feeling unwell after a toxic mushroom", dead: "didn't survive a toxic mushroom", egg: "an egg in the nest", chick: "a chick in the nest" })[s]}.`; }
+    if (id === "week") return `${name}: ${world.snail.eating > 0 ? "nibbling a mushroom" : world.snail.pause > 0 ? "resting" : "gliding along the soil"}.`;
     if (items.get(id)?.achievement.kind === "decoration") return `${name}: drag it, or use the arrow keys, to move it.`;
     return `${name}.`;
   }
@@ -537,7 +605,7 @@ const TerraTerrarium = (() => {
     show, select, wake, setSpeed, render,
     onMove(fn) { onMove = fn; },
     step(seconds, dt = 0.05) { for (let t = 0; t < seconds; t += dt) step(dt); render(); },
-    debug: () => ({ selected, paused, speed, level, bird: world.bird && { state: world.bird.state }, fruits: world.fungus?.fruits.map(f => ({ phase: f.phase, species: f.species, x: f.x })) ?? [], mycelium: world.fungus?.links.length ?? 0, decor: Object.fromEntries([...world.decor.values()].map(d => [d.id, { x: d.x, y: d.y }])), items: [...items.keys()] }),
+    debug: () => ({ selected, paused, speed, level, bird: world.bird && { state: world.bird.state }, snail: world.snail && { eating: world.snail.eating > 0 }, fruits: world.fungus?.fruits.map(f => ({ phase: f.phase, species: f.species, x: f.x })) ?? [], mycelium: world.fungus?.links.length ?? 0, nodes: world.fungus?.nodes.length ?? 0, decor: Object.fromEntries([...world.decor.values()].map(d => [d.id, { x: d.x, y: d.y }])), items: [...items.keys()] }),
     get paused() { return paused; }
   });
 })();
