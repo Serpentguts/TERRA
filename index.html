@@ -318,7 +318,7 @@
       </section>
       <section class="saved-section" data-screen="journal" aria-labelledby="saved-title">
         <nav class="segmented" aria-label="Journal sections"><a href="#journal" aria-current="page">Observations</a><a href="#projects">Projects</a></nav>
-        <div class="saved-heading"><div><p class="eyebrow">THE THINGS YOU NOTICED</p><h2 id="saved-title">Your observations <span id="count" class="count">0</span></h2></div><div class="export-buttons"><button id="sheet-export-open" class="secondary-button" type="button" data-sheet-export>Export spreadsheet <span aria-hidden="true">▦</span></button><button id="export-button" class="secondary-button" type="button" disabled>Export JSON <span aria-hidden="true">↓</span></button></div></div>
+        <div class="saved-heading"><div><p class="eyebrow">THE THINGS YOU NOTICED</p><h2 id="saved-title">Your observations <span id="count" class="count">0</span></h2></div><div class="export-buttons"><button id="sheet-export-open" class="secondary-button" type="button" data-sheet-export>Export data <span aria-hidden="true">▦</span></button><button id="export-button" class="secondary-button" type="button" disabled>Export JSON <span aria-hidden="true">↓</span></button></div></div>
         <p id="status" class="status" role="status" aria-live="polite"></p>
         <p id="storage-error" class="error" role="alert" hidden></p>
         <div id="empty-state" class="empty-state"><div class="empty-illustration" aria-hidden="true">❧</div><h3>Every journal starts with a first find.</h3><p>Add an observation and it will appear here.<br>There’s a whole world worth noticing.</p><span class="empty-caption">LOOK CLOSELY. START SMALL.</span></div>
@@ -386,7 +386,7 @@
       <div class="project-toolbar">
         <button id="project-toggle" class="secondary-button" type="button" hidden>Mark complete</button>
         <button id="project-csv" class="secondary-button" type="button" disabled>Export summary CSV</button>
-        <button id="project-sheet-export" class="secondary-button" type="button" data-sheet-export>Export all to a spreadsheet</button>
+        <button id="project-sheet-export" class="secondary-button" type="button" data-sheet-export>Export all data</button>
       </div>
       <div id="project-report" aria-labelledby="project-report-title"></div>
       <details class="more"><summary>Saving and completion</summary>
@@ -407,21 +407,32 @@
     <footer> TERRA <span aria-hidden="true">/</span> A space for curiosity, not a species identification service.</footer>
     <dialog id="sheet-export" class="post-viewer sheet-export" aria-labelledby="sheet-export-title">
       <form method="dialog" class="post-viewer-close"><button class="text-button" type="submit" aria-label="Close">✕</button></form>
-      <h2 id="sheet-export-title">Export to a spreadsheet</h2>
-      <p>One workbook with your observations, projects and which observations are in each project. It opens in Excel and in Google Sheets.</p>
+      <h2 id="sheet-export-title">Export your data</h2>
+      <p>Download your observations as a spreadsheet for Excel or Google Sheets, or as a Darwin Core Archive to share with GBIF and biodiversity portals.</p>
       <fieldset class="sheet-options">
-        <legend>Columns</legend>
-        <label><input type="radio" name="sheet-style" value="terra" checked> <span><strong>Plain-language</strong><small>Easy to read, sort and filter.</small></span></label>
-        <label><input type="radio" name="sheet-style" value="dwc"> <span><strong>Darwin Core</strong><small>The biodiversity data standard used by GBIF, agencies and museums.</small></span></label>
+        <legend>Format</legend>
+        <label><input type="radio" name="sheet-style" value="terra" checked> <span><strong>Spreadsheet</strong><small>Plain-language columns, plus your projects. Easy to read, sort and filter. (.xlsx)</small></span></label>
+        <label><input type="radio" name="sheet-style" value="dwc"> <span><strong>Spreadsheet, Darwin Core columns</strong><small>The biodiversity data standard used by GBIF, agencies and museums. (.xlsx)</small></span></label>
+        <label><input type="radio" name="sheet-style" value="dwca"> <span><strong>Darwin Core Archive</strong><small>A ready-to-publish dataset for GBIF's IPT and agency portals: your observations plus dataset details. (.zip)</small></span></label>
+      </fieldset>
+      <fieldset id="dwca-options" class="dwca-options" hidden>
+        <legend>Dataset details</legend>
+        <label>Dataset title <input id="dwca-title" type="text" maxlength="200" placeholder="TERRA field observations"></label>
+        <label>Recorded by <small>Optional. Your name as it should be credited; left out if blank.</small><input id="dwca-recorded-by" type="text" maxlength="200" autocomplete="name"></label>
+        <label>Licence <small>How others may reuse your observations. GBIF accepts these three.</small><select id="dwca-license"></select></label>
       </fieldset>
       <label class="sheet-exact"><input type="checkbox" id="sheet-exact"> <span><strong>Include exact locations</strong><small>Only for observations you marked Exact. When this is off, exact points are generalized to an area about 11 km across. Approximate stays approximate and Hidden stays hidden.</small></span></label>
       <button id="sheet-download" class="primary-button" type="button">Download .xlsx</button>
       <p id="sheet-status" class="sheet-status" role="status" aria-live="polite"></p>
-      <details class="sheet-google"><summary>Using Google Sheets</summary>
+      <details class="sheet-google" id="sheet-google-help"><summary>Using Google Sheets</summary>
         <ol><li>Download the file.</li><li>Open <a href="https://sheets.google.com" target="_blank" rel="noopener">Google Sheets</a>, then File → Import → Upload.</li><li>Or drop the file into Google Drive and choose Open with → Google Sheets.</li></ol>
         <p>Sending straight to Google Sheets will come with TERRA accounts.</p>
       </details>
-      <p class="sheet-note"><small>A readable report, not a backup: to restore TERRA, use Export JSON. Deleted observations and the photos themselves aren't included.</small></p>
+      <details class="sheet-google" id="dwca-help" hidden><summary>Publishing to GBIF</summary>
+        <p>GBIF publishes data through an endorsed organization (a museum, university, agency or your country's GBIF node), usually with its IPT. Send them this archive, or upload it to their IPT. Agency portals that take Darwin Core accept it too.</p>
+        <p>Names are your own labels. Records called “Unknown” are still included, matched only to their broad group.</p>
+      </details>
+      <p class="sheet-note"><small>Not a backup: to restore TERRA, use Export JSON. Deleted observations and the photos themselves aren't included.</small></p>
     </dialog>
     <dialog id="post-viewer" class="post-viewer" aria-labelledby="post-viewer-title">
       <form method="dialog" class="post-viewer-close"><button class="text-button" type="submit" aria-label="Close">✕</button></form>
