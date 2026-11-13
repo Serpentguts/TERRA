@@ -30,9 +30,9 @@ const assert = require('node:assert/strict');
     await page.click('#terrarium-sandbox');
     assert.equal(await page.locator('#terrarium-sandbox').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#terrarium-sandbox-note').isVisible(), true);
-    assert.equal((await debug()).items.length, 14);
+    assert.equal((await debug()).items.length, 18);
     assert.equal(await page.evaluate(R => localStorage.getItem(R), R), null, 'Sandbox earns nothing');
-    assert.equal(await page.locator('#decor-list .collection-find').count(), 14);
+    assert.equal(await page.locator('#decor-list .collection-find').count(), 18);
 
     // Speed controls; pausing stops the clock.
     await page.click('.terrarium-speed [data-speed="0"]');
