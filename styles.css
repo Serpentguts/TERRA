@@ -469,3 +469,21 @@ section[data-screen][tabindex="-1"]:focus { outline: none; }
 .post-viewer-meta { margin: 0; color: var(--muted); }
 .check-field { display: flex; align-items: center; gap: 8px; margin: -4px 0 14px; font-size: 14px; }
 .check-field input { width: 18px; height: 18px; accent-color: var(--green); }
+/* Spreadsheet export */
+.export-buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.sheet-export { width: min(92vw, 520px); padding-bottom: 14px; }
+.sheet-export h2 { margin: 0 0 6px; font-size: 22px; }
+.sheet-options { margin: 14px 0; padding: 0; border: 0; }
+.sheet-options legend { margin-bottom: 6px; font-weight: 650; }
+.sheet-options label, .sheet-exact { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; cursor: pointer; }
+.sheet-options label:has(input:checked) { border-color: var(--green); background: #f3f8f2; }
+.sheet-options input, .sheet-exact input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--green); flex: none; }
+.sheet-options span, .sheet-exact span { display: flex; flex-direction: column; }
+.sheet-options small, .sheet-exact small { color: var(--muted); line-height: 1.4; }
+.sheet-exact { margin-bottom: 14px; }
+.sheet-export #sheet-download { width: 100%; justify-content: center; text-align: center; }
+.sheet-status:empty { display: none; }
+.sheet-status { margin: 10px 0 0; padding: 8px 12px; border-radius: 8px; background: #f3f8f2; }
+.sheet-google { margin-top: 12px; color: var(--muted); }
+.sheet-google summary { cursor: pointer; color: var(--green); font-weight: 600; }
+.sheet-note { margin: 10px 0 0; color: var(--muted); }

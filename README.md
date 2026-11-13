@@ -98,6 +98,10 @@ These Windows steps are provided for local review; automated tests here run on L
 7. Confirm **🗑 Delete** to move an entry to Trash. Restore within 3 days (72 hours). After expiry recovery is disabled; permanent cleanup happens on the next successful journal write, not in the background. Cancel leaves it unchanged.
 8. Select **Export JSON** to download all saved entries, plus an export timestamp and format version. Check your browser's downloads and keep the file somewhere safe.
 9. To bring back an exported backup, use **Restore a JSON backup** as described below. Nothing is imported just by selecting a file.
+10. Select **Export spreadsheet** (in the Journal, or **Export all to a spreadsheet** in Projects) for an `.xlsx` workbook that opens in Excel and imports into Google Sheets (File → Import → Upload, or drop it into Google Drive). It has four sheets: Observations (or Occurrences), Projects, Project members, and About.
+    - **Columns:** plain-language, or **Darwin Core** (`occurrenceID`, `eventDate`, `decimalLatitude`, `coordinateUncertaintyInMeters` and so on), the standard GBIF, agencies and museums use.
+    - **Locations follow privacy:** Hidden has no location; Approximate gives only its saved area; Exact is generalized to a 0.1° area (about 11 km) unless you tick **Include exact locations**. Old schematic-map locations are labelled, with no coordinates.
+    - Text is stored as plain text, so notes can never run as formulas. Deleted (Trash) observations and the photos themselves are left out (there's a photo count). It's built in the browser (`xlsx-writer.js`, `export-sheet.js`) with no upload. It's a report, not a backup: use Export JSON to restore.
 
 ## Explore a photo — local-first MOCK prototype
 
