@@ -2,7 +2,9 @@
 
 A living planning document. It collects the ideas from earlier conversations (October 2026, saved in Ditto) and decisions made while building, so each piece can be plugged in when the app is ready for it. **Nothing here is built yet** unless a section says so.
 
-**North star:** do for citizen science what Bittensor does for AI research. Define a valuable output (useful, verified ecological data and fieldwork), let people produce it, and reward the work that independent review judges useful.
+**Product north star:** the Pokémon of nature, a game that gets people outdoors noticing and recording real living things, sitting on top of a professional, streamlined workspace that agencies and companies find indispensable. The fun side fills the baseline database; the professional side pays for it and holds it to a high standard (see §7).
+
+**Network north star:** do for citizen science what Bittensor does for AI research. Define a valuable output (useful, verified ecological data and fieldwork), let people produce it, and reward the work that independent review judges useful.
 
 ---
 
@@ -124,6 +126,8 @@ New ideas go here first, then move into a phase above when they're scheduled.
 
 ### Terrarium and gamification ideas (Nov 11)
 
+**Built Nov 13:** 1, 2, 3, 4, 5, 6 (cards), 8 (ladybugs and aphids, frogs and flies, bees on flowers) plus daily streak achievements (3, 5, 7, 14 and 30 days). Still open: 6's "complete the guide" reward, 7 (more jars), 9 (social), 10 (snapshot), and turning over a log in 5.
+
 Ideas for making the terrarium more engaging, roughly in recommended order:
 
 1. **Your finds live in the jar.** Each new species group you record adds a small inhabitant: log a frog and a frog appears; log a fern and one sprouts. The jar becomes a living picture of your journal.
@@ -139,6 +143,12 @@ Ideas for making the terrarium more engaging, roughly in recommended order:
 
 Keep all of these participation-based and free of monetary value unless the token decision (§2) changes.
 
+**Rare variants as "shinies":** two tiers so far. *Rare* (glowing mushroom, albino snail, golden beetle) and *Legendary* (moonlight moth at night, white fawn at dawn or dusk). Each one seen is logged with its date in a Rare sightings list where unseen ones show as "???". Next ideas: tie some rares to real conditions (a glowing mushroom is likelier after you log a fungus in the rain), seasonal legendaries, and a reward for completing the list. Rares are cosmetic and never rank people or locations; never reward finding rare *real* species, which could put sensitive populations at risk.
+
+**Extra jars (planned, not built):** desert, rainforest, tide pool and alpine jars, each unlocked by observing in a matching habitat (from the observation's habitat field or map location) and switchable from the Terrarium tab. Each jar needs its own backdrop, resident set and food web, so build one at a time, starting with the desert jar (cactus, lizard, beetle and snake already exist as residents).
+
+**Visiting friends (planned, not built):** needs real accounts and a server, so it waits for the accounts phase. Plan: a read-only snapshot of someone's jar (items, positions, residents; no journal details or locations), shared only with people they follow back, with gifts limited to a seed or pebble per day. Never expose where someone observes.
+
 ## 10. Decisions log
 
 | Date | Decision |
@@ -149,6 +159,9 @@ Keep all of these participation-based and free of monetary value unless the toke
 | 2026-10-21 | Image contributions for model training are opt-in, with files off-chain and receipts on-chain. |
 | 2026-11-11 | Hippius for datasets and checkpoints; rented GPUs for fine-tuning; build up to it. |
 | 2026-11-11 | Locations moved to real-world coordinates with the same Exact / Approximate / Hidden rules. |
+| 2026-11-13 | Genetics stays a "Sequencing" section on each observation plus a list in the Journal, not its own bottom tab, until there's enough sequencing activity to justify one. The tab bar stays focused on the five everyday screens. |
+| 2026-11-13 | Streaks use observation dates (backfilled days count) and reset gently: the best streak is kept and nothing earned is lost. Field quests are checked only against the journal; colour quests need the colour in the name or notes. |
+| 2026-11-13 | Extra jars and visiting friends are deferred: jars need per-habitat art; friends needs accounts and a server. |
 | 2026-11-11 | Observation photos are saved locally (IndexedDB, resized, metadata stripped) when "Save photos" is checked; still never uploaded or in backups. |
 
 ## References
