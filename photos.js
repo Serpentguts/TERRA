@@ -77,6 +77,14 @@ const TerraPhotos = (() => {
     for (const row of rows.sort((a, b) => a.index - b.index)) if (wanted.has(row.observationId) && !map.has(row.observationId)) map.set(row.observationId, row.thumb);
     return map;
   }
+  // How many photos each observation has, for exports.
+  async function counts() {
+    const db = await open();
+    const rows = await all(db.transaction(STORE).objectStore(STORE).getAll());
+    const map = new Map();
+    for (const row of rows) map.set(row.observationId, (map.get(row.observationId) ?? 0) + 1);
+    return map;
+  }
   async function remove(observationIds) {
     if (!observationIds.length) return;
     const db = await open();
@@ -88,5 +96,5 @@ const TerraPhotos = (() => {
     await done(tx);
     document.dispatchEvent(new CustomEvent("terra:photos-changed", { detail: {} }));
   }
-  return Object.freeze({ save, forObservation, covers, remove, MAX_PER_OBSERVATION });
+  return Object.freeze({ save, forObservation, covers, counts, remove, MAX_PER_OBSERVATION });
 })();
