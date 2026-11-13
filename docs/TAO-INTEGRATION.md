@@ -98,7 +98,7 @@ There's no "iNat Pro" tier to rely on. What exists:
 
 **Getting data out (built Nov 13):** a spreadsheet export (`.xlsx`) from the Journal and Projects screens, with plain-language or **Darwin Core** columns. It opens in Excel and imports into Google Sheets. Locations follow each record's privacy, and exact points are generalized unless the user opts in. Next steps for the professional side:
 - **Send straight to Google Sheets / Drive and Microsoft 365:** needs accounts plus a Google Cloud OAuth app (and a Microsoft Entra app), so it waits for the accounts phase. Ask only for file-level access (`drive.file`), never the whole Drive.
-- **Darwin Core Archive** (zipped CSVs + `meta.xml` + EML metadata) for direct upload to GBIF and agency portals.
+- ~~**Darwin Core Archive**~~ **Built Nov 13:** occurrence core + `meta.xml` + GBIF-profile EML, with licence choice, optional credit and the same location rules. Next: an *event* core with sampling effort for professional surveys (BioBlitz and transect protocols), a multimedia extension once photos have public URLs, and taxon matching against the GBIF backbone so `scientificName` can be filled with confidence.
 - **Per-organization export templates:** column sets and controlled vocabularies an agency requires (e.g. state natural heritage program forms), saved per workspace.
 - **Release rules apply to exports too:** a professional project's embargo and precision settings should limit what any export contains.
 

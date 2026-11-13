@@ -487,3 +487,10 @@ section[data-screen][tabindex="-1"]:focus { outline: none; }
 .sheet-google { margin-top: 12px; color: var(--muted); }
 .sheet-google summary { cursor: pointer; color: var(--green); font-weight: 600; }
 .sheet-note { margin: 10px 0 0; color: var(--muted); }
+.dwca-options { display: grid; gap: 10px; margin: 0 0 14px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.dwca-options[hidden] { display: none; }
+.dwca-options legend { padding: 0 4px; font-weight: 650; }
+.dwca-options label { display: grid; gap: 4px; font-weight: 600; }
+.dwca-options small { font-weight: 400; color: var(--muted); }
+.dwca-options input, .dwca-options select { min-height: 42px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; }
+.sheet-export details[hidden] { display: none; }
