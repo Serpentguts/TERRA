@@ -47,14 +47,28 @@ const TerraData = (() => {
   const expired = (r, now = Date.now()) => Boolean(r.deletedAt && now >= Date.parse(r.deletedAt) + RETENTION);
   const active = records => records.filter(r => !r.deletedAt);
   const retain = (records, now = Date.now()) => records.filter(r => !expired(r, now));
+  // Optional identification details from the TERRA agent: a suggestion the observer chose, never a verification.
+  const TAXON_SOURCES = ["plantnet", "inat", "gbif", "manual"];
+  const text = (v, max) => v === undefined || (typeof v === "string" && v.length <= max);
+  function taxon(t) {
+    return Boolean(t && typeof t === "object" && !Array.isArray(t) &&
+      typeof t.scientificName === "string" && t.scientificName.trim().length > 1 && t.scientificName.length <= 200 &&
+      TAXON_SOURCES.includes(t.source) &&
+      (t.gbifKey === undefined || (Number.isInteger(t.gbifKey) && t.gbifKey > 0)) &&
+      (t.score === undefined || (typeof t.score === "number" && t.score >= 0 && t.score <= 1)) &&
+      text(t.rank, 30) && text(t.family, 60) && text(t.kingdom, 60) && text(t.class, 60) &&
+      Object.keys(t).every(k => ["scientificName", "source", "gbifKey", "score", "rank", "family", "kingdom", "class"].includes(k)));
+  }
+  const pickTaxon = t => Object.fromEntries(["scientificName", "source", "gbifKey", "score", "rank", "family", "kingdom", "class"].filter(k => t[k] !== undefined).map(k => [k, t[k]]));
   function optional(r) {
     return (!Object.hasOwn(r, "location") || location(r.location, r.privacy)) &&
-      (!Object.hasOwn(r, "deletedAt") || timestamp(r.deletedAt));
+      (!Object.hasOwn(r, "deletedAt") || timestamp(r.deletedAt)) &&
+      (!Object.hasOwn(r, "taxon") || taxon(r.taxon));
   }
   function pick(r) {
     const { id, type, name, notes, date, privacy } = r;
-    return { id, type, name, notes, date, privacy, ...(r.location ? { location: { ...r.location } } : {}), ...(r.deletedAt ? { deletedAt: r.deletedAt } : {}) };
+    return { id, type, name, notes, date, privacy, ...(r.location ? { location: { ...r.location } } : {}), ...(r.taxon ? { taxon: pickTaxon(r.taxon) } : {}), ...(r.deletedAt ? { deletedAt: r.deletedAt } : {}) };
   }
-  return { SPACE, GEO, GEO_CELL, RETENTION, today, date, observationDate, boundary, location, inside, timestamp, expired, active, retain, optional, pick };
+  return { SPACE, GEO, GEO_CELL, RETENTION, today, date, observationDate, boundary, location, inside, timestamp, expired, active, retain, optional, pick, taxon };
 })();
 if (typeof module !== "undefined") module.exports = TerraData;

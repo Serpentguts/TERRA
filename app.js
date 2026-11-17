@@ -334,11 +334,14 @@ function render() {
     meta.append(element("span", "category", categories[observation.type]), date);
     card.append(meta, element("h3", "", observation.name));
     card.append(element("p", "card-notes", observation.notes || "No field notes added."));
-    // Version-1 records contain no identification evidence. A manual name or
-    // fixed photo-demo selection must never imply AI, community or expert review.
+    if (observation.taxon) card.append(element("p", "card-taxon", observation.taxon.scientificName));
+    // A manual name or an agent suggestion must never imply community or expert review.
     const provenance = element("details", "identification-history");
     provenance.append(element("summary", "", "Identification provenance"));
-    provenance.append(element("p", "", "No identification history yet"));
+    const t = observation.taxon, sources = { plantnet: "Pl@ntNet photo ID", inat: "iNaturalist photo ID", gbif: "a GBIF name match", manual: "you" };
+    provenance.append(element("p", "", t
+      ? `Suggested by ${sources[t.source]}${typeof t.score === "number" ? ` (${Math.round(t.score * 100)}% confidence)` : ""} and chosen by you${t.gbifKey ? `; matched to GBIF species ${t.gbifKey}` : ""}. Not yet reviewed by the community or experts.`
+      : "No identification history yet"));
     card.append(provenance);
     const share = element("a", "text-button", "Share / prepare · local demo");
     share.href = "#feed-post-title";
@@ -404,6 +407,7 @@ function clearPreview() {
   previewWrap.hidden = true;
   photoInput.value = "";
   showError(photoError, "");
+  document.dispatchEvent(new CustomEvent("terra:photo-cleared"));
 }
 
 photoInput.addEventListener("change", () => {
@@ -418,6 +422,7 @@ photoInput.addEventListener("change", () => {
   previewFile = file; // Kept for saving: the file input itself is cleared above.
   preview.src = previewUrl;
   previewWrap.hidden = false;
+  document.dispatchEvent(new CustomEvent("terra:photo-previewed", { detail: { file } }));
 });
 preview.addEventListener("error", () => {
   clearPreview();
@@ -437,6 +442,9 @@ function saveDiscovery(withProject = false) {
     date: data.get("date"),
     privacy: data.get("privacy")
   };
+  // Keep the agent's identification only if the name is still the one it filled in.
+  const taxon = typeof TerraAgent !== "undefined" ? TerraAgent.taxonFor(observation.name) : null;
+  if (taxon) observation.taxon = taxon;
   const location = TerraMaps.observation.read();
   if (location) observation.location = location;
   if (!validObservation(observation) || !TerraData.observationDate(observation.date) || !location) {
@@ -482,6 +490,7 @@ function saveDiscovery(withProject = false) {
   closeSuggestions();
   nameStatus.textContent = "";
   clearPreview();
+  if (typeof TerraAgent !== "undefined") TerraAgent.reset();
   transferStatus.textContent = "";
   render();
   projectObservation.value = observation.id;
