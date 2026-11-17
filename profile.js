@@ -205,6 +205,11 @@
   }
   TerraTerrarium.onMove((badge, x, y) => {
     if (sandbox) { sandboxSpots[badge] = { x, y }; return; }
+    if (badge.startsWith("q:")) {
+      try { localStorage.setItem(TerraQuests.KEY, JSON.stringify(TerraQuests.move(TerraQuests.parse(localStorage.getItem(TerraQuests.KEY)), badge.slice(2), x, y))); }
+      catch { $("rewards-status").textContent = "That spot couldn't be saved. The decoration will return to its last saved place after reloading."; }
+      return;
+    }
     try { localStorage.setItem(TerraRewards.KEY, JSON.stringify(TerraRewards.move(TerraRewards.parse(localStorage.getItem(TerraRewards.KEY)), badge, x, y))); }
     catch { $("rewards-status").textContent = "That spot couldn't be saved. The item will return to its last saved place after reloading."; }
   });
@@ -213,6 +218,8 @@
     event.currentTarget.setAttribute("aria-pressed", String(sandbox));
     event.currentTarget.textContent = sandbox ? "Back to my collection" : "Try every item";
     $("terrarium-sandbox-note").hidden = !sandbox;
+    $("terrarium-preview").hidden = !sandbox;
+    if (!sandbox) { $("terrarium-season").value = ""; $("terrarium-time").value = ""; TerraTerrarium.setEnvironment({}); }
     refresh();
   });
   for (const button of document.querySelectorAll(".terrarium-speed button")) {
@@ -221,9 +228,55 @@
       for (const other of document.querySelectorAll(".terrarium-speed button")) other.setAttribute("aria-pressed", String(other === button));
     });
   }
+  for (const button of document.querySelectorAll("[data-care]")) button.addEventListener("click", () => {
+    TerraTerrarium.care(button.dataset.care);
+    $("terrarium-live").textContent = $("terrarium-caption").textContent;
+  });
+  const previewEnv = () => TerraTerrarium.setEnvironment({ season: $("terrarium-season").value || null, phase: $("terrarium-time").value || null });
+  $("terrarium-season").addEventListener("change", previewEnv);
+  $("terrarium-time").addEventListener("change", previewEnv);
+  // Rare sightings: a "???" card for each one you haven't spotted yet.
+  function renderRares() {
+    const list = $("rare-list"); list.replaceChildren();
+    for (const rare of TerraTerrarium.rares()) {
+      const li = document.createElement("li");
+      li.className = `rare-card ${rare.seen ? "seen" : "unseen"} ${rare.tier.toLowerCase()}`;
+      const icon = textNode("span", "rare-icon", rare.seen ? rare.icon : "?"); icon.setAttribute("aria-hidden", "true");
+      li.append(textNode("span", "rare-tier", rare.tier), icon, textNode("strong", "", rare.seen ? rare.name : "???"),
+        textNode("small", "", rare.seen ? `First seen ${rare.seen}` : "Not spotted yet"));
+      if (rare.seen) li.title = rare.fact;
+      list.append(li);
+    }
+  }
+  TerraTerrarium.onRare(() => renderRares());
+  // Sample finds for the sandbox, so you can see how journal entries come to life.
+  const SAMPLE_FINDS = ["frog", "fern", "bee", "fish", "spider", "worm", "shelf", "flower", "moss", "lichen", "rabbit", "beetle"]
+    .map((kind, i) => ({ id: `sample-${kind}`, kind, name: TerraLife.KINDS[kind].name, date: "Sample", type: "other", i }));
   if (TerraTerrarium.paused) {
     for (const other of document.querySelectorAll(".terrarium-speed button")) other.setAttribute("aria-pressed", String(other.dataset.speed === "0"));
     $("terrarium-caption").textContent = "Paused because your device prefers reduced motion. Choose a speed to play.";
+  }
+  const localToday = () => new Date().toLocaleDateString("en-CA");
+  // Award finished field quests, then report the board. Never throws away earned rewards.
+  let questCache = { state: null, board: null };
+  function updateQuests(records) {
+    const active = TerraData.active(records).filter(r => TerraData.observationDate(r.date));
+    const board = TerraQuests.board(active, localToday());
+    const prior = TerraQuests.parse(localStorage.getItem(TerraQuests.KEY));
+    const { state, earned } = TerraQuests.claim(prior, board, randomToken);
+    if (earned.length) {
+      localStorage.setItem(TerraQuests.KEY, JSON.stringify(state));
+      const names = earned.map(e => `${e.reward.icon} ${e.reward.item}${e.reward.type === "seed" ? " seeds" : ""}`).join(", ");
+      TerraScreens.toast(`Quest complete! ${names} for your jar.`, { href: "#terrarium", label: "See it" });
+    }
+    questCache = { state, board };
+    return questCache;
+  }
+  // Southern hemisphere if your latest find with a map location is south of the equator.
+  function southern(records) {
+    const lat = l => l?.space === TerraData.GEO ? (Number.isFinite(l.y) ? l.y : Number.isFinite(l.y1) ? (l.y1 + l.y2) / 2 : null) : null;
+    const located = TerraData.active(records).filter(r => lat(r.location) !== null).sort((a, b) => b.date.localeCompare(a.date))[0];
+    return Boolean(located && lat(located.location) < 0);
   }
   function renderRewards(records, projects) {
     clearRewards();
@@ -239,7 +292,18 @@
       const entries = sandbox
         ? TerraRewards.CATALOG.map(a => ({ achievement: a, grant: { badge: a.id, token: "0".repeat(32), placed: true, ...(sandboxSpots[a.id] ?? {}) } }))
         : placed.map(g => ({ achievement: achievementFor(g), grant: g }));
-      TerraTerrarium.show(entries, { growth: sandbox ? TerraRewards.CATALOG.length : next.grants.length, fresh: sandbox ? [] : [...fresh], label: sandbox ? "Sandbox terrarium with every item." : label });
+      const active = TerraData.active(records).filter(r => TerraData.observationDate(r.date));
+      let inventory = { seeds: [], decor: [] };
+      try { if (questCache.state) inventory = TerraQuests.inventory(questCache.state); } catch { /* Quest rewards unavailable; the jar still shows. */ }
+      const sampleToken = i => i.toString(16).padStart(32, "0");
+      const living = sandbox
+        ? { finds: SAMPLE_FINDS,
+            garden: TerraQuests.SEEDS.map((seed, i) => ({ ...seed, token: sampleToken(i + 1), planted: "2000-01-01" })),
+            questDecor: TerraQuests.DECOR.map((d, i) => ({ ...d, token: sampleToken(i + 20), ...(sandboxSpots[`q:${sampleToken(i + 20)}`] ?? {}) })) }
+        : { finds: TerraLife.inhabitants(active), garden: inventory.seeds, questDecor: inventory.decor, journalCount: active.length };
+      TerraTerrarium.show(entries, { growth: sandbox ? TerraRewards.CATALOG.length : next.grants.length, fresh: sandbox ? [] : [...fresh], label: sandbox ? "Sandbox terrarium with every item." : label,
+        ...living, south: southern(records), sandbox, date: localToday() });
+      renderRares();
       for (const achievement of TerraRewards.CATALOG) {
         const grant = next.grants.find(g => g.badge === achievement.id);
         const card = collectionCard(achievement, grant, counts[achievement.metric] ?? 0, fresh.has(achievement.id));
@@ -252,6 +316,53 @@
     } catch {
       $("rewards-status").textContent = "Rewards unavailable or could not be saved: local storage blocked/damaged or unlock could not be saved. Existing rewards untouched. Journal is unaffected. Do not clear site data.";
     }
+  }
+  function renderStreak(records) {
+    const card = $("home-streak");
+    const s = TerraRewards.streak(records, TerraData.observationDate, localToday());
+    if (!s.longest) { card.hidden = true; return; }
+    const flame = textNode("span", `streak-flame${s.recordedToday ? " lit" : ""}`, s.current ? "🔥" : "🌱"); flame.setAttribute("aria-hidden", "true");
+    const text = document.createElement("span");
+    let title, line;
+    if (s.current && s.recordedToday) { title = `${s.current}-day streak`; line = "You recorded today. See you tomorrow!"; }
+    else if (s.current) { title = `${s.current}-day streak`; line = "Record a find today to keep it going."; }
+    else { title = "Start a new streak today"; line = `Your best streak: ${s.longest} day${s.longest === 1 ? "" : "s"}. Every day is a fresh start.`; }
+    text.append(textNode("strong", "", title), textNode("small", "", line));
+    if (s.next) text.append(textNode("small", "streak-next", `Next: ${s.next.icon} ${s.next.item} at ${s.next.target} days in a row`));
+    card.replaceChildren(flame, text);
+    card.classList.toggle("at-risk", s.atRisk);
+    card.setAttribute("aria-label", `${title}. ${line}${s.next ? ` Next reward: ${s.next.item} at ${s.next.target} days.` : ""}`);
+    card.hidden = false;
+  }
+  function renderQuests() {
+    const box = $("home-quests");
+    const { state, board } = questCache;
+    if (!board) { box.hidden = true; return; }
+    const rewardFor = q => {
+      const claimed = state?.claimed[q.key];
+      if (claimed) return [...TerraQuests.SEEDS, ...TerraQuests.DECOR].find(x => x.id === claimed.id);
+      return q.scope === "daily" ? { icon: "🌱", item: "Seed packet" } : { icon: "🎁", item: "Decoration" };
+    };
+    const fill = (list, quests) => {
+      list.replaceChildren();
+      for (const q of quests) {
+        const li = document.createElement("li"); li.className = `quest${q.done ? " done" : ""}`; li.dataset.quest = q.id;
+        const check = textNode("span", "quest-check", q.done ? "✓" : ""); check.setAttribute("aria-hidden", "true");
+        const body = document.createElement("span"); body.className = "quest-body";
+        body.append(textNode("span", "quest-text", q.text));
+        if (q.target > 1) { const meter = document.createElement("progress"); meter.max = q.target; meter.value = q.count; meter.setAttribute("aria-hidden", "true"); body.append(meter); }
+        const reward = rewardFor(q);
+        const prize = textNode("span", "quest-reward", reward.icon); prize.title = reward.item;
+        li.append(check, body, prize);
+        li.setAttribute("aria-label", `${q.text}. ${q.done ? "Done" : `${q.count} of ${q.target}`}. Reward: ${reward.item}.`);
+        list.append(li);
+      }
+    };
+    fill($("quest-daily"), board.daily);
+    fill($("quest-weekly"), board.weekly);
+    const stats = state ? TerraQuests.stats(state) : { questDays: 0 };
+    $("quest-days").textContent = stats.questDays ? `${stats.questDays} quest day${stats.questDays === 1 ? "" : "s"}` : "";
+    box.hidden = false;
   }
   const groupIcons = { plant: "🌿", fungus: "🍄", insect: "🐞", mammal: "🐁", bird: "🐦", fish: "🐟", reptile: "🦎", other: "❧" };
   function renderHome(records, projects) {
@@ -267,6 +378,8 @@
       li.append(icon, text); recent.append(li);
     }
     $("home-empty").hidden = active.length > 0;
+    renderStreak(records);
+    renderQuests();
     const next = $("home-next");
     next.hidden = true;
     try {
@@ -353,6 +466,7 @@
       renderPosts(posts, [...active].sort((a, b) => b.date.localeCompare(a.date)));
       for (const project of projects) item(collections, `${project.title} · ${project.complete ? "complete" : "open"} · ${active.filter(r => project.observationIds.includes(r.id) && FieldSummary.matches(project, r)).length} eligible observations`);
       if (!projects.length) item(collections, "No projects yet.");
+      try { updateQuests(records); } catch { questCache = { state: null, board: null }; }
       renderRewards(records, projects);
       renderHome(records, projects);
     } catch {
@@ -364,7 +478,7 @@
   for (const event of ["terra:journal-rendered", "terra:projects-rendered"]) document.addEventListener(event, refresh);
   window.addEventListener("storage", event => {
     if (event.key === PROFILE_KEY || event.key === null) loadProfile();
-    if ([STORAGE_KEY, FieldSummary.KEY, TerraRewards.KEY, null].includes(event.key)) refresh();
+    if ([STORAGE_KEY, FieldSummary.KEY, TerraRewards.KEY, TerraQuests.KEY, null].includes(event.key)) refresh();
   });
   // The terrarium lays itself out to the jar's width, which is 0 while Profile is hidden.
   document.addEventListener("terra:screen-shown", event => { if (event.detail.screen === "profile" || event.detail.screen === "home") refresh(); });

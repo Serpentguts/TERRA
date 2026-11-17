@@ -39,6 +39,33 @@ body { margin: 0; padding-bottom: calc(var(--bottom-nav-height, 170px) + 16px); 
 .collection-card progress { width: 100%; height: 8px; margin-top: 6px; accent-color: var(--green); }
 .collection-card button { width: 100%; min-height: 44px; margin-top: 6px; white-space: normal; }
 .terrarium-rules { margin-top: 20px; color: var(--muted); }
+/* Living jar: environment, care, field guide and rare sightings */
+.terrarium-env { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 8px; }
+.terrarium-sky { font-size: 13px; font-weight: 600; color: var(--muted); }
+.terrarium-care { display: flex; gap: 8px; }
+.terrarium-care button, .terrarium-preview button { min-height: 40px; padding: 6px 14px; }
+.terrarium-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; padding: 8px 12px; border: 1px dashed #b9cbbd; border-radius: 10px; font-size: 14px; }
+.terrarium-preview[hidden] { display: none; }
+.terrarium-preview select { min-height: 36px; margin-left: 4px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: inherit; }
+.terrarium-guide { margin: 4px 0 16px; padding: 12px 16px; border: 1px solid #d7cfa8; border-left: 4px solid #c9a646; border-radius: 10px; background: #fffcf1; }
+.terrarium-guide[hidden] { display: none; }
+.guide-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.guide-head strong { font-size: 17px; }
+.guide-icon { font-size: 28px; line-height: 1; }
+.guide-tier { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.guide-tier.rare, .rare-card.rare .rare-tier { background: #e3eefc; color: #2b5a99; }
+.guide-tier.legendary, .rare-card.legendary .rare-tier { background: #fbeccd; color: #8a5a00; }
+.guide-sub { margin: 6px 0 2px; font-size: 13px; color: var(--muted); }
+.guide-fact { margin: 0; }
+.rares-intro { margin-top: 0; color: var(--muted); font-size: 14px; }
+.rare-grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.rare-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; text-align: center; }
+.rare-card small { color: var(--muted); line-height: 1.3; }
+.rare-tier { padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.rare-icon { font-size: 32px; line-height: 1.2; }
+.rare-card.unseen .rare-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #edf0e6; color: var(--muted); font-size: 20px; font-weight: 800; }
+.rare-card.seen.legendary { border-color: #e8c36a; background: linear-gradient(160deg, #fffaf0, #fdf1d6); }
+.rare-card.seen.rare { border-color: #a9c4ea; background: linear-gradient(160deg, #f8fbff, #eaf2fd); }
 @media (max-width: 480px) { .rewards-terrarium { height: 240px; } .collection-icon { font-size: 34px; } .collection-card { padding: 12px 8px 10px; } }
 
 .identification-history { margin: 12px 0; }
@@ -271,6 +298,34 @@ details.more[open] > summary { margin-bottom: 4px; }
 .home-next { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1px solid #b9cbbd; border-radius: 12px; background: #f3f8f2; color: var(--ink); text-decoration: none; }
 .home-next[hidden] { display: none; }
 .home-next-icon { font-size: 38px; line-height: 1; }
+/* Streak and field quests on Home */
+.home-streak { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 14px 18px; border: 1px solid #f0c9a0; border-radius: 12px; background: linear-gradient(135deg, #fff6ea, #fdf0e1); color: var(--ink); text-decoration: none; }
+.home-streak[hidden] { display: none; }
+.home-streak span:last-child { display: flex; flex-direction: column; }
+.home-streak strong { font-size: 18px; }
+.home-streak small { color: var(--muted); }
+.home-streak .streak-next { color: #8a5a20; font-weight: 600; }
+.home-streak.at-risk { border-color: #e9a65c; box-shadow: 0 0 0 2px #f6d7b0; }
+.streak-flame { font-size: 38px; line-height: 1; filter: grayscale(.6) opacity(.75); }
+.streak-flame.lit { filter: none; animation: flicker 2.4s ease-in-out infinite; }
+@keyframes flicker { 50% { transform: scale(1.08) rotate(-3deg); } }
+@media (prefers-reduced-motion: reduce) { .streak-flame.lit { animation: none; } }
+.home-quests { margin-bottom: 14px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.home-quests[hidden] { display: none; }
+.home-quests h3 { margin: 0; }
+.quest-days { color: var(--muted); font-size: 13px; }
+.quest-sub { margin: 10px 0 4px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.quest-list { list-style: none; margin: 6px 0 0; padding: 0; }
+.quest { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.quest:last-child { border-bottom: 0; }
+.quest-check { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border: 2px solid #b9cbbd; border-radius: 50%; color: #fff; font-weight: 800; font-size: 13px; }
+.quest.done .quest-check { border-color: var(--green); background: var(--green); }
+.quest-body { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.quest.done .quest-text { color: var(--muted); text-decoration: line-through; text-decoration-color: #9fb3a5; }
+.quest-body progress { width: 100%; max-width: 220px; height: 6px; accent-color: var(--green); }
+.quest-reward { flex: none; font-size: 22px; }
+.quest:not(.done) .quest-reward { filter: grayscale(.4); opacity: .8; }
+.quest-note { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
 .home-next > span:last-child { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .home-next small { color: var(--muted); }
 .home-next progress { width: 100%; height: 8px; margin-top: 6px; accent-color: var(--green); }

@@ -13,8 +13,8 @@ test('transparent participation only; no verification, rarity, location or trans
 });
 test('seven distinct consecutive observation days; duplicates/gaps/future/trash do not extend streak', () => {
   const week = Array.from({ length: 7 }, (_, i) => record(i + 1));
-  assert.deepEqual(eligible(week), ['first', 'obs5', 'week']);
-  assert.deepEqual(eligible([...week].reverse()), ['first', 'obs5', 'week']);
+  assert.deepEqual(eligible(week), ['first', 'obs5', 'streak3', 'streak5', 'week']);
+  assert.deepEqual(eligible([...week].reverse()), ['first', 'obs5', 'streak3', 'streak5', 'week']);
   assert.deepEqual(eligible(Array.from({ length: 4 }, () => record(1))), ['first']);
   assert.ok(!eligible(Array.from({ length: 20 }, () => record(1))).includes('week'));
   assert.ok(!eligible(week.filter(r => r.id !== 'r4')).includes('week'));
@@ -118,4 +118,24 @@ test('decorations are earned like other items and can remember where they were m
     assert.throws(() => R.parse(JSON.stringify({ version: 1, grants: [{ ...state.grants[0], ...bad }] })), /Unsupported/);
   }
   assert.deepEqual(state.grants[0], { badge: 'project', token: 'ab'.repeat(16), placed: true }, 'move() does not change the original');
+});
+
+test('daily streak: counts back from today, stays alive until today ends, and points to the next reward', () => {
+  const day = d => ({ id: `s${d}`, type: 'plant', name: 'Unknown', privacy: 'hidden', date: d });
+  const today = '2024-03-10';
+  const run = ['2024-03-06', '2024-03-07', '2024-03-08', '2024-03-09'].map(day);
+  let s = R.streak(run, D.observationDate, today);
+  assert.deepEqual([s.current, s.recordedToday, s.atRisk], [4, false, true], 'yesterday keeps the streak open today');
+  assert.deepEqual(s.next, { item: 'Honeybee', icon: '🐝', target: 5 });
+  s = R.streak([...run, day(today)], D.observationDate, today);
+  assert.deepEqual([s.current, s.recordedToday, s.atRisk, s.next.item], [5, true, false, 'Snail']);
+  s = R.streak(run, D.observationDate, '2024-03-11');
+  assert.deepEqual([s.current, s.longest, s.atRisk], [0, 4, false], 'a missed day resets current but keeps the best');
+  s = R.streak([...run, { ...day('2024-03-08'), id: 'dup' }, { ...day('2024-03-05'), deletedAt: '2024-03-10T00:00:00Z' }], D.observationDate, today);
+  assert.equal(s.current, 4, 'duplicates and Trash do not extend a streak');
+  assert.equal(R.streak([], D.observationDate, today).current, 0);
+  const thirty = Array.from({ length: 30 }, (_, i) => day(new Date(Date.UTC(2024, 1, 10 + i)).toISOString().slice(0, 10)));
+  s = R.streak(thirty, D.observationDate, '2024-03-10');
+  assert.deepEqual([s.current, s.next], [30, null]);
+  assert.ok(eligible(thirty).includes('streak30') && eligible(thirty).includes('streak14'));
 });

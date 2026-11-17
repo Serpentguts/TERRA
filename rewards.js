@@ -13,7 +13,11 @@ const TerraRewards = (() => {
     { id: "obs10", group: "Field notes", label: "Ten observations", goal: "Record 10 observations", metric: "observations", target: 10, item: "Fallen leaves", icon: "🍂" },
     { id: "obs25", group: "Field notes", label: "Twenty-five observations", goal: "Record 25 observations", metric: "observations", target: 25, item: "Wildflower", icon: "🌸" },
     { id: "obs50", group: "Field notes", label: "Fifty observations", goal: "Record 50 observations", metric: "observations", target: 50, item: "Little oak", icon: "🌳" },
-    { id: "week", group: "Habits", label: "Seven-day fieldbook", goal: "Observations dated on 7 days in a row", metric: "streak", target: 7, item: "Snail", icon: "🐌" },
+    { id: "streak3", group: "Streaks", label: "Three-day streak", goal: "Observe 3 days in a row", metric: "streak", target: 3, item: "Caterpillar", icon: "🐛" },
+    { id: "streak5", group: "Streaks", label: "Five-day streak", goal: "Observe 5 days in a row", metric: "streak", target: 5, item: "Honeybee", icon: "🐝" },
+    { id: "week", group: "Streaks", label: "Seven-day fieldbook", goal: "Observations dated on 7 days in a row", metric: "streak", target: 7, item: "Snail", icon: "🐌" },
+    { id: "streak14", group: "Streaks", label: "Two-week streak", goal: "Observe 14 days in a row", metric: "streak", target: 14, item: "Owl", icon: "🦉" },
+    { id: "streak30", group: "Streaks", label: "Thirty-day streak", goal: "Observe 30 days in a row", metric: "streak", target: 30, item: "Hedgehog", icon: "🦔" },
     { id: "groups3", group: "Variety", label: "Branching out", goal: "Observe 3 different organism groups", metric: "groups", target: 3, item: "Butterfly", icon: "🦋", layer: "air" },
     { id: "names10", group: "Variety", label: "Ten different names", goal: "Record 10 different named organisms", metric: "names", target: 10, item: "Ladybug", icon: "🐞" },
     { id: "project", group: "Projects", label: "Project completion", goal: "Complete a project with an observation in it", metric: "projects", target: 1, item: "Spiral shell", icon: "🐚", kind: "decoration" },
@@ -62,6 +66,20 @@ const TerraRewards = (() => {
       verified: null
     };
   }
+  // Daily streak, Duolingo-style, from observation dates. `today` is a YYYY-MM-DD string.
+  // current counts consecutive days ending today, or ending yesterday while today is still open.
+  function streak(records, dateOK, today) {
+    const days = new Set(records.filter(r => !r.deletedAt && dateOK(r.date)).map(r => r.date));
+    const shift = (date, n) => new Date(Date.parse(`${date}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+    const recordedToday = days.has(today);
+    let current = 0, cursor = recordedToday ? today : shift(today, -1);
+    while (days.has(cursor)) { current++; cursor = shift(cursor, -1); }
+    const sorted = [...days].sort();
+    let longest = 0, run = 0, previous = null;
+    for (const date of sorted) { run = previous && shift(previous, 1) === date ? run + 1 : 1; longest = Math.max(longest, run); previous = date; }
+    const next = CATALOG.filter(a => a.metric === "streak" && a.target > current).sort((a, b) => a.target - b.target)[0] ?? null;
+    return { current, longest, recordedToday, atRisk: current > 0 && !recordedToday, next: next && { item: next.item, icon: next.icon, target: next.target } };
+  }
   function eligible(records, projects, dateOK, matches) {
     const counts = progress(records, projects, dateOK, matches);
     return CATALOG.filter(a => a.source !== "unavailable" && counts[a.metric] !== null && counts[a.metric] >= a.target).map(a => a.id);
@@ -104,6 +122,6 @@ const TerraRewards = (() => {
     const grants = state.grants.map(g => g.badge === badge ? { ...g, x: Math.round(Math.min(1, Math.max(0, x)) * 1000) / 1000, y: Math.round(Math.min(1, Math.max(0, y)) * 1000) / 1000 } : { ...g });
     return { version: 1, grants };
   }
-  return Object.freeze({ KEY, CATALOG, labels, parse, progress, eligible, award, decoration, layout, move });
+  return Object.freeze({ KEY, CATALOG, labels, parse, progress, streak, eligible, award, decoration, layout, move });
 })();
 if (typeof module !== "undefined") module.exports = TerraRewards;

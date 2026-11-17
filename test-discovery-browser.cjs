@@ -118,7 +118,8 @@ const { chromium } = require('playwright');
     }
     await page.fill('#genetic-sequence', 'ACGTRYSWKMBDHVN'); await page.click('#genbank-preview');
     assert.equal(await raw(J), journalBeforeDNA); assert.equal(await raw(K), projectsBeforeDNA);
-    assert.deepEqual(await page.evaluate(() => Object.keys(localStorage).sort()), [J, K, 'terra.rewards.v1'].sort());
+    // Field-quest rewards depend on today's date, so that key may or may not exist.
+    assert.deepEqual(await page.evaluate(() => Object.keys(localStorage).filter(k => k !== 'terra.quests.v1').sort()), [J, K, 'terra.rewards.v1', 'terra.terrarium.v1'].sort());
     const download = page.waitForEvent('download'); await page.click('#export-button');
     const exported = JSON.parse(await fs.readFile(await (await download).path(), 'utf8'));
     assert.equal(exported.version, 1);

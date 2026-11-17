@@ -17,6 +17,8 @@
   <script src="photos.js" defer></script>
   <script src="app.js" defer></script>
   <script src="rewards.js" defer></script>
+  <script src="quests.js" defer></script>
+  <script src="terrarium-life.js" defer></script>
   <script src="terrarium.js" defer></script>
   <script src="avatars.js" defer></script>
   <script src="profile.js" defer></script>
@@ -64,6 +66,14 @@
         <li><a href="#journal"><strong id="home-days">0</strong><span>days in the field</span></a></li>
         <li><a href="#terrarium"><strong id="home-items">0</strong><span>terrarium items</span></a></li>
       </ul>
+      <a id="home-streak" class="home-streak" href="#record" hidden></a>
+      <section id="home-quests" class="home-quests" aria-labelledby="quests-title" hidden>
+        <div class="home-recent-heading"><h3 id="quests-title">Field quests</h3><span id="quest-days" class="quest-days"></span></div>
+        <ul id="quest-daily" class="quest-list" aria-label="Today's quests"></ul>
+        <h4 class="quest-sub">This week</h4>
+        <ul id="quest-weekly" class="quest-list" aria-label="This week's quests"></ul>
+        <p class="quest-note">Daily quests earn seed packets that bloom in your <a href="#terrarium">jar</a>. Weekly quests earn decorations. Missing a day never costs you anything.</p>
+      </section>
       <a id="home-next" class="home-next" href="#terrarium" hidden></a>
       <div class="home-recent-heading"><h3>Recent finds</h3><a href="#journal">See all</a></div>
       <ul id="home-recent" class="home-recent"></ul>
@@ -148,7 +158,7 @@
         <div role="tabpanel" id="profile-projects" aria-labelledby="projects-tab" hidden><h3>Your projects</h3><ul id="profile-project-list"></ul><a href="#projects-title">Manage projects</a></div>
         <div role="tabpanel" id="profile-awards" aria-labelledby="awards-tab" hidden>
           <h3>Your terrarium</h3>
-          <p class="terrarium-intro">A small living ecosystem. Plants grow with every achievement, mushrooms fruit and return to the soil, and creatures wander. Tap anything to see what it's doing; drag decorations to move them.</p>
+          <p class="terrarium-intro">A small living ecosystem. Your journal finds live here, plants grow with every achievement, and the seasons, day and night follow your real clock. New finds bring rain, and rain makes mushrooms fruit. Tap anything for its field-guide card; drag decorations to move them.</p>
           <p id="rewards-status" role="status" aria-live="polite"></p>
           <div class="terrarium-controls">
             <button id="terrarium-sandbox" class="secondary-button" type="button" aria-pressed="false">Try every item</button>
@@ -159,14 +169,31 @@
               <button type="button" data-speed="16" aria-pressed="false" aria-label="Sixteen times speed">16×</button>
             </div>
           </div>
-          <p id="terrarium-sandbox-note" class="sandbox-note" hidden>Sandbox: every item is in the jar so you can play with them. Nothing here is earned or saved; turn it off to see your own collection.</p>
+          <p id="terrarium-sandbox-note" class="sandbox-note" hidden>Sandbox: every item, sample finds and quest rewards are in the jar so you can play with them. Nothing here is earned or saved; turn it off to see your own collection.</p>
+          <div class="terrarium-env">
+            <span id="terrarium-sky" class="terrarium-sky"></span>
+            <div class="terrarium-care" role="group" aria-label="Care for the jar">
+              <button type="button" class="secondary-button" data-care="mist"><span aria-hidden="true">💧</span> Mist</button>
+              <button type="button" class="secondary-button" data-care="seed"><span aria-hidden="true">🌾</span> Scatter seed</button>
+            </div>
+          </div>
+          <div id="terrarium-preview" class="terrarium-preview" hidden>
+            <label>Season <select id="terrarium-season"><option value="">Real</option><option value="spring">Spring</option><option value="summer">Summer</option><option value="autumn">Autumn</option><option value="winter">Winter</option></select></label>
+            <label>Time <select id="terrarium-time"><option value="">Real</option><option value="dawn">Dawn</option><option value="day">Day</option><option value="dusk">Dusk</option><option value="night">Night</option></select></label>
+            <button type="button" class="secondary-button" data-care="rain"><span aria-hidden="true">🌧️</span> Make it rain</button>
+          </div>
           <div id="rewards-terrarium" class="rewards-terrarium"></div>
           <p id="terrarium-live" class="visually-hidden" role="status" aria-live="polite"></p>
           <p id="terrarium-caption" class="terrarium-caption">Tap an item, or pick one in your collection, to see what it's up to.</p>
+          <aside id="terrarium-guide" class="terrarium-guide" aria-label="Field guide" hidden></aside>
           <h4 id="collection-title">Collection</h4>
           <ul id="decor-list" class="collection-grid" aria-labelledby="collection-title"></ul>
+          <h4 id="rares-title">Rare sightings</h4>
+          <p class="rares-intro">Like shinies: rare and legendary variants turn up by chance. Some only at night, or at dawn and dusk. Each one you spot is logged here.</p>
+          <ul id="rare-list" class="rare-grid" aria-labelledby="rares-title"></ul>
           <details class="terrarium-rules"><summary>How collecting works</summary>
             <p>Participation achievements, not identification or conservation credentials. Observations count when they are active, valid and not future-dated. Seven-day fieldbook: entries dated on seven consecutive distinct days (backfilled/imported dates count; not proof of daily uploads). Different names count exact, trimmed names, excluding Unknown. Project completion: one complete project with at least one eligible active observation. Each item unlocks only once, ever in this local store. Duplicates, repeat events, reopen/complete, delete/restore and reload cannot multiply rewards.</p>
+            <p>Streaks count consecutive days that have observations dated on them, so a streak is still alive until today ends. Field quests are checked against your own journal; finishing one adds a flower or decoration to the jar, and missed days are never held against you. Rare sightings, weather and seasons are just for fun and change nothing about your data.</p>
             <p>Follower and verified-observation items are shown as goals but stay locked: this prototype has no real accounts or followers and no genuine verification evidence. No rewards for rare species, precise locations, transactions or collecting wildlife. Observe safely without disturbing habitats.</p>
             <p><strong>Randomized digital collectibles are unique within this local prototype only, not guaranteed unique globally. No cash, trade, NFT, blockchain or financial value.</strong> Local data can be edited or erased; this is not fraud-resistant validation. Profile/rewards are not in journal backups.</p>
           </details>
