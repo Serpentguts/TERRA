@@ -1,7 +1,28 @@
 import os
 from flask import Flask, send_from_directory, jsonify, request
 
-import agent_api
+
+
+def load_env_file(path=".env"):
+    """Read KEY=value lines from a private .env file (git-ignored, never served). Real environment variables win."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key, value = key.strip(), value.strip().strip('"').strip("'")
+                if key.replace("_", "").isalnum() and key not in os.environ:
+                    os.environ[key] = value
+    except OSError:
+        pass
+
+
+load_env_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+
+import agent_api  # noqa: E402  (after .env so keys are visible)
+import weather_api  # noqa: E402
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 9 * 1024 * 1024  # One photo for identification, plus form overhead.
@@ -48,6 +69,14 @@ def identify():
         return jsonify({"error": "bad_image", "message": "Send one JPEG or PNG photo up to 8 MB."}), 413
     try:
         return jsonify(agent_api.identify(upload.read() if upload else b"", request.form.get("organ", "auto")))
+    except agent_api.AgentError as error:
+        return agent_error(error)
+
+
+@app.route("/api/weather")
+def weather():
+    try:
+        return jsonify(weather_api.weather(request.args.get("lat"), request.args.get("lon")))
     except agent_api.AgentError as error:
         return agent_error(error)
 

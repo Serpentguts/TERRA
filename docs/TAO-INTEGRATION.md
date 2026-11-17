@@ -150,7 +150,7 @@ New ideas go here first, then move into a phase above when they're scheduled.
 
 ### Terrarium and gamification ideas (Nov 11)
 
-**Built Nov 17:** evolution (one resident per species; stages at 1/3/5 sightings) and the field-guide dex with eight sets and set rewards. **Built Nov 13:** 1, 2, 3, 4, 5, 6 (cards), 8 (ladybugs and aphids, frogs and flies, bees on flowers) plus daily streak achievements (3, 5, 7, 14 and 30 days). Still open: 6's "complete the guide" reward, 7 (more jars), 9 (social), 10 (snapshot), and turning over a log in 5.
+**Built Nov 17 (later):** habitat jars (desert, tide pool, rainforest; unlocked by matching finds) and opt-in real local weather (Open-Meteo via our server, location rounded to 0.1°) driving seasonal events. Next: habitat unlocks from map location (e.g. coastal finds), event-only rares and quests, and phenology-based events from community data (first bloom, first migrant) once accounts exist. **Built Nov 17:** evolution (one resident per species; stages at 1/3/5 sightings) and the field-guide dex with eight sets and set rewards. **Built Nov 13:** 1, 2, 3, 4, 5, 6 (cards), 8 (ladybugs and aphids, frogs and flies, bees on flowers) plus daily streak achievements (3, 5, 7, 14 and 30 days). Still open: 6's "complete the guide" reward, 7 (more jars), 9 (social), 10 (snapshot), and turning over a log in 5.
 
 Ideas for making the terrarium more engaging, roughly in recommended order:
 

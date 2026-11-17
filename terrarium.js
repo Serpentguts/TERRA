@@ -304,12 +304,15 @@ const TerraTerrarium = (() => {
   let env = { season: "autumn", phase: "day", daylight: 1 }, envOverride = { season: null, phase: null }, envClock = 0;
   let southern = false, sandbox = false, today = new Date().toLocaleDateString("en-CA");
   let findList = [], gardenList = [], questDecorList = [], onRare = () => {};
+  // Habitat jar and real weather. `realWeather` comes from TerraWeather; `weatherOverride` is the sandbox preview.
+  let habitat = "forest", realWeather = null, weatherOverride = null, activeEvents = [], lightning = 0;
+  const skyWeather = () => weatherOverride ?? realWeather;
   const weather = { rain: 0, drops: [], splashes: [], mist: 0, mistDrops: [] };
   const life = { aphids: [], aphidTimer: 8, flies: [], fireflies: [], seeds: [], visitors: [], visitorTimer: 20, tongue: null };
   const hashText = text => { let h = 2166136261; for (const c of String(text)) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   const readRare = () => { try { const s = JSON.parse(localStorage.getItem(RARE_KEY)) || {}; return { seen: Number.isInteger(s.seen) ? s.seen : null, rare: s.rare && typeof s.rare === "object" ? s.rare : {} }; } catch { return { seen: null, rare: {} }; } };
   const writeRare = state => { try { localStorage.setItem(RARE_KEY, JSON.stringify(state)); } catch { /* Per-browser log; the jar still works. */ } };
-  const rareOdds = id => (TerraLife.RARES.find(r => r.id === id)?.odds ?? 0) * (sandbox ? 8 : 1);
+  const rareOdds = id => (TerraLife.RARES.find(r => r.id === id)?.odds ?? 0) * (sandbox ? 8 : 1) * (typeof TerraWeather !== "undefined" ? TerraWeather.boost(activeEvents, id) : 1);
   const announced = new Set();
   function logRare(id) {
     const rare = TerraLife.RARES.find(r => r.id === id);
@@ -333,20 +336,28 @@ const TerraTerrarium = (() => {
     const sunrise = { winter: 7.2, spring: 6.4, summer: 5.8, autumn: 6.8 }[season], sunset = { winter: 16.9, spring: 19.3, summer: 20.4, autumn: 18.2 }[season];
     const phase = envOverride.phase ?? (Math.abs(hour - sunrise) < 0.75 ? "dawn" : Math.abs(hour - sunset) < 0.75 ? "dusk" : hour > sunrise && hour < sunset ? "day" : "night");
     env = { season, phase, daylight: { day: 1, dawn: 0.62, dusk: 0.5, night: 0 }[phase] };
+    const w = skyWeather();
+    activeEvents = typeof TerraWeather !== "undefined" ? TerraWeather.events({ season, phase, month: now.getMonth(), southern }, w) : [];
     const sky = document.getElementById("terrarium-sky");
-    if (sky) sky.textContent = `${env.season[0].toUpperCase()}${env.season.slice(1)} · ${env.phase}${weather.rain > 0 ? " · raining" : ""}${envOverride.season || envOverride.phase ? " (preview)" : ""}`;
+    const wText = w ? ` · ${typeof w.temperature === "number" ? `${Math.round(w.temperature)}°C ` : ""}${w.kind}${weatherOverride ? "" : " near you"}` : weather.rain > 0 ? " · raining" : "";
+    if (sky) sky.textContent = `${TerraLife.HABITATS[habitat].icon} ${env.season[0].toUpperCase()}${env.season.slice(1)} · ${env.phase}${wText}${envOverride.season || envOverride.phase || weatherOverride ? " (preview)" : ""}`;
+    const banner = document.getElementById("terrarium-event");
+    if (banner) {
+      banner.replaceChildren(...activeEvents.map(e => { const li = document.createElement("li"); li.dataset.event = e.id; const b = document.createElement("strong"); b.textContent = `${e.icon} ${e.name}`; li.append(b, ` ${e.text}`); return li; }));
+      banner.hidden = !activeEvents.length;
+    }
   }
   const night = () => env.phase === "night";
 
   // Pond appears when something in the jar needs water.
   // Residents' current evolution form decides how they move and look.
   const isStatic = r => r.f.move === "static" || r.f.move === "static-icon";
-  const pond = () => world.residents.some(r => r.f.move === "swim" || r.kind === "frog") ? { x1: 0.04, x2: 0.24 } : null;
+  const pond = () => habitat === "tidepool" ? { x1: 0.3, x2: 0.92 } : habitat === "desert" ? null : world.residents.some(r => r.f.move === "swim" || r.kind === "frog") ? { x1: 0.04, x2: 0.24 } : null;
   function residentX(id, f) {
     let x = 0.06 + (hashText(id) % 880) / 1000;
     const p = pond(), move = f.move === "static-icon" ? "static" : f.move;
     if (move === "swim" && p) return lerp(p.x1 + 0.03, p.x2 - 0.03, (hashText(id) % 100) / 100);
-    if (p && x > p.x1 - 0.02 && x < p.x2 + 0.02 && move === "static") x = p.x2 + 0.04 + (x - p.x1) * 0.5;
+    if (p && habitat !== "tidepool" && x > p.x1 - 0.02 && x < p.x2 + 0.02 && move === "static") x = p.x2 + 0.04 + (x - p.x1) * 0.5;
     if (world.tree && Math.abs(x - world.tree.x) < 0.05 && move === "static") x += 0.08;
     return clamp(x, 0.05, 0.95);
   }
@@ -405,10 +416,15 @@ const TerraTerrarium = (() => {
     say("You scattered seed. Watch who comes to eat!");
   }
   function updateWeather(dt) {
+    const w = skyWeather();
+    if (w && ["drizzle", "rain", "storm"].includes(w.kind) && weather.rain < 3) weather.rain = 6;
+    if (w?.kind === "storm") { lightning = Math.max(0, lightning - dt); if (Math.random() < dt * 0.15) { lightning = 0.35; if (world.fungus && Math.random() < 0.5) spawnFruit(pick(fruitingSpots())); } }
+    else lightning = 0;
+    if (typeof TerraWeather !== "undefined" && TerraWeather.effect(activeEvents, "mushroomFlush") && world.fungus && Math.random() < dt * 0.04) spawnFruit(pick(fruitingSpots()));
     if (weather.rain > 0) {
       weather.rain -= dt;
-      for (let i = 0; i < W * dt * 0.9; i++) weather.drops.push({ x: rand(0, W), y: rand(-20, 0), v: rand(260, 340) });
-      if (weather.rain <= 0) { computeEnv(); say("The rain has stopped. Everything is glistening."); }
+      for (let i = 0; i < W * dt * (w?.kind === "drizzle" ? 0.3 : w?.kind === "storm" ? 1.6 : 0.9); i++) weather.drops.push({ x: rand(0, W), y: rand(-20, 0), v: rand(260, 340) });
+      if (weather.rain <= 0 && !(w && ["drizzle", "rain", "storm"].includes(w.kind))) { computeEnv(); say("The rain has stopped. Everything is glistening."); }
     }
     for (const d of weather.drops) d.y += d.v * dt;
     for (const d of weather.drops.filter(d => d.y >= ground)) weather.splashes.push({ x: d.x, life: 0.25 });
@@ -527,16 +543,19 @@ const TerraTerrarium = (() => {
     if (life.visitorTimer <= 0) {
       life.visitorTimer = 30;
       if (night() && !life.visitors.some(v => v.id === "luna-moth") && Math.random() < rareOdds("luna-moth")) { life.visitors.push({ id: "luna-moth", x: -10, y: H * 0.3, life: 50 }); logRare("luna-moth"); }
+      if (typeof TerraWeather !== "undefined" && TerraWeather.effect(activeEvents, "migrants") && !night()) for (let i = 0; i < 3; i++) life.visitors.push({ id: "migrant", x: -10 - i * 18, y: H * (0.12 + i * 0.05), life: 40, phase: i });
       if ((env.phase === "dawn" || env.phase === "dusk") && !life.visitors.some(v => v.id === "white-stag") && Math.random() < rareOdds("white-stag")) { life.visitors.push({ id: "white-stag", x: -20, y: ground + 4, life: 30 }); logRare("white-stag"); }
     }
     for (const v of life.visitors) {
       v.life -= dt;
       if (v.id === "luna-moth") { v.x += dt * W / 45; v.y = H * 0.3 + Math.sin(time * 2) * 20; }
+      else if (v.id === "migrant") { v.x += dt * W / 14; v.y += Math.sin(time * 3 + v.phase) * 0.3; }
       else v.x += dt * W / 28;
     }
     life.visitors = life.visitors.filter(v => v.life > 0 && v.x < W + 30);
     // Fireflies on warm nights.
-    const want = night() && env.season !== "winter" ? 9 : 0;
+    const fireflyBoost = (typeof TerraWeather !== "undefined" && TerraWeather.effect(activeEvents, "fireflies")) || 1;
+    const want = night() && env.season !== "winter" && !(skyWeather() && ["rain", "storm", "snow"].includes(skyWeather().kind)) ? 9 * fireflyBoost : 0;
     while (life.fireflies.length < want) life.fireflies.push({ x: rand(0, W), y: rand(H * 0.25, ground - 8), t: rand(0, 6) });
     if (!want) life.fireflies = [];
     for (const f of life.fireflies) { f.t += dt; f.x = clamp(f.x + Math.sin(f.t * 0.9) * dt * 12, 4, W - 4); f.y = clamp(f.y + Math.cos(f.t * 1.3) * dt * 9, H * 0.15, ground - 4); }
@@ -644,7 +663,7 @@ const TerraTerrarium = (() => {
       case "swim": return { x, y: r.kind === "duck" ? ground + 4 : ground + 12 };
       case "burrow": return { x, y: ground + (H - ground) * 0.45 };
       case "dangle": { const anchor = world.tree ? treeShape().top + treeShape().r * 1.3 : 6; return { x, y: anchor + 30 + Math.sin(r.t * 0.8) * 12, anchor }; }
-      case "perch": { if (world.tree) { const t = treeShape(); return { x: t.x + t.r * 0.35, y: t.top + t.r * 0.95 }; } return { x, y: ground + 3 }; }
+      case "perch": { if (habitat === "rainforest") { const bx = x; return { x: bx, y: H * 0.22 + (H * 0.1) * Math.sin(Math.PI * bx / W) + 14 + Math.sin(r.t * 0.6) * 2 }; } if (world.tree) { const t = treeShape(); return { x: t.x + t.r * 0.35, y: t.top + t.r * 0.95 }; } return { x, y: ground + 3 }; }
       default: return { x, y: ground + 3 - (r.climb ?? 0) * plantHeight() };
     }
   }
@@ -722,11 +741,16 @@ const TerraTerrarium = (() => {
     ctx.beginPath(); for (const d of weather.drops) { ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - 1, d.y + 7); } ctx.stroke();
     for (const s of weather.splashes) { ctx.strokeStyle = `rgba(220,235,250,${s.life * 3})`; ctx.beginPath(); ctx.ellipse(s.x, ground + 1, 3 - s.life * 6, 1, 0, 0, 7); ctx.stroke(); }
     for (const m of weather.mistDrops) { ctx.fillStyle = `rgba(210,235,255,${clamp(m.life, 0, 1) * 0.8})`; ctx.beginPath(); ctx.arc(m.x, m.y, 1.6, 0, 7); ctx.fill(); }
-    if (env.season === "winter") { ctx.fillStyle = "rgba(255,255,255,.9)"; const flakes = seeded(17); for (let i = 0; i < 30; i++) { const fx = (flakes() * W + Math.sin(time + i) * 8) % W, fy = (flakes() * H + time * (12 + flakes() * 10)) % ground; ctx.beginPath(); ctx.arc(fx, fy, 1.4, 0, 7); ctx.fill(); } }
+    const snowing = skyWeather()?.kind === "snow" || (env.season === "winter" && !skyWeather());
+    if (snowing) { ctx.fillStyle = "rgba(255,255,255,.9)"; const flakes = seeded(17); for (let i = 0; i < (skyWeather()?.kind === "snow" ? 70 : 30); i++) { const fx = (flakes() * W + Math.sin(time + i) * 8) % W, fy = (flakes() * H + time * (12 + flakes() * 10)) % ground; ctx.beginPath(); ctx.arc(fx, fy, 1.4, 0, 7); ctx.fill(); } }
     for (const s of life.seeds) { ctx.fillStyle = "#e3c78a"; ctx.fillRect(X(s.x), ground, 2, 1.5); }
     for (const a of life.aphids) if (world.plant) { ctx.fillStyle = "#b7d86b"; ctx.beginPath(); ctx.ellipse(X(world.plant.x) + a.u * plantHeight() * 0.6, ground - a.v * plantHeight(), 1.6, 1.1, 0, 0, 7); ctx.fill(); }
     for (const f of life.flies) { ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(X(f.x), f.y * ground, 1.4, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.fillRect(X(f.x) - 2, f.y * ground - 2 - Math.abs(Math.sin(time * 40)), 4, 1); }
     if (life.tongue) { ctx.strokeStyle = "#e86a8a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(life.tongue.from.x, life.tongue.from.y); ctx.lineTo(life.tongue.to.x, life.tongue.to.y); ctx.stroke(); }
+    const effect = name => typeof TerraWeather !== "undefined" && TerraWeather.effect(activeEvents, name);
+    if (effect("frost")) { ctx.fillStyle = "rgba(235,245,255,.75)"; ctx.fillRect(0, ground - 4, W, 4); const fr = seeded(29); for (let i = 0; i < 60; i++) ctx.fillRect(fr() * W, ground - 8 + fr() * 8, 2, 1); ctx.fillStyle = "rgba(220,235,250,.12)"; ctx.fillRect(0, 0, W, H); }
+    if (effect("fog")) { for (let i = 0; i < 3; i++) { const fg = ctx.createLinearGradient(0, ground - 70 - i * 30, 0, ground + 10); fg.addColorStop(0, "rgba(235,238,240,0)"); fg.addColorStop(0.6, "rgba(235,238,240,.45)"); fg.addColorStop(1, "rgba(235,238,240,.2)"); ctx.fillStyle = fg; ctx.fillRect(Math.sin(time * 0.1 + i) * 30 - 30, ground - 70 - i * 30, W + 60, 80); } }
+    if (effect("shimmer") && habitat === "desert") { ctx.fillStyle = `rgba(255,220,150,${0.08 + 0.05 * Math.sin(time * 3)})`; ctx.fillRect(0, ground - 30, W, 30); }
     // Darken for dusk and night, then draw things that glow on top.
     const shade = { day: 0, dawn: 0.12, dusk: 0.2, night: 0.5 }[env.phase];
     if (shade) { ctx.fillStyle = env.phase === "night" ? `rgba(8,14,36,${shade})` : `rgba(80,40,60,${shade})`; ctx.fillRect(0, 0, W, H); }
@@ -735,8 +759,10 @@ const TerraTerrarium = (() => {
     if (env.daylight < 1) for (const d of world.decor.values()) if (d.kind === "fairyring") glow(X(d.x), decorY(d) - 3, 24, "rgba(190,255,200,.3)");
     for (const fr of world.fungus?.fruits ?? []) if (fr.glow) glow(X(fr.x), ground - 10 * fr.size, 22 + 8 * Math.sin(time * 2), `rgba(140,255,160,${night() ? 0.55 : 0.28})`);
     for (const f of life.fireflies) { const on = Math.sin(f.t * 3) > 0.3; if (on) glow(f.x, f.y, 9, "rgba(230,255,120,.9)"); }
+    if (lightning > 0) { ctx.fillStyle = `rgba(255,255,240,${lightning * 1.6})`; ctx.fillRect(0, 0, W, H); }
     for (const v of life.visitors) {
       if (v.id === "luna-moth") { glow(v.x, v.y, 18, "rgba(170,255,200,.35)"); emoji("🦋", v.x, v.y + 8, 20, { filter: "hue-rotate(90deg) saturate(1.6) brightness(1.4)", scaleY: 0.6 + 0.4 * Math.abs(Math.sin(time * 10)) }); }
+      else if (v.id === "migrant") emoji("🐦", v.x, v.y, 14, { flip: true, scaleY: 0.6 + 0.4 * Math.abs(Math.sin(time * 14 + v.phase)) });
       else emoji("🦌", v.x, v.y, 30, { filter: "grayscale(1) brightness(1.9)", flip: true });
     }
   }
@@ -765,7 +791,46 @@ const TerraTerrarium = (() => {
     ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(char, 0, 0); ctx.restore();
   }
-  function drawBackdrop() { drawSky(); drawGround(); }
+  // Habitat scenery: forest is the classic jar; the others get their own ground and props.
+  const HABITAT_SKY = { desert: ["#f5e3c4", "#f0d2a0"], tidepool: ["#dcecf3", "#c4e0e8"], rainforest: ["#d7eadb", "#bfdcc3"] };
+  function drawBackdrop() {
+    if (habitat === "forest") { drawSky(); drawGround(); return; }
+    drawSky();
+    if (env.phase === "day" && !(skyWeather() && ["rain", "storm", "fog", "snow"].includes(skyWeather().kind))) {
+      const [a, b] = HABITAT_SKY[habitat]; const g = ctx.createLinearGradient(0, 0, 0, ground); g.addColorStop(0, a); g.addColorStop(1, b); ctx.globalAlpha = 0.7; ctx.fillStyle = g; ctx.fillRect(0, 0, W, ground); ctx.globalAlpha = 1;
+    }
+    const rnd = seeded(41);
+    if (habitat === "desert") {
+      ctx.fillStyle = "#d9a66b"; ctx.beginPath(); ctx.moveTo(0, ground - 30); ctx.lineTo(W * 0.18, ground - 70); ctx.lineTo(W * 0.32, ground - 70); ctx.lineTo(W * 0.4, ground - 28); ctx.lineTo(W, ground - 20); ctx.lineTo(W, ground); ctx.lineTo(0, ground); ctx.fill();
+      ctx.fillStyle = "#e8c48c"; ctx.beginPath(); ctx.moveTo(0, ground); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, ground - 10 - Math.sin(x / 70) * 8); ctx.lineTo(W, ground); ctx.fill();
+      const sand = ctx.createLinearGradient(0, ground, 0, H); sand.addColorStop(0, "#e6c288"); sand.addColorStop(1, "#c79a5e"); ctx.fillStyle = sand; ctx.fillRect(0, ground, W, H - ground);
+      for (let i = 0; i < 40; i++) { ctx.fillStyle = `rgba(150,110,60,${0.2 + rnd() * 0.3})`; ctx.fillRect(rnd() * W, ground + 4 + rnd() * (H - ground - 6), 2, 1.5); }
+      for (const [x, s] of [[0.12, 1], [0.86, 1.4], [0.55, 0.8]]) { ctx.fillStyle = "#a88a6a"; ctx.beginPath(); ctx.ellipse(X(x), ground + 2, 16 * s, 8 * s, 0, Math.PI, 0); ctx.fill(); }
+    } else if (habitat === "tidepool") {
+      ctx.fillStyle = "#6f9fb8"; ctx.fillRect(0, ground - 40, W, 40);
+      ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 1.5; for (let i = 0; i < 4; i++) { ctx.beginPath(); for (let x = 0; x <= W; x += 10) ctx.lineTo(x, ground - 36 + i * 9 + Math.sin(x / 30 + time * 1.5 + i) * 2); ctx.stroke(); }
+      const rock = ctx.createLinearGradient(0, ground, 0, H); rock.addColorStop(0, "#8a8478"); rock.addColorStop(1, "#5f5a52"); ctx.fillStyle = rock; ctx.fillRect(0, ground, W, H - ground);
+      for (let i = 0; i < 9; i++) { ctx.fillStyle = `rgb(${110 + rnd() * 30},${105 + rnd() * 25},${95 + rnd() * 20})`; ctx.beginPath(); ctx.ellipse(rnd() * W, ground + 2, 18 + rnd() * 24, 10 + rnd() * 8, 0, Math.PI, 0); ctx.fill(); }
+      const p = pond(); const cx = X((p.x1 + p.x2) / 2), rx = X(p.x2 - p.x1) / 2;
+      ctx.fillStyle = "#3f7f95"; ctx.beginPath(); ctx.ellipse(cx, ground + 8, rx, 14, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.22)"; ctx.beginPath(); ctx.ellipse(cx - rx * 0.4, ground + 4, rx * 0.3, 2, 0, 0, 7); ctx.fill();
+    } else if (habitat === "rainforest") {
+      for (let i = 0; i < 9; i++) {
+        const x = rnd() * W, y = ground - 40 - rnd() * 80, len = 34 + rnd() * 30, ang = rnd() * 1.6 - 0.8 + Math.sin(time * 0.6 + i) * 0.04;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+        ctx.fillStyle = ["#2f6a3c", "#3b7a45", "#28593a"][i % 3];
+        ctx.beginPath(); ctx.moveTo(-len, 0); ctx.quadraticCurveTo(0, -len * 0.45, len, 0); ctx.quadraticCurveTo(0, len * 0.45, -len, 0); ctx.fill();
+        ctx.strokeStyle = "rgba(200,230,190,.5)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(len, 0); ctx.stroke();
+        for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(k * len / 4, 0); ctx.lineTo(k * len / 4 + len / 6, -len * 0.18); ctx.moveTo(k * len / 4, 0); ctx.lineTo(k * len / 4 + len / 6, len * 0.18); ctx.stroke(); }
+        ctx.restore();
+      }
+      ctx.strokeStyle = "#5b4027"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(0, H * 0.22); ctx.quadraticCurveTo(W * 0.5, H * 0.32, W, H * 0.2); ctx.stroke();
+      ctx.strokeStyle = "#4f8a3c"; ctx.lineWidth = 1.6; for (let i = 0; i < 9; i++) { const x = W * (0.08 + i * 0.11); ctx.beginPath(); ctx.moveTo(x, H * 0.25); ctx.quadraticCurveTo(x + Math.sin(time + i) * 6, H * 0.4, x + 4, H * (0.45 + (i % 3) * 0.07)); ctx.stroke(); }
+      const soil = ctx.createLinearGradient(0, ground, 0, H); soil.addColorStop(0, "#4a3523"); soil.addColorStop(1, "#33251a"); ctx.fillStyle = soil; ctx.fillRect(0, ground, W, H - ground);
+      ctx.fillStyle = "#3f7a3a"; for (let i = 0; i < 14; i++) { const x = rnd() * W; ctx.beginPath(); ctx.ellipse(x, ground - 4, 18, 6, rnd() - 0.5, 0, 7); ctx.fill(); }
+      ctx.fillStyle = `rgba(230,245,235,${0.12 + 0.05 * Math.sin(time * 0.5)})`; ctx.fillRect(0, ground - 60, W, 60);
+    }
+  }
   function drawMycelium() {
     const f = world.fungus;
     const xray = selected === "obs5", resting = !f.fruits.length;
@@ -1092,7 +1157,8 @@ const TerraTerrarium = (() => {
   // entries: [{ achievement, grant }] for every item on display. growth: achievements unlocked.
   // entries: [{ achievement, grant }] for every item on display. growth: achievements unlocked.
   // finds: TerraLife.inhabitants(); garden/questDecor: TerraQuests.inventory(); journalCount drives rain.
-  function show(entries, { growth = 0, fresh = [], label = "", finds = [], garden = [], questDecor = [], journalCount = null, south = false, sandbox: preview = false, date } = {}) {
+  function show(entries, { growth = 0, fresh = [], label = "", finds = [], garden = [], questDecor = [], journalCount = null, south = false, sandbox: preview = false, date, jar = "forest" } = {}) {
+    if (jar !== habitat) { habitat = TerraLife.HABITATS[jar] ? jar : "forest"; world.residents = []; for (const id of [...world.decor.keys()]) world.decor.delete(id); }
     items = new Map(entries.map(e => [e.achievement.id, e]));
     level = growth; findList = finds; gardenList = garden; questDecorList = questDecor; southern = south; sandbox = preview;
     if (date) today = date;
@@ -1111,17 +1177,19 @@ const TerraTerrarium = (() => {
     render(); wake();
   }
   function setSpeed(next) { if (next === 0) paused = true; else { paused = false; speed = next; } wake(); }
-  function setEnvironment({ season = null, phase = null } = {}) { envOverride = { season, phase }; life.fireflies = []; computeEnv(); render(); }
+  function setEnvironment({ season = null, phase = null, weather: preview = null } = {}) { envOverride = { season, phase }; weatherOverride = preview; life.fireflies = []; computeEnv(); render(); }
+  // Real local weather from TerraWeather (or null to go back to the calendar only).
+  function setWeather(w) { realWeather = w && TerraWeather.KINDS.includes(w.kind) ? { kind: w.kind, temperature: w.temperature ?? null, precipitation: w.precipitation ?? null } : null; computeEnv(); render(); }
   function care(kind) { if (kind === "mist") mist(); else if (kind === "seed") scatter(); else if (kind === "rain") startRain(30, "You made it rain. Mushrooms love this."); wake(); render(); }
   // Rare sightings, like a field guide of shinies: every rare, with the date you first saw it.
   function rares() { const seen = readRare().rare; return TerraLife.RARES.map(r => ({ ...r, seen: seen[r.id] ?? null })); }
   return Object.freeze({
-    show, select, wake, setSpeed, render, setEnvironment, care, rares,
+    show, select, wake, setSpeed, render, setEnvironment, setWeather, care, rares,
     onMove(fn) { onMove = fn; },
     onRare(fn) { onRare = fn; },
     step(seconds, dt = 0.05) { for (let t = 0; t < seconds; t += dt) step(dt); render(); },
     debug: () => ({ selected, paused, speed, level, bird: world.bird && { state: world.bird.state }, snail: world.snail && { eating: world.snail.eating > 0 }, fruits: world.fungus?.fruits.map(f => ({ phase: f.phase, species: f.species, x: f.x })) ?? [], mycelium: world.fungus?.links.length ?? 0, nodes: world.fungus?.nodes.length ?? 0, decor: Object.fromEntries([...world.decor.values()].map(d => [d.id, { x: d.x, y: d.y }])), items: [...items.keys()],
-      env: { ...env }, raining: weather.rain > 0, residents: world.residents.map(r => ({ id: r.id, kind: r.kind, x: r.x, golden: Boolean(r.golden) })), garden: world.garden.map(g => g.id),
+      env: { ...env }, raining: weather.rain > 0, habitat, events: activeEvents.map(e => e.id), weather: skyWeather()?.kind ?? null, lightning: lightning > 0, residents: world.residents.map(r => ({ id: r.id, kind: r.kind, x: r.x, golden: Boolean(r.golden) })), garden: world.garden.map(g => g.id),
       aphids: life.aphids.length, flies: life.flies.length, fireflies: life.fireflies.length, seeds: life.seeds.length, visitors: life.visitors.map(v => v.id), albino: Boolean(world.snail?.albino), ladybugClimb: world.ladybug?.climb ?? 0 }),
     get paused() { return paused; }
   });

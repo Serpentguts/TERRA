@@ -4,3 +4,8 @@ node_modules/
 __pycache__/
 venv/
 .venv/
+
+# Private keys (PLANTNET_API_KEY, OPEN_METEO_API_KEY). Never commit.
+.env
+.env.*
+!.env.example

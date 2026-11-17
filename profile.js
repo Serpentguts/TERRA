@@ -237,7 +237,76 @@
     TerraTerrarium.care(button.dataset.care);
     $("terrarium-live").textContent = $("terrarium-caption").textContent;
   });
-  const previewEnv = () => TerraTerrarium.setEnvironment({ season: $("terrarium-season").value || null, phase: $("terrarium-time").value || null });
+  const PREVIEW_WEATHER = { clear: { kind: "clear", temperature: 18 }, rain: { kind: "rain", temperature: 12, precipitation: 1 }, snow: { kind: "snow", temperature: -1 }, fog: { kind: "fog", temperature: 9 }, storm: { kind: "storm", temperature: 16, precipitation: 4 }, heat: { kind: "clear", temperature: 36 }, frost: { kind: "clear", temperature: -4 } };
+  const previewEnv = () => TerraTerrarium.setEnvironment({ season: $("terrarium-season").value || null, phase: $("terrarium-time").value || null, weather: PREVIEW_WEATHER[$("terrarium-weather").value] ?? null });
+  $("terrarium-weather").addEventListener("change", previewEnv);
+  // ---- Habitat jars ----
+  const JAR_KEY = "terra.jar.v1";
+  const readJar = () => { try { const j = JSON.parse(localStorage.getItem(JAR_KEY))?.habitat; return TerraLife.HABITATS[j] ? j : "forest"; } catch { return "forest"; } };
+  const HABITAT_HINTS = { desert: "Log a desert species (cactus, lizard, snake, scorpion) to unlock.", tidepool: "Log a tide-pool species (crab, sea star, anemone, octopus, shrimp) to unlock.", rainforest: "Log a rainforest species (parrot, monkey, sloth, orchid) to unlock." };
+  function renderJars(unlocked, current) {
+    const box = $("jar-switcher"); box.replaceChildren();
+    for (const [id, h] of Object.entries(TerraLife.HABITATS)) {
+      const b = document.createElement("button"); b.type = "button"; b.dataset.jar = id;
+      const open = unlocked.has(id);
+      b.textContent = `${open ? h.icon : "🔒"} ${h.name}`;
+      b.setAttribute("aria-pressed", String(id === current));
+      if (!open) { b.classList.add("locked"); b.title = HABITAT_HINTS[id]; b.setAttribute("aria-label", `${h.name}, locked. ${HABITAT_HINTS[id]}`); }
+      b.addEventListener("click", () => {
+        if (!open) { $("jar-hint").textContent = `🔒 ${h.name}: ${HABITAT_HINTS[id]}`; return; }
+        try { localStorage.setItem(JAR_KEY, JSON.stringify({ version: 1, habitat: id })); } catch { /* Preference only. */ }
+        $("jar-hint").textContent = "";
+        refresh();
+      });
+      box.append(b);
+    }
+    const hint = document.createElement("p"); hint.id = "jar-hint"; hint.className = "jar-hint"; hint.setAttribute("role", "status");
+    box.append(hint);
+  }
+  // ---- Real local weather (opt-in) ----
+  let weatherState = null;
+  try { weatherState = TerraWeather.parse(localStorage.getItem(TerraWeather.KEY)); } catch { weatherState = null; }
+  const saveWeather = next => { weatherState = next; try { localStorage.setItem(TerraWeather.KEY, JSON.stringify(next)); } catch { /* Kept for this visit. */ } };
+  $("weather-enabled").checked = Boolean(weatherState?.enabled);
+  function latestMappedSpot() {
+    try {
+      const lat = l => l?.space === TerraData.GEO ? (Number.isFinite(l.y) ? [l.y, l.x] : Number.isFinite(l.y1) ? [(l.y1 + l.y2) / 2, (l.x1 + l.x2) / 2] : null) : null;
+      const r = TerraData.active(readObservations()).filter(r => lat(r.location)).sort((a, b) => b.date.localeCompare(a.date))[0];
+      return r ? lat(r.location) : null;
+    } catch { return null; }
+  }
+  function describeWeather(w, cached) {
+    return `${typeof w.temperature === "number" ? `${Math.round(w.temperature)}°C, ` : ""}${w.kind} near you${weatherState?.source === "observation" ? " (from your latest mapped find)" : ""}${cached ? "" : ""}. Location rounded to about 11 km.`;
+  }
+  async function refreshWeather(force = false) {
+    if (!weatherState?.enabled || weatherState.lat === null) { TerraTerrarium.setWeather(null); $("weather-status").textContent = ""; return; }
+    if (!force && !TerraWeather.stale(weatherState)) { TerraTerrarium.setWeather(weatherState.data); $("weather-status").textContent = describeWeather(weatherState.data, true); return; }
+    $("weather-status").textContent = "Checking the weather…";
+    try {
+      const data = await TerraWeather.fetchWeather(weatherState.lat, weatherState.lon);
+      saveWeather({ ...weatherState, fetched: Date.now(), data });
+      TerraTerrarium.setWeather(data);
+      $("weather-status").textContent = describeWeather(data);
+    } catch (error) {
+      if (weatherState.data) TerraTerrarium.setWeather(weatherState.data);
+      $("weather-status").textContent = `${error.message.includes("fetch") || error instanceof TypeError ? "Local weather needs the TERRA server and an internet connection." : error.message} The jar is using ${weatherState.data ? "the last weather it saw" : "the calendar"}.`;
+    }
+  }
+  $("weather-enabled").addEventListener("change", () => {
+    const base = weatherState ?? TerraWeather.parse(null);
+    if (!$("weather-enabled").checked) { saveWeather({ ...base, enabled: false }); refreshWeather(); return; }
+    const useSpot = (lat, lon, source) => { saveWeather({ ...base, enabled: true, source, lat: TerraWeather.round1(lat), lon: TerraWeather.round1(lon), fetched: null, data: null }); refreshWeather(true); };
+    const fallback = () => {
+      const spot = latestMappedSpot();
+      if (spot) useSpot(spot[0], spot[1], "observation");
+      else { $("weather-enabled").checked = false; $("weather-status").textContent = "To use local weather, allow location access or record an observation with a map location."; }
+    };
+    $("weather-status").textContent = "Finding your approximate location…";
+    if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => useSpot(p.coords.latitude, p.coords.longitude, "device"), fallback, { maximumAge: 3600000, timeout: 8000, enableHighAccuracy: false });
+    else fallback();
+  });
+  refreshWeather();
+  setInterval(() => { if (weatherState?.enabled && !document.hidden) refreshWeather(); }, 10 * 60 * 1000);
   $("terrarium-season").addEventListener("change", previewEnv);
   $("terrarium-time").addEventListener("change", previewEnv);
   // Rare sightings: a "???" card for each one you haven't spotted yet.
@@ -310,7 +379,8 @@
   }
   TerraTerrarium.onRare(() => renderRares());
   // Sample finds for the sandbox, so you can see how journal entries come to life.
-  const SAMPLE_FINDS = ["frog", "fern", "bee", "fish", "spider", "worm", "shelf", "flower", "moss", "lichen", "rabbit", "beetle", "butterfly", "sapling", "sparrow"]
+  const SAMPLE_FINDS = ["frog", "fern", "bee", "fish", "spider", "worm", "shelf", "flower", "moss", "lichen", "rabbit", "beetle", "butterfly", "sapling", "sparrow",
+    "cactus", "lizard", "snake", "scorpion", "crab", "seastar", "anemone", "octopus", "shrimp", "parrot", "monkey", "sloth", "orchid"]
     .map((kind, i) => { const stage = i % 3, count = TerraLife.STAGE_AT[stage]; return { id: `s:sample-${kind}`, key: `sample-${kind}`, kind, habitat: TerraLife.habitatOf(kind), name: TerraLife.KINDS[kind].name, scientific: "", count, stage, next: TerraLife.nextAt(stage), first: "Sample", last: "Sample", unknown: false }; });
   document.addEventListener("terra:participation-changed", () => refresh());
   document.addEventListener("terra:workspace-changed", () => refresh());
@@ -395,13 +465,22 @@
       const sampleToken = i => i.toString(16).padStart(32, "0");
       const speciesNow = TerraLife.species(active);
       const dexRewards = renderDex(speciesNow);
-      const living = sandbox
-        ? { finds: SAMPLE_FINDS,
+      // Which habitat jars are open, and which one is showing.
+      const openJars = new Set(["forest", ...(sandbox ? Object.keys(TerraLife.HABITATS) : speciesNow.map(sp => sp.habitat))]);
+      let jar = readJar(); if (!openJars.has(jar)) jar = "forest";
+      renderJars(openJars, jar);
+      const inJar = list => list.filter(sp => sp.habitat === jar);
+      const setRewardsHere = dexRewards.filter(r => (["desert", "tidepool", "rainforest"].includes(r.id) ? r.id : "forest") === jar);
+      const living = jar !== "forest"
+        ? { finds: inJar(sandbox ? SAMPLE_FINDS : speciesNow), garden: [], questDecor: sandbox ? [] : setRewardsHere, ...(sandbox ? {} : { journalCount: active.length }) }
+        : sandbox
+        ? { finds: inJar(SAMPLE_FINDS),
             garden: TerraQuests.SEEDS.map((seed, i) => ({ ...seed, token: sampleToken(i + 1), planted: "2000-01-01" })),
             questDecor: TerraQuests.DECOR.map((d, i) => ({ ...d, token: sampleToken(i + 20), ...(sandboxSpots[`q:${sampleToken(i + 20)}`] ?? {}) })) }
-        : { finds: speciesNow, garden: inventory.seeds, questDecor: [...inventory.decor, ...dexRewards], journalCount: active.length };
-      TerraTerrarium.show(entries, { growth: sandbox ? TerraRewards.CATALOG.length : next.grants.length, fresh: sandbox ? [] : [...fresh], label: sandbox ? "Sandbox terrarium with every item." : label,
-        ...living, south: southern(records), sandbox, date: localToday() });
+        : { finds: inJar(speciesNow), garden: inventory.seeds, questDecor: [...inventory.decor, ...setRewardsHere], journalCount: active.length };
+      TerraTerrarium.show(jar === "forest" ? entries : [], { growth: jar !== "forest" ? 0 : sandbox ? TerraRewards.CATALOG.length : next.grants.length, fresh: sandbox || jar !== "forest" ? [] : [...fresh],
+        label: `${TerraLife.HABITATS[jar].name}. ${sandbox ? "Sandbox terrarium with every item." : label}`,
+        ...living, south: southern(records), sandbox, date: localToday(), jar });
       renderRares();
       for (const achievement of TerraRewards.CATALOG) {
         const grant = next.grants.find(g => g.badge === achievement.id);

@@ -23,6 +23,7 @@
   <script src="dashboard.js" defer></script>
   <script src="resume.js" defer></script>
   <script src="quests.js" defer></script>
+  <script src="weather.js" defer></script>
   <script src="terrarium-life.js" defer></script>
   <script src="dex.js" defer></script>
   <script src="terrarium.js" defer></script>
@@ -228,6 +229,7 @@
             </div>
           </div>
           <p id="terrarium-sandbox-note" class="sandbox-note" hidden>Sandbox: every item, sample finds and quest rewards are in the jar so you can play with them. Nothing here is earned or saved; turn it off to see your own collection.</p>
+          <div id="jar-switcher" class="jar-switcher" role="group" aria-label="Habitat jars"></div>
           <div class="terrarium-env">
             <span id="terrarium-sky" class="terrarium-sky"></span>
             <div class="terrarium-care" role="group" aria-label="Care for the jar">
@@ -238,8 +240,14 @@
           <div id="terrarium-preview" class="terrarium-preview" hidden>
             <label>Season <select id="terrarium-season"><option value="">Real</option><option value="spring">Spring</option><option value="summer">Summer</option><option value="autumn">Autumn</option><option value="winter">Winter</option></select></label>
             <label>Time <select id="terrarium-time"><option value="">Real</option><option value="dawn">Dawn</option><option value="day">Day</option><option value="dusk">Dusk</option><option value="night">Night</option></select></label>
+            <label>Weather <select id="terrarium-weather"><option value="">Real</option><option value="clear">Clear</option><option value="rain">Rain</option><option value="snow">Snow</option><option value="fog">Fog</option><option value="storm">Storm</option><option value="heat">Heat wave</option><option value="frost">Frost</option></select></label>
             <button type="button" class="secondary-button" data-care="rain"><span aria-hidden="true">🌧️</span> Make it rain</button>
           </div>
+          <div class="terrarium-weather">
+            <label class="weather-toggle"><input id="weather-enabled" type="checkbox"> Use real local weather</label>
+            <span id="weather-status" class="weather-status" role="status" aria-live="polite"></span>
+          </div>
+          <ul id="terrarium-event" class="terrarium-event" aria-label="Seasonal events" hidden></ul>
           <div id="rewards-terrarium" class="rewards-terrarium"></div>
           <p id="terrarium-live" class="visually-hidden" role="status" aria-live="polite"></p>
           <p id="terrarium-caption" class="terrarium-caption">Tap an item, or pick one in your collection, to see what it's up to.</p>

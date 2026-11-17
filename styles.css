@@ -703,3 +703,17 @@ body[data-workspace="professional"] #home-quests, body[data-workspace="professio
 .dex-stage span.on { background: #3f7a55; }
 .dex-card.stage-2 .dex-stage span.on { background: #c99a1e; }
 .dex-empty { color: var(--muted); }
+/* Habitat jars, weather and events */
+.jar-switcher { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+.jar-switcher button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font: inherit; cursor: pointer; }
+.jar-switcher button[aria-pressed="true"] { border-color: var(--green); background: var(--green); color: #fff; }
+.jar-switcher button.locked { color: var(--muted); background: #f3f3ee; cursor: help; }
+.jar-hint { width: 100%; margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.jar-hint:empty { display: none; }
+.terrarium-weather { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 8px; font-size: 14px; }
+.weather-toggle { display: flex; align-items: center; gap: 6px; }
+.weather-toggle input { width: 18px; height: 18px; accent-color: var(--green); }
+.weather-status { color: var(--muted); }
+.terrarium-event { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.terrarium-event[hidden] { display: none; }
+.terrarium-event li { padding: 8px 12px; border-radius: 10px; background: linear-gradient(90deg, #fff6df, #f4f8ef); border: 1px solid #ecd9a8; font-size: 14px; }
