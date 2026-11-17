@@ -1,37 +1,68 @@
 "use strict";
 
 // Pure, versioned local participation rules. No verification or financial claims.
+// Each achievement unlocks one nature item for the profile terrarium, once, ever.
 const TerraRewards = (() => {
   const KEY = "terra.rewards.v1";
-  const labels = { first: "First observation", week: "Seven-day fieldbook", project: "Project completion" };
-  const icons = ["🌿", "🍄", "❧", "✿"];
-  const colors = ["#214c3c", "#78652a", "#634b7e", "#286579"];
+  // `metric` names a value from progress(); `source: "unavailable"` means TERRA has no
+  // genuine evidence for it yet (no accounts, no verification service), so it can be
+  // shown as a goal but never unlocked from local data.
+  const CATALOG = Object.freeze([
+    { id: "first", group: "Field notes", label: "First observation", goal: "Record 1 observation", metric: "observations", target: 1, item: "Sprout", icon: "🌱" },
+    { id: "obs5", group: "Field notes", label: "Five observations", goal: "Record 5 observations", metric: "observations", target: 5, item: "Toadstool", icon: "🍄" },
+    { id: "obs10", group: "Field notes", label: "Ten observations", goal: "Record 10 observations", metric: "observations", target: 10, item: "Fallen leaves", icon: "🍂" },
+    { id: "obs25", group: "Field notes", label: "Twenty-five observations", goal: "Record 25 observations", metric: "observations", target: 25, item: "Wildflower", icon: "🌸" },
+    { id: "obs50", group: "Field notes", label: "Fifty observations", goal: "Record 50 observations", metric: "observations", target: 50, item: "Little oak", icon: "🌳" },
+    { id: "week", group: "Habits", label: "Seven-day fieldbook", goal: "Observations dated on 7 days in a row", metric: "streak", target: 7, item: "Snail", icon: "🐌" },
+    { id: "groups3", group: "Variety", label: "Branching out", goal: "Observe 3 different organism groups", metric: "groups", target: 3, item: "Butterfly", icon: "🦋", layer: "air" },
+    { id: "names10", group: "Variety", label: "Ten different names", goal: "Record 10 different named organisms", metric: "names", target: 10, item: "Ladybug", icon: "🐞" },
+    { id: "project", group: "Projects", label: "Project completion", goal: "Complete a project with an observation in it", metric: "projects", target: 1, item: "Spiral shell", icon: "🐚" },
+    { id: "followers10", group: "Community", label: "Ten followers", goal: "Reach 10 followers", metric: "followers", target: 10, item: "Songbird", icon: "🐦", layer: "air", source: "unavailable", lockedReason: "Coming with real accounts" },
+    { id: "verified1", group: "Community", label: "First verified observation", goal: "Get 1 observation verified", metric: "verified", target: 1, item: "Quartz crystal", icon: "💎", source: "unavailable", lockedReason: "Coming with identification review" }
+  ].map(Object.freeze));
+  const byId = Object.fromEntries(CATALOG.map(a => [a.id, a]));
+  const labels = Object.freeze(Object.fromEntries(CATALOG.map(a => [a.id, a.label])));
+  const isUnknown = name => typeof name !== "string" || !name.trim() || name.trim().toLowerCase() === "unknown";
+
   function parse(raw) {
     if (raw === null) return { version: 1, grants: [] };
     const state = JSON.parse(raw);
-    if (!state || state.version !== 1 || !Array.isArray(state.grants) || state.grants.length > 3 ||
-        state.grants.some(g => !g || !Object.hasOwn(labels, g.badge) || !/^[a-f0-9]{32}$/.test(g.token) || typeof g.placed !== "boolean") ||
+    if (!state || state.version !== 1 || !Array.isArray(state.grants) || state.grants.length > CATALOG.length ||
+        state.grants.some(g => !g || !Object.hasOwn(byId, g.badge) || byId[g.badge].source === "unavailable" ||
+          !/^[a-f0-9]{32}$/.test(g.token) || typeof g.placed !== "boolean") ||
         new Set(state.grants.map(g => g.badge)).size !== state.grants.length || new Set(state.grants.map(g => g.token)).size !== state.grants.length) throw Error("Unsupported or damaged rewards data");
     return { version: 1, grants: state.grants.map(({ badge, token, placed }) => ({ badge, token, placed })) };
   }
-  function eligible(records, projects, dateOK, matches) {
+  // Counts only from active, valid, non-future journal records. Self-reported fields such as
+  // `verified` or `followers` on records are ignored: they are not evidence.
+  function progress(records, projects, dateOK, matches) {
     const active = records.filter(r => !r.deletedAt && dateOK(r.date));
-    const result = active.length ? ["first"] : [];
     const days = [...new Set(active.map(r => r.date))].sort();
-    let streak = 0, previous = NaN;
+    let streak = 0, run = 0, previous = NaN;
     for (const date of days) {
       const day = Date.parse(`${date}T12:00:00Z`) / 86400000;
-      streak = day === previous + 1 ? streak + 1 : 1;
-      if (streak >= 7 && !result.includes("week")) result.push("week");
+      run = day === previous + 1 ? run + 1 : 1;
+      streak = Math.max(streak, run);
       previous = day;
     }
-    if (projects.some(p => p.complete && active.some(r => p.observationIds.includes(r.id) && matches(p, r)))) result.push("project");
-    return result;
+    return {
+      observations: active.length,
+      streak,
+      groups: new Set(active.map(r => r.type).filter(t => t && t !== "other")).size,
+      names: new Set(active.filter(r => !isUnknown(r.name)).map(r => r.name.trim())).size,
+      projects: projects.filter(p => p.complete && active.some(r => p.observationIds.includes(r.id) && matches(p, r))).length,
+      followers: null,
+      verified: null
+    };
+  }
+  function eligible(records, projects, dateOK, matches) {
+    const counts = progress(records, projects, dateOK, matches);
+    return CATALOG.filter(a => a.source !== "unavailable" && counts[a.metric] !== null && counts[a.metric] >= a.target).map(a => a.id);
   }
   function award(state, badges, randomToken) {
     const grants = state.grants.map(g => ({ ...g }));
     for (const badge of new Set(badges)) {
-      if (!Object.hasOwn(labels, badge) || grants.some(g => g.badge === badge)) continue;
+      if (!Object.hasOwn(byId, badge) || byId[badge].source === "unavailable" || grants.some(g => g.badge === badge)) continue;
       // Bounded collision handling; never silently issue a duplicate local collectible.
       let token;
       for (let i = 0; i < 8; i++) {
@@ -43,11 +74,24 @@ const TerraRewards = (() => {
     }
     return { version: 1, grants };
   }
+  // Each item is always the same nature object; its serial gives it a unique size, tilt and spot.
   function decoration(grant) {
     const bytes = grant.token.match(/../g).map(v => parseInt(v, 16));
-    return { icon: icons[bytes[0] % icons.length], color: colors[bytes[1] % colors.length],
-      size: 28 + bytes[2] % 25, rotation: bytes[3] % 41 - 20, x: 12 + bytes[4] % 76, y: 25 + bytes[5] % 48 };
+    const air = byId[grant.badge]?.layer === "air";
+    return { icon: byId[grant.badge]?.icon ?? "🌿", layer: air ? "air" : "ground",
+      size: 30 + bytes[2] % 19, rotation: bytes[3] % 21 - 10, x: 10 + bytes[4] % 80, y: air ? 14 + bytes[5] % 26 : 54 + bytes[5] % 6 };
   }
-  return Object.freeze({ KEY, labels, parse, eligible, award, decoration });
+  // Deterministic placement: nudge items along their layer so none sit on top of each other.
+  function layout(grants, gap = 12) {
+    const taken = { air: [], ground: [] };
+    return grants.map(grant => {
+      const d = decoration(grant), row = taken[d.layer];
+      let x = d.x;
+      for (let i = 0; i < 8 && row.some(other => Math.abs(other - x) < gap); i++) x = 10 + (x - 10 + gap + 3) % 80;
+      row.push(x);
+      return { grant, ...d, x };
+    });
+  }
+  return Object.freeze({ KEY, CATALOG, labels, parse, progress, eligible, award, decoration, layout });
 })();
 if (typeof module !== "undefined") module.exports = TerraRewards;
