@@ -144,7 +144,7 @@
     return [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join("");
   }
   function clearRewards() {
-    $("decor-list").replaceChildren(); $("rewards-terrarium").replaceChildren();
+    $("decor-list").replaceChildren();
   }
   function togglePlacement(grant) {
     try {
@@ -189,6 +189,42 @@
     }
     return li;
   }
+  // Terrarium controls: sandbox, speed, "Show in terrarium" and saving moved decorations.
+  let sandbox = false;
+  const sandboxSpots = {};
+  function findButton(achievement) {
+    const button = textNode("button", "text-button collection-find", "Show in terrarium");
+    button.type = "button";
+    button.setAttribute("aria-label", `Show ${achievement.item} in the terrarium`);
+    button.addEventListener("click", () => {
+      TerraTerrarium.select(achievement.id);
+      $("terrarium-live").textContent = $("terrarium-caption").textContent;
+      $("rewards-terrarium").scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    });
+    return button;
+  }
+  TerraTerrarium.onMove((badge, x, y) => {
+    if (sandbox) { sandboxSpots[badge] = { x, y }; return; }
+    try { localStorage.setItem(TerraRewards.KEY, JSON.stringify(TerraRewards.move(TerraRewards.parse(localStorage.getItem(TerraRewards.KEY)), badge, x, y))); }
+    catch { $("rewards-status").textContent = "That spot couldn't be saved. The item will return to its last saved place after reloading."; }
+  });
+  $("terrarium-sandbox").addEventListener("click", event => {
+    sandbox = !sandbox;
+    event.currentTarget.setAttribute("aria-pressed", String(sandbox));
+    event.currentTarget.textContent = sandbox ? "Back to my collection" : "Try every item";
+    $("terrarium-sandbox-note").hidden = !sandbox;
+    refresh();
+  });
+  for (const button of document.querySelectorAll(".terrarium-speed button")) {
+    button.addEventListener("click", () => {
+      TerraTerrarium.setSpeed(Number(button.dataset.speed));
+      for (const other of document.querySelectorAll(".terrarium-speed button")) other.setAttribute("aria-pressed", String(other === button));
+    });
+  }
+  if (TerraTerrarium.paused) {
+    for (const other of document.querySelectorAll(".terrarium-speed button")) other.setAttribute("aria-pressed", String(other.dataset.speed === "0"));
+    $("terrarium-caption").textContent = "Paused because your device prefers reduced motion. Choose a speed to play.";
+  }
   function renderRewards(records, projects) {
     clearRewards();
     try {
@@ -198,23 +234,21 @@
       const fresh = new Set(next.grants.filter(g => !prior.grants.some(p => p.badge === g.badge)).map(g => g.badge));
       const counts = TerraRewards.progress(records, projects, TerraData.observationDate, FieldSummary.matches);
       const placed = next.grants.filter(g => g.placed);
-      // Scale spacing and size to the jar so items stay apart on narrow phones.
-      const width = $("rewards-terrarium").clientWidth || 500, scale = Math.min(1, width / 480);
-      for (const item of TerraRewards.layout(placed, Math.max(12, Math.min(20, 4400 / width)))) {
-        const achievement = achievementFor(item.grant);
-        const object = textNode("span", fresh.has(item.grant.badge) ? "fresh" : "", item.icon);
-        object.title = `${achievement.item} · ${achievement.label}`;
-        object.style.cssText = `left:${item.x}%;top:${item.y}%;font-size:${Math.round(item.size * Math.max(.75, scale))}px;--tilt:${item.rotation}deg;z-index:${Math.round(item.y)}`;
-        $("rewards-terrarium").append(object);
-      }
+      const label = `Your terrarium, ${placed.length} item${placed.length === 1 ? "" : "s"} on display${placed.length ? `: ${placed.map(g => achievementFor(g).item).join(", ")}` : ""}.`;
+      // Sandbox shows every item without earning or saving anything.
+      const entries = sandbox
+        ? TerraRewards.CATALOG.map(a => ({ achievement: a, grant: { badge: a.id, token: "0".repeat(32), placed: true, ...(sandboxSpots[a.id] ?? {}) } }))
+        : placed.map(g => ({ achievement: achievementFor(g), grant: g }));
+      TerraTerrarium.show(entries, { growth: sandbox ? TerraRewards.CATALOG.length : next.grants.length, fresh: sandbox ? [] : [...fresh], label: sandbox ? "Sandbox terrarium with every item." : label });
       for (const achievement of TerraRewards.CATALOG) {
         const grant = next.grants.find(g => g.badge === achievement.id);
-        $("decor-list").append(collectionCard(achievement, grant, counts[achievement.metric] ?? 0, fresh.has(achievement.id)));
+        const card = collectionCard(achievement, grant, counts[achievement.metric] ?? 0, fresh.has(achievement.id));
+        if (sandbox || grant?.placed) card.append(findButton(achievement));
+        $("decor-list").append(card);
       }
       const unlocked = next.grants.filter(g => fresh.has(g.badge)).map(g => achievementFor(g).item);
       $("rewards-status").textContent = (unlocked.length ? `New for your terrarium: ${unlocked.join(", ")}! ` : "") +
         `${next.grants.length} of ${TerraRewards.CATALOG.length} items collected · ${placed.length} on display. Local participation only, not verified quality.`;
-      $("rewards-terrarium").setAttribute("aria-label", `Your terrarium, ${placed.length} item${placed.length === 1 ? "" : "s"} on display${placed.length ? `: ${placed.map(g => achievementFor(g).item).join(", ")}` : ""}. Collection and placement controls below.`);
     } catch {
       $("rewards-status").textContent = "Rewards unavailable or could not be saved: local storage blocked/damaged or unlock could not be saved. Existing rewards untouched. Journal is unaffected. Do not clear site data.";
     }
@@ -286,4 +320,6 @@
   // The terrarium lays itself out to the jar's width, which is 0 while Profile is hidden.
   document.addEventListener("terra:screen-shown", event => { if (event.detail.screen === "profile" || event.detail.screen === "home") refresh(); });
   loadProfile(); refresh();
+  // A #terrarium link opened before this script loaded still lands on the Terrarium tab.
+  if (location.hash === "#terrarium") selectTab($("awards-tab"));
 })();

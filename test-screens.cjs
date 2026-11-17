@@ -52,11 +52,33 @@ function patch(page) {
   wrap(["isVisible", "isHidden"], revealContent);
 }
 
+// Map images (Streets / Terrain tiles) are expected whenever a map is on screen. They carry only
+// the map area, never journal data, so they are answered here with a blank image and kept out of
+// each suite's "no outbound traffic" checks. Every other outbound request still fails the suites.
+const TILE_HOSTS = /^https:\/\/([abc]\.)?tile\.(openstreetmap|opentopomap)\.org\//;
+global.terraTileRequests = [];
+// A 1×1 transparent PNG stands in for every map image, so maps behave as if online.
+const BLANK_TILE = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+function patchContext(context) {
+  const proto = Object.getPrototypeOf(context);
+  if (proto.__terraTiles) return;
+  proto.__terraTiles = true;
+  const route = proto.route;
+  proto.route = function (url, handler, ...rest) {
+    if (typeof handler !== "function") return route.call(this, url, handler, ...rest);
+    return route.call(this, url, (r, request) => {
+      if (TILE_HOSTS.test(r.request().url())) { global.terraTileRequests.push(r.request().url()); return r.fulfill({ status: 200, contentType: "image/png", body: BLANK_TILE }); }
+      return handler(r, request);
+    }, ...rest);
+  };
+}
+
 const launch = playwright.chromium.launch.bind(playwright.chromium);
 playwright.chromium.launch = async (...args) => {
   const browser = await launch(...args);
   const page = await browser.newPage();
   patch(page);
+  patchContext(page.context());
   await page.close();
   return browser;
 };

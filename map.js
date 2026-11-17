@@ -1,13 +1,10 @@
 "use strict";
 
 // Map screen: example observations on a real, zoomable map, with an iNaturalist-style
-// search bar and filters. The outline basemap ships with the app (Natural Earth via
-// world-atlas), so it needs no network. "Street map" is an opt-in that loads
-// OpenStreetMap tiles. Nothing here reads or writes the journal.
+// search bar and filters. Basemaps (Streets / Terrain / Outline) come from basemap.js.
+// Nothing here reads or writes the journal.
 const TerraMap = (() => {
   const $ = id => document.getElementById(id);
-  const PREF_KEY = "terra.map.v1";
-  const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
   // Example entries only, clearly separate from the private journal.
   const EXAMPLES = Object.freeze([
@@ -119,9 +116,7 @@ const TerraMap = (() => {
   document.querySelector("[data-map-reset]").addEventListener("click", () => { reset(); query.focus(); });
 
   // The map itself. Built the first time the Map screen is shown, so it has a size.
-  let map = null, markers = null, outline = null, street = null, streetLoaded = false;
-  const prefs = (() => { try { return JSON.parse(localStorage.getItem(PREF_KEY)) || {}; } catch { return {}; } })();
-  function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch { /* A per-browser convenience only. */ } }
+  let map = null, markers = null;
   function popup(entry) {
     const box = document.createElement("div");
     box.className = "map-popup";
@@ -134,58 +129,10 @@ const TerraMap = (() => {
     box.append(title, meta, place);
     return box;
   }
-  // The outline data is a script file (not fetched) so the app keeps making no network calls.
-  const loadOutlineData = () => window.TerraWorldOutline ? Promise.resolve(window.TerraWorldOutline) : new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "data/world-outline.js";
-    script.onload = () => window.TerraWorldOutline ? resolve(window.TerraWorldOutline) : reject(Error("empty"));
-    script.onerror = reject;
-    document.head.append(script);
-  });
-  async function addOutline() {
-    try {
-      const world = await loadOutlineData();
-      const land = topojson.feature(world, world.objects.countries);
-      outline = L.geoJSON(land, { interactive: false, style: { color: "#a9b9a2", weight: 1, fillColor: "#e6ecdc", fillOpacity: 1 } });
-      outline.addTo(map).bringToBack();
-      if (prefs.street) map.removeLayer(outline);
-    } catch {
-      $("map-street-note").textContent = "The outline map couldn't load. Pins still show where examples are.";
-    }
-  }
-  function setStreet(on, remember = true) {
-    if (remember) { prefs.street = on; savePrefs(); }
-    $("map-street").checked = on;
-    if (!map) return;
-    if (on) {
-      if (!street) {
-        street = L.tileLayer(TILE_URL, { maxZoom: 19, attribution: "© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors" });
-        let failures = 0;
-        street.on("tileload", () => { streetLoaded = true; $("map-street-note").textContent = "Street map from OpenStreetMap."; });
-        street.on("tileerror", () => {
-          if (++failures >= 4 && !streetLoaded) {
-            $("map-street-note").textContent = "The street map couldn't load here (offline or blocked), so the outline map is showing.";
-            if (outline && !map.hasLayer(outline)) outline.addTo(map).bringToBack();
-          }
-        });
-      }
-      street.addTo(map);
-      if (outline && streetLoaded) map.removeLayer(outline);
-      // "load" also fires when every tile failed, so only drop the outline once tiles really arrived.
-      street.once("load", () => { if (outline && streetLoaded) map.removeLayer(outline); });
-    } else {
-      if (street) map.removeLayer(street);
-      if (outline && !map.hasLayer(outline)) outline.addTo(map).bringToBack();
-      $("map-street-note").textContent = "Loads map images from OpenStreetMap. The outline map works offline.";
-    }
-  }
-  $("map-street").checked = !!prefs.street;
-  $("map-street").addEventListener("change", event => setStreet(event.target.checked));
   function build() {
     if (map || typeof L === "undefined") return;
     map = L.map("map-view", { zoomControl: true, worldCopyJump: true, attributionControl: true });
-    map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
-    map.attributionControl.addAttribution("Outline: Natural Earth");
+    TerraBasemap.attach(map, { onNote: text => { $("map-street-note").textContent = text; } });
     markers = L.layerGroup().addTo(map);
     for (const item of items) {
       const { entry } = item;
@@ -196,8 +143,6 @@ const TerraMap = (() => {
       item.marker.on("add", () => { const el = item.marker.getElement(); el.setAttribute("role", "button"); el.setAttribute("aria-label", `${entry.name}, ${entry.type}, near ${entry.place}`); });
     }
     map.fitBounds(L.latLngBounds(EXAMPLES.map(e => [e.lat, e.lng])), { padding: [36, 36], maxZoom: 11 });
-    addOutline();
-    if (prefs.street) setStreet(true, false);
     apply();
   }
   document.addEventListener("terra:screen-shown", event => {

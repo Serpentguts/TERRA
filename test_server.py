@@ -60,7 +60,7 @@ class LocalAppChecks(unittest.TestCase):
                             "feed-to-terra", "feed-to-inat", "feed-preparations", "feed-profiles",
                             "profile-tabs", "profile-observations", "rewards-terrarium",
                             "home-dashboard", "toast", "organism-choice", "organism-options",
-                            "map-search", "map-query", "map-filters-toggle", "map-filter-panel", "map-view", "map-street", "map-results", "map-reset",
+                            "map-search", "map-query", "map-filters-toggle", "map-filter-panel", "map-view", "map-street-note", "terrarium-sandbox", "terrarium-caption", "map-results", "map-reset",
                             "identify-location", "demo-map", "demo-listings"]:
                 with self.subTest(control=control):
                     self.assertIn(f'id="{control}"', html)

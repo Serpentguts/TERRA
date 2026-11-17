@@ -79,7 +79,7 @@ test('variety counts distinct organism groups and named organisms, ignoring Othe
 });
 test('progress reports counts for the collection and nulls for unavailable sources', () => {
   const counts = R.progress([record(1), record(2), record(3, { name: 'Oak' })], [], D.observationDate, () => true);
-  assert.deepEqual(counts, { observations: 3, streak: 3, groups: 1, names: 1, projects: 0, followers: null, verified: null });
+  assert.deepEqual(counts, { observations: 3, days: 3, streak: 3, groups: 1, names: 1, projects: 0, followers: null, verified: null });
   for (const a of R.CATALOG) assert.ok(Object.hasOwn(counts, a.metric), a.id);
   assert.deepEqual(R.CATALOG.filter(a => a.source === 'unavailable').map(a => a.id), ['followers10', 'verified1']);
   assert.equal(new Set(R.CATALOG.map(a => a.icon)).size, R.CATALOG.length, 'Every achievement has its own nature item');
@@ -102,4 +102,20 @@ test('terrarium layout is deterministic, keeps flyers in the air and spaces grou
   const ground = items.filter(i => i.layer === 'ground').map(i => i.x);
   for (const [a, x] of ground.entries()) for (const y of ground.slice(a + 1)) assert.ok(Math.abs(x - y) >= 12, `${x} vs ${y}`);
   assert.ok(items.every(i => i.x >= 10 && i.x <= 90));
+});
+
+test('decorations are earned like other items and can remember where they were moved', () => {
+  assert.deepEqual(R.CATALOG.filter(a => a.kind === 'decoration').map(a => a.id), ['project', 'projects3', 'days30', 'groups5', 'verified1']);
+  assert.ok(R.CATALOG.every(a => a.kind === 'living' || a.kind === 'decoration'));
+  const days = Array.from({ length: 30 }, (_, i) => record(1, { id: `d${i}`, date: new Date(Date.UTC(2024, 0, 1 + i)).toISOString().slice(0, 10) }));
+  assert.ok(eligible(days).includes('days30'));
+  assert.ok(!eligible(days.slice(1)).includes('days30'));
+  const state = R.award({ version: 1, grants: [] }, ['project'], () => 'ab'.repeat(16));
+  const moved = R.move(state, 'project', 0.123456, 1.4);
+  assert.deepEqual(moved.grants[0], { badge: 'project', token: 'ab'.repeat(16), placed: true, x: 0.123, y: 1 });
+  assert.deepEqual(R.parse(JSON.stringify(moved)), moved);
+  for (const bad of [{ x: 2, y: 0.5 }, { x: 0.5 }, { x: '0.5', y: 0.5 }, { x: NaN, y: 0.5 }]) {
+    assert.throws(() => R.parse(JSON.stringify({ version: 1, grants: [{ ...state.grants[0], ...bad }] })), /Unsupported/);
+  }
+  assert.deepEqual(state.grants[0], { badge: 'project', token: 'ab'.repeat(16), placed: true }, 'move() does not change the original');
 });

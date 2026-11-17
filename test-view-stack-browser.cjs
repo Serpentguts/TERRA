@@ -13,6 +13,8 @@ const { chromium } = require('playwright');
     await context.route('**/*', route => {
       const url = route.request().url();
       if (url.startsWith(origin + '/') || url.startsWith('blob:')) return route.continue();
+      // Map images are expected while a map is on screen; answer them with a blank tile.
+      if (/^https:\/\/([abc]\.)?tile\.(openstreetmap|opentopomap)\.org\//.test(url)) return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64') });
       outbound.push(url); return route.abort();
     });
     const page = await context.newPage();
@@ -128,6 +130,20 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#home-count').textContent(), '2');
     assert.equal(await page.locator('#home-recent li').count(), 2);
     assert.match(await page.locator('#home-next').textContent(), /Next for your terrarium/);
+    // Location context: County sits between State and City.
+    await bottom.locator('a[href="#record"]').click();
+    await page.selectOption('#discovery-context', 'natural'); await page.selectOption('#discovery-region', 'North America');
+    await page.selectOption('#discovery-precision', 'county');
+    assert.deepEqual([await onScreen('#discovery-state'), await onScreen('#discovery-county'), await onScreen('#discovery-city')], [true, true, false]);
+    await page.selectOption('#discovery-precision', 'city');
+    assert.deepEqual([await onScreen('#discovery-county'), await onScreen('#discovery-city')], [true, true]);
+    assert.deepEqual(await page.locator('#discovery-manual-location label').allTextContents(),
+      ['Country / territory (optional, temporary)', 'State / province (optional, temporary)', 'County / district (optional, temporary)', 'City / locality (optional, temporary)']);
+    await page.selectOption('#discovery-precision', 'state');
+    assert.equal(await onScreen('#discovery-county'), false);
+    // The location picker is a real map with a style switch.
+    await page.waitForFunction(() => document.querySelector('#observation-map .leaflet-container'));
+    assert.equal(await page.locator('#observation-map .basemap-switch button').count(), 3);
     // Narrow layout: tab bar fits and no screen scrolls sideways.
     await page.setViewportSize({ width: 320, height: 700 });
     for (const name of ['home', 'journal', 'record', 'map', 'profile']) {

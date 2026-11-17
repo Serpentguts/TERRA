@@ -120,14 +120,14 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#profile-posts').isVisible(), false);
     assert.match(await page.locator('#profile-awards').textContent(), /no genuine verification evidence/);
     assert.match(await page.locator('#profile-awards').textContent(), /No cash, trade, NFT, blockchain or financial value/);
-    await page.locator('#decor-list button').click();
+    await page.locator('#decor-list button[data-badge]').click();
     assert.equal((await rewards()).grants[0].placed, false);
-    assert.equal(await page.locator('#decor-list button').evaluate(el => el === document.activeElement), true);
-    assert.equal(await page.locator('#rewards-terrarium span').count(), 0);
+    assert.equal(await page.locator('#decor-list button[data-badge]').evaluate(el => el === document.activeElement), true);
+    assert.equal(await page.evaluate(() => TerraTerrarium.debug().items.length), 0);
     await page.reload(); assert.equal(await state(U), profile);
     await page.click('#awards-tab');
     assert.equal((await rewards()).grants[0].placed, false);
-    await page.locator('#decor-list button').click();
+    await page.locator('#decor-list button[data-badge]').click();
     assert.equal((await rewards()).grants[0].token, JSON.parse(first).grants[0].token);
 
     // Legacy six-field journal + ID-only projects unchanged; dates count once, not events.
@@ -212,7 +212,7 @@ const { chromium } = require('playwright');
     assert.equal(await state(R), '{bad'); assert.equal(await state(U), '{bad');
     assert.match(await page.locator('#rewards-status').textContent(), /unavailable/);
     assert.equal(await page.locator('#profile-form button').isDisabled(), true);
-    assert.equal(await page.locator('#rewards-terrarium span').count(), 0);
+    assert.equal(await page.evaluate(() => TerraTerrarium.debug().items.length), 0);
     // Old #workspace links land on Home.
     await page.goto(origin + '/#workspace'); await page.reload();
     assert.equal(await page.locator('#home').evaluate(el => el.checkVisibility()), true);
