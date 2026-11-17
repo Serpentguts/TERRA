@@ -717,3 +717,33 @@ body[data-workspace="professional"] #home-quests, body[data-workspace="professio
 .terrarium-event { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
 .terrarium-event[hidden] { display: none; }
 .terrarium-event li { padding: 8px 12px; border-radius: 10px; background: linear-gradient(90deg, #fff6df, #f4f8ef); border: 1px solid #ecd9a8; font-size: 14px; }
+/* Visiting friends and seed gifts */
+#profile-awards.visiting .own-only { display: none !important; }
+.share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 0; }
+.visit-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 10px 0; padding: 12px 16px; border: 1px solid #d8c48e; border-radius: 14px; background: linear-gradient(120deg, #fff8e6, #f2f8ee); }
+.visit-banner[hidden] { display: none; }
+.visit-banner > div:nth-child(2) { display: flex; flex-direction: column; flex: 1; min-width: 160px; }
+.visit-banner small { color: var(--muted); }
+.visit-avatar { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #e6efe5; color: var(--green); flex: none; }
+.visit-avatar svg { width: 100%; height: 100%; }
+.visit-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.link-dialog, .gift-dialog, .gift-received { width: min(92vw, 480px); }
+.link-dialog textarea { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--line); border-radius: 8px; font: 13px/1.4 ui-monospace, monospace; word-break: break-all; }
+.link-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.link-actions button[hidden] { display: none; }
+.link-status:empty { display: none; }
+.link-status { margin: 10px 0 0; padding: 8px 12px; border-radius: 8px; background: #f3f8f2; }
+.gift-dialog label { display: block; margin: 10px 0 4px; font-weight: 600; }
+.gift-dialog input[type="text"] { width: 100%; box-sizing: border-box; min-height: 42px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.gift-dialog #gift-create { width: 100%; margin-top: 14px; }
+.gift-seeds { border: 0; padding: 0; margin: 10px 0 0; }
+.gift-seeds legend { font-weight: 600; margin-bottom: 6px; }
+#gift-seeds { display: flex; flex-wrap: wrap; gap: 8px; }
+#gift-seeds label { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0; padding: 8px 10px; min-width: 64px; border: 1px solid var(--line); border-radius: 10px; font-weight: 500; cursor: pointer; }
+#gift-seeds label:has(input:checked) { border-color: var(--green); background: #f3f8f2; }
+#gift-seeds input { position: absolute; opacity: 0; }
+#gift-seeds label:has(input:focus-visible) { outline: 3px solid #e0c56e; }
+#gift-seeds span[aria-hidden] { font-size: 28px; }
+.gift-received { text-align: center; }
+.received-icon { font-size: 56px; }
+.received-note { font-style: italic; }

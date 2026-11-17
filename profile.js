@@ -365,6 +365,143 @@
     });
     return state ? TerraDex.rewards(state).map(r => ({ ...r, uid: `d:${r.id}` })) : [];
   }
+  // ---- Visiting friends and seed gifts (links, no accounts) ----
+  let visiting = null, shareData = null;
+  const readGifts = () => { try { return TerraVisits.parse(localStorage.getItem(TerraVisits.KEY)); } catch { return null; } };
+  const giftGarden = () => { const g = readGifts(); return g ? TerraVisits.garden(g, TerraQuests.SEEDS) : []; };
+  function myGifts() {
+    const g = readGifts();
+    if (!g) throw Error("Your gift data couldn't be read, so nothing was changed.");
+    if (g.jarId) return g;
+    const withId = TerraVisits.withJarId(g);
+    localStorage.setItem(TerraVisits.KEY, JSON.stringify(withId));
+    return withId;
+  }
+  const lib = () => ({ catalog: TerraRewards.CATALOG, kinds: TerraLife.KINDS, seeds: TerraQuests.SEEDS, decor: TerraQuests.DECOR, sets: TerraDex.SETS });
+  const linkFor = (kind, code) => `${location.origin}${location.pathname}?${kind}=${code}#terrarium`;
+  function renderVisit(s) {
+    const avatar = $("visit-avatar"); avatar.replaceChildren();
+    try { TerraAvatars.render(avatar, TerraAvatars.iconId(s.avatar) ?? "leaf"); } catch { /* No picture. */ }
+    $("visit-title").textContent = `Visiting ${s.name}'s jar`;
+    $("visit-meta").textContent = `Level ${s.level} · ${s.levelName} · ${s.species.length} species · ${s.items.length} item${s.items.length === 1 ? "" : "s"} · shared ${s.made}`;
+    $("rewards-status").textContent = "You're looking at a snapshot of a friend's jar. Nothing here changes your own jar.";
+    const entries = s.items.map(i => ({ achievement: TerraRewards.CATALOG.find(a => a.id === i.b), grant: { badge: i.b, token: "0".repeat(32), placed: true, ...(i.x === undefined ? {} : { x: i.x, y: i.y }) } }));
+    const finds = s.species.map((x, n) => ({ id: `s:visit-${n}`, key: `visit-${n}`, kind: x.k, habitat: "forest", name: x.n, scientific: "", count: TerraLife.STAGE_AT[x.s], stage: x.s, next: TerraLife.nextAt(x.s), first: "", last: "", unknown: false }));
+    const garden = s.garden.map((id, n) => ({ ...TerraQuests.SEEDS.find(x => x.id === id), token: `visit${String(n).padStart(28, "0")}`, planted: "2000-01-01" }));
+    const decor = [...s.decor.map((d, n) => ({ ...TerraQuests.DECOR.find(x => x.id === d.d), uid: `q:visit${n}`, ...(d.x === undefined ? {} : { x: d.x, y: d.y }) })),
+      ...TerraDex.SETS.filter(set => s.sets.includes(set.id)).map((set, n) => ({ id: set.id, item: set.reward.item, icon: set.reward.icon, note: `${s.name} completed “${set.name}”.`, uid: `d:visit-${set.id}`, x: [0.82, 0.12, 0.44, 0.68][n % 4], y: 0.6 }))];
+    TerraTerrarium.show(entries, { growth: entries.length, label: `${s.name}'s jar (a shared snapshot).`, finds, garden, questDecor: decor, sandbox: true, south: false, date: localToday(), jar: "forest" });
+  }
+  function openLinkDialog({ title, text, value = "", mode }) {
+    $("link-title").textContent = title; $("link-text").textContent = text;
+    $("link-input").value = value; $("link-input").readOnly = mode !== "open";
+    $("link-label").textContent = mode === "open" ? "Paste a jar or gift link" : "Link";
+    $("link-open").hidden = mode !== "open"; $("link-copy").hidden = mode === "open"; $("link-share").hidden = mode === "open" || typeof navigator.share !== "function";
+    $("link-status").textContent = "";
+    if (!$("link-dialog").open) $("link-dialog").showModal();
+    if (mode === "open") $("link-input").focus(); else $("link-input").select();
+  }
+  $("link-copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("link-input").value); $("link-status").textContent = "Link copied. Send it to a friend."; }
+    catch { $("link-input").select(); $("link-status").textContent = "Copying isn't allowed here: the link is selected, so copy it yourself."; }
+  });
+  $("link-share").addEventListener("click", () => { navigator.share?.({ title: $("link-title").textContent, url: $("link-input").value }).catch(() => {}); });
+  $("link-open").addEventListener("click", () => {
+    const parsed = TerraVisits.parseLink($("link-input").value);
+    if (!parsed) { $("link-status").textContent = "That doesn't look like a TERRA jar or gift link."; return; }
+    $("link-dialog").close();
+    handleCode(parsed.kind, parsed.code);
+  });
+  $("open-link").addEventListener("click", () => openLinkDialog({ title: "Open a friend's link", text: "Paste a jar link to visit it, or a gift link to plant the seed.", mode: "open" }));
+  $("share-jar").addEventListener("click", async () => {
+    if (!shareData || !lastParticipation) { $("rewards-status").textContent = "Your jar isn't ready to share yet."; return; }
+    try {
+      const gifts = myGifts();
+      let profile = { ...defaults }; try { profile = readProfile(); } catch { /* Default name. */ }
+      let dexState = { sets: {} }; try { dexState = TerraDex.parse(localStorage.getItem(TerraDex.KEY)); } catch { /* No sets. */ }
+      const snap = TerraVisits.snapshot({ jarId: gifts.jarId, name: profile.name, avatar: profile.avatar === "photo" ? "leaf" : profile.avatar, xp: lastParticipation.xp,
+        grants: shareData.grants, species: shareData.species, garden: shareData.inventory.seeds, decor: shareData.inventory.decor, sets: Object.keys(dexState.sets), today: localToday() });
+      const code = await TerraVisits.encode(snap);
+      openLinkDialog({ title: "Share your jar", text: `Anyone with this link can visit a snapshot of your jar and leave you a seed gift. It shows your name (${snap.name}), level, items, species and garden. It never includes locations, notes, dates or photos.`, value: linkFor("visit", code), mode: "share" });
+    } catch (error) { $("rewards-status").textContent = error.message || "Your jar couldn't be shared right now."; }
+  });
+  $("visit-leave").addEventListener("click", () => {
+    visiting = null;
+    history.replaceState(null, "", `${location.pathname}#terrarium`);
+    refresh();
+  });
+  // Gift dialog (while visiting).
+  const seedsBox = $("gift-seeds");
+  TerraQuests.SEEDS.forEach((seed, i) => {
+    const label = document.createElement("label");
+    const input = document.createElement("input"); input.type = "radio"; input.name = "gift-seed"; input.value = seed.id; input.checked = i === 0;
+    label.append(input, textNode("span", "", seed.icon), textNode("small", "", seed.item));
+    label.querySelector("span").setAttribute("aria-hidden", "true");
+    seedsBox.append(label);
+  });
+  $("visit-gift").addEventListener("click", () => {
+    if (!visiting) return;
+    let profile = { ...defaults }; try { profile = readProfile(); } catch { /* Default. */ }
+    $("gift-for").textContent = `For ${visiting.name}'s garden. They'll get a link to plant it.`;
+    $("gift-from").value = profile.name; $("gift-status").textContent = "";
+    $("gift-dialog").showModal();
+  });
+  $("gift-create").addEventListener("click", async () => {
+    try {
+      const gifts = myGifts(), today = localToday();
+      if (visiting.id === gifts.jarId) { $("gift-status").textContent = "That's your own jar. Gifts are for friends!"; return; }
+      if (!TerraVisits.canGift(gifts, visiting.id, today)) { $("gift-status").textContent = `You've already left ${visiting.name} a gift today. Come back tomorrow!`; return; }
+      const g = TerraVisits.gift({ to: visiting.id, seed: $("gift-dialog").querySelector('input[name="gift-seed"]:checked').value, from: $("gift-from").value, note: $("gift-note").value, today });
+      const code = await TerraVisits.encode(g);
+      localStorage.setItem(TerraVisits.KEY, JSON.stringify(TerraVisits.markSent(gifts, visiting.id, today)));
+      $("gift-dialog").close();
+      const seed = TerraQuests.SEEDS.find(s => s.id === g.seed);
+      openLinkDialog({ title: `${seed.icon} Gift ready`, text: `Send this link to ${visiting.name}. When they open it, a ${seed.item.toLowerCase()} is planted in their garden with your note.`, value: linkFor("gift", code), mode: "share" });
+    } catch (error) { $("gift-status").textContent = error.message || "The gift couldn't be created."; }
+  });
+  let pendingGift = null;
+  $("received-plant").addEventListener("click", () => {
+    if (!pendingGift) return;
+    try {
+      const { state, result } = TerraVisits.redeem(myGifts(), pendingGift, localToday());
+      if (result === "planted") localStorage.setItem(TerraVisits.KEY, JSON.stringify(state));
+      $("received-status").textContent = result === "planted" ? "Planted! Look for it in your jar's garden." : result === "already" ? "You've already planted this gift." : "This gift was made for someone else's jar, so it can't be planted here.";
+      $("received-plant").disabled = true;
+      pendingGift = null;
+      history.replaceState(null, "", `${location.pathname}#terrarium`);
+      refresh();
+    } catch (error) { $("received-status").textContent = error.message; }
+  });
+  async function handleCode(kind, code) {
+    let data;
+    try { data = await TerraVisits.decode(code); }
+    catch { TerraScreens.toast("That link couldn't be opened. It may be incomplete; ask your friend to send it again."); return; }
+    try {
+      if ((kind ?? data?.t) === "visit" || data?.t === "jar") {
+        visiting = TerraVisits.validJar(data, lib());
+        location.hash = "#terrarium";
+        if (sandbox) $("terrarium-sandbox").click(); else refresh();
+        return;
+      }
+      const g = TerraVisits.validGift(data, lib());
+      const seed = TerraQuests.SEEDS.find(s => s.id === g.seed);
+      const mine = readGifts();
+      pendingGift = g;
+      $("received-icon").textContent = seed.icon;
+      $("received-title").textContent = `${g.from} sent you a ${seed.item.toLowerCase()} seed!`;
+      $("received-note").textContent = g.note ? `“${g.note}”` : "";
+      $("received-note").hidden = !g.note;
+      const already = mine?.received[g.id], wrong = mine?.jarId && g.to !== mine.jarId;
+      $("received-plant").disabled = Boolean(already || wrong);
+      $("received-status").textContent = already ? "You've already planted this gift." : wrong ? "This gift was made for someone else's jar, so it can't be planted here." : "";
+      location.hash = "#terrarium";
+      $("gift-received").showModal();
+    } catch { TerraScreens.toast("That link isn't a valid TERRA jar or gift."); }
+  }
+  {
+    const params = new URLSearchParams(location.search);
+    for (const kind of ["visit", "gift"]) if (params.get(kind)) { handleCode(kind, params.get(kind)); break; }
+  }
   function renderRares() {
     const list = $("rare-list"); list.replaceChildren();
     for (const rare of TerraTerrarium.rares()) {
@@ -452,6 +589,9 @@
       const next = TerraRewards.award(prior, TerraRewards.eligible(records, projects, TerraData.observationDate, FieldSummary.matches), randomToken);
       if (JSON.stringify(prior) !== JSON.stringify(next)) localStorage.setItem(TerraRewards.KEY, JSON.stringify(next));
       const fresh = new Set(next.grants.filter(g => !prior.grants.some(p => p.badge === g.badge)).map(g => g.badge));
+      $("profile-awards").classList.toggle("visiting", Boolean(visiting));
+      $("visit-banner").hidden = !visiting;
+      if (visiting) { renderVisit(visiting); return; }
       const counts = TerraRewards.progress(records, projects, TerraData.observationDate, FieldSummary.matches);
       const placed = next.grants.filter(g => g.placed);
       const label = `Your terrarium, ${placed.length} item${placed.length === 1 ? "" : "s"} on display${placed.length ? `: ${placed.map(g => achievementFor(g).item).join(", ")}` : ""}.`;
@@ -477,7 +617,8 @@
         ? { finds: inJar(SAMPLE_FINDS),
             garden: TerraQuests.SEEDS.map((seed, i) => ({ ...seed, token: sampleToken(i + 1), planted: "2000-01-01" })),
             questDecor: TerraQuests.DECOR.map((d, i) => ({ ...d, token: sampleToken(i + 20), ...(sandboxSpots[`q:${sampleToken(i + 20)}`] ?? {}) })) }
-        : { finds: inJar(speciesNow), garden: inventory.seeds, questDecor: [...inventory.decor, ...setRewardsHere], journalCount: active.length };
+        : { finds: inJar(speciesNow), garden: [...inventory.seeds, ...giftGarden()], questDecor: [...inventory.decor, ...setRewardsHere], journalCount: active.length };
+      if (!sandbox) shareData = { grants: next.grants, species: speciesNow, inventory };
       TerraTerrarium.show(jar === "forest" ? entries : [], { growth: jar !== "forest" ? 0 : sandbox ? TerraRewards.CATALOG.length : next.grants.length, fresh: sandbox || jar !== "forest" ? [] : [...fresh],
         label: `${TerraLife.HABITATS[jar].name}. ${sandbox ? "Sandbox terrarium with every item." : label}`,
         ...living, south: southern(records), sandbox, date: localToday(), jar });

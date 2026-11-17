@@ -171,7 +171,7 @@ Keep all of these participation-based and free of monetary value unless the toke
 
 **Extra jars (planned, not built):** desert, rainforest, tide pool and alpine jars, each unlocked by observing in a matching habitat (from the observation's habitat field or map location) and switchable from the Terrarium tab. Each jar needs its own backdrop, resident set and food web, so build one at a time, starting with the desert jar (cactus, lizard, beetle and snake already exist as residents).
 
-**Visiting friends (planned, not built):** needs real accounts and a server, so it waits for the accounts phase. Plan: a read-only snapshot of someone's jar (items, positions, residents; no journal details or locations), shared only with people they follow back, with gifts limited to a seed or pebble per day. Never expose where someone observes.
+**Visiting friends (built Nov 17, link-based):** jar snapshots and seed gifts travel in links, so it works today without accounts. With accounts it moves server-side: friends lists, visiting without links, real once-a-day gift limits, notifications, and reporting/blocking. Plan: a read-only snapshot of someone's jar (items, positions, residents; no journal details or locations), shared only with people they follow back, with gifts limited to a seed or pebble per day. Never expose where someone observes.
 
 ## 10. Decisions log
 

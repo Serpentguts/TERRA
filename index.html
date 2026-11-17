@@ -26,6 +26,7 @@
   <script src="weather.js" defer></script>
   <script src="terrarium-life.js" defer></script>
   <script src="dex.js" defer></script>
+  <script src="visits.js" defer></script>
   <script src="terrarium.js" defer></script>
   <script src="avatars.js" defer></script>
   <script src="profile.js" defer></script>
@@ -219,8 +220,20 @@
           <h3>Your terrarium</h3>
           <p class="terrarium-intro">A small living ecosystem. Your journal finds live here, plants grow with every achievement, and the seasons, day and night follow your real clock. New finds bring rain, and rain makes mushrooms fruit. Tap anything for its field-guide card; drag decorations to move them.</p>
           <p id="rewards-status" role="status" aria-live="polite"></p>
+          <section id="visit-banner" class="visit-banner" aria-live="polite" hidden>
+            <span id="visit-avatar" class="visit-avatar" aria-hidden="true"></span>
+            <div><strong id="visit-title"></strong><small id="visit-meta"></small></div>
+            <div class="visit-actions">
+              <button id="visit-gift" class="primary-button" type="button"><span aria-hidden="true">🌱</span> Leave a seed gift</button>
+              <button id="visit-leave" class="secondary-button" type="button">← Back to my jar</button>
+            </div>
+          </section>
+          <div id="share-row" class="share-row own-only">
+            <button id="share-jar" class="secondary-button" type="button"><span aria-hidden="true">🔗</span> Share my jar</button>
+            <button id="open-link" class="text-button" type="button">Open a friend's link or gift</button>
+          </div>
           <div class="terrarium-controls">
-            <button id="terrarium-sandbox" class="secondary-button" type="button" aria-pressed="false">Try every item</button>
+            <button id="terrarium-sandbox" class="secondary-button own-only" type="button" aria-pressed="false">Try every item</button>
             <div class="terrarium-speed" role="group" aria-label="Time speed">
               <button type="button" data-speed="0" aria-pressed="false" aria-label="Pause">❚❚</button>
               <button type="button" data-speed="1" aria-pressed="true" aria-label="Normal speed">1×</button>
@@ -229,7 +242,7 @@
             </div>
           </div>
           <p id="terrarium-sandbox-note" class="sandbox-note" hidden>Sandbox: every item, sample finds and quest rewards are in the jar so you can play with them. Nothing here is earned or saved; turn it off to see your own collection.</p>
-          <div id="jar-switcher" class="jar-switcher" role="group" aria-label="Habitat jars"></div>
+          <div id="jar-switcher" class="jar-switcher own-only" role="group" aria-label="Habitat jars"></div>
           <div class="terrarium-env">
             <span id="terrarium-sky" class="terrarium-sky"></span>
             <div class="terrarium-care" role="group" aria-label="Care for the jar">
@@ -252,6 +265,7 @@
           <p id="terrarium-live" class="visually-hidden" role="status" aria-live="polite"></p>
           <p id="terrarium-caption" class="terrarium-caption">Tap an item, or pick one in your collection, to see what it's up to.</p>
           <aside id="terrarium-guide" class="terrarium-guide" aria-label="Field guide" hidden></aside>
+          <div class="own-only">
           <h4 id="collection-title">Collection</h4>
           <ul id="decor-list" class="collection-grid" aria-labelledby="collection-title"></ul>
           <h4 id="rares-title">Rare sightings</h4>
@@ -261,6 +275,7 @@
           <p id="dex-summary" class="dex-summary"></p>
           <div id="dex-sets" class="dex-sets" aria-label="Sets to complete"></div>
           <ul id="dex-cards" class="dex-cards" aria-labelledby="dex-title"></ul>
+          </div>
           <details class="terrarium-rules"><summary>How collecting works</summary>
             <p>Participation achievements, not identification or conservation credentials. Observations count when they are active, valid and not future-dated. Seven-day fieldbook: entries dated on seven consecutive distinct days (backfilled/imported dates count; not proof of daily uploads). Different names count exact, trimmed names, excluding Unknown. Project completion: one complete project with at least one eligible active observation. Each item unlocks only once, ever in this local store. Duplicates, repeat events, reopen/complete, delete/restore and reload cannot multiply rewards.</p>
             <p>Streaks count consecutive days that have observations dated on them, so a streak is still alive until today ends. Field quests are checked against your own journal; finishing one adds a flower or decoration to the jar, and missed days are never held against you. Rare sightings, weather and seasons are just for fun and change nothing about your data.</p>
@@ -517,6 +532,37 @@
         <p>Names are your own labels. Records called “Unknown” are still included, matched only to their broad group.</p>
       </details>
       <p class="sheet-note"><small>Not a backup: to restore TERRA, use Export JSON. Deleted observations and the photos themselves aren't included.</small></p>
+    </dialog>
+    <dialog id="link-dialog" class="post-viewer link-dialog" aria-labelledby="link-title">
+      <form method="dialog" class="post-viewer-close"><button class="text-button" type="submit" aria-label="Close">✕</button></form>
+      <h2 id="link-title"></h2>
+      <p id="link-text"></p>
+      <label for="link-input" id="link-label">Link</label>
+      <textarea id="link-input" rows="3" spellcheck="false"></textarea>
+      <div class="link-actions">
+        <button id="link-open" class="primary-button" type="button">Open</button>
+        <button id="link-copy" class="primary-button" type="button">Copy link</button>
+        <button id="link-share" class="secondary-button" type="button">Share…</button>
+      </div>
+      <p id="link-status" class="link-status" role="status" aria-live="polite"></p>
+    </dialog>
+    <dialog id="gift-dialog" class="post-viewer gift-dialog" aria-labelledby="gift-title">
+      <form method="dialog" class="post-viewer-close"><button class="text-button" type="submit" aria-label="Close">✕</button></form>
+      <h2 id="gift-title">Leave a seed gift</h2>
+      <p id="gift-for"></p>
+      <fieldset class="gift-seeds"><legend>Choose a seed</legend><div id="gift-seeds"></div></fieldset>
+      <label for="gift-from">From</label><input id="gift-from" type="text" maxlength="40" autocomplete="nickname">
+      <label for="gift-note">Note <small>(optional, 80 characters)</small></label><input id="gift-note" type="text" maxlength="80">
+      <button id="gift-create" class="primary-button" type="button">Create gift link</button>
+      <p id="gift-status" class="link-status" role="status" aria-live="polite"></p>
+    </dialog>
+    <dialog id="gift-received" class="post-viewer gift-received" aria-labelledby="received-title">
+      <form method="dialog" class="post-viewer-close"><button class="text-button" type="submit" aria-label="Close">✕</button></form>
+      <div class="received-icon" id="received-icon" aria-hidden="true"></div>
+      <h2 id="received-title"></h2>
+      <p id="received-note" class="received-note"></p>
+      <button id="received-plant" class="primary-button" type="button">Plant it in my garden</button>
+      <p id="received-status" class="link-status" role="status" aria-live="polite"></p>
     </dialog>
     <dialog id="post-viewer" class="post-viewer" aria-labelledby="post-viewer-title">
       <form method="dialog" class="post-viewer-close"><button class="text-button" type="submit" aria-label="Close">✕</button></form>

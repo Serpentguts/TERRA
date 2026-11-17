@@ -385,7 +385,7 @@ const TerraTerrarium = (() => {
     }
     if (world.snail && world.snail.albino === undefined) world.snail.albino = (hashText("snail" + today) % 1000) / 1000 < rareOdds("albino-snail");
     if (world.snail?.albino) logRare("albino-snail");
-    world.garden = gardenList.map((g, i) => ({ id: `g:${g.token}`, ...g, x: 0.07 + ((i * 0.137) % 0.86), row: i % 2 }));
+    world.garden = gardenList.map((g, i) => ({ ...g, seed: g.id, id: `g:${g.token}`, x: 0.07 + ((i * 0.137) % 0.86), row: i % 2 }));
     const extraId = d => d.uid ?? `q:${d.token}`;
     for (const id of [...world.decor.keys()]) if ((id.startsWith("q:") || id.startsWith("d:")) && !questDecorList.some(d => extraId(d) === id)) world.decor.delete(id);
     questDecorList.forEach((d, i) => {
@@ -1009,7 +1009,11 @@ const TerraTerrarium = (() => {
       return { name: r.name || k.name, icon: TerraLife.iconFor(r.kind, sp.stage), tier: `Stage ${sp.stage + 1}: ${r.f.name}`,
         sub: `${sp.scientific ? `${sp.scientific}. ` : ""}Seen ${sp.count} time${sp.count === 1 ? "" : "s"} (first ${sp.first}). ${growth}`, fact: k.fact };
     }
-    if (id?.startsWith("g:")) { const g = world.garden.find(g => g.id === id); return g && { name: g.item, icon: g.icon, sub: `Seed packet from a field quest on ${g.planted}.`, fact: "Flowers in your garden came from daily field quests. A new seed sprouts the day you earn it and blooms the next day." }; }
+    if (id?.startsWith("g:")) {
+      const g = world.garden.find(g => g.id === id);
+      if (g?.from) return { name: g.item, icon: g.icon, tier: "Gift", sub: `A gift from ${g.from}, planted ${g.planted}.`, fact: g.note ? `“${g.note}”` : "A friend left this seed when they visited your jar." };
+      return g && { name: g.item, icon: g.icon, sub: `Seed packet from a field quest on ${g.planted}.`, fact: "Flowers in your garden came from daily field quests. A new seed sprouts the day you earn it and blooms the next day." };
+    }
     if (id?.startsWith("q:")) { const d = world.decor.get(id); return d && { name: d.item, icon: d.icon, sub: "Weekly field-quest reward. Drag it to move it.", fact: d.note }; }
     if (id?.startsWith("d:")) { const d = world.decor.get(id); return d && { name: d.item, icon: d.icon, tier: "Set reward", sub: "Field-guide set reward. Drag it to move it.", fact: d.note }; }
     const entry = items.get(id);
