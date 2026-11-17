@@ -17,12 +17,18 @@ const TerraXP = (() => {
     streakMilestones: Object.freeze([[3, 25], [7, 50], [14, 100], [30, 200]]) });
   const unknown = name => typeof name !== "string" || !name.trim() || name.trim().toLowerCase() === "unknown";
   const words = text => String(text ?? "").trim().split(/\s+/).filter(Boolean).length;
+  // One species key per organism: the scientific name when any record with this common name has one.
+  function speciesKey(records) {
+    const sci = new Map();
+    for (const r of records) if (r.taxon && !unknown(r.name)) sci.set(r.name.trim().toLowerCase(), r.taxon.scientificName.trim().toLowerCase());
+    return r => (r.taxon?.scientificName.trim().toLowerCase() ?? (unknown(r.name) ? "" : sci.get(r.name.trim().toLowerCase()) ?? r.name.trim().toLowerCase()));
+  }
 
   // records: active, valid journal entries. extras: { quests, rares, reviews, correct, longestStreak }.
   function compute(records, { quests = 0, rares = 0, reviews = 0, correct = 0, longestStreak = 0 } = {}) {
     const byDay = new Map();
     for (const r of [...records].sort((a, b) => a.date.localeCompare(b.date) || (a.id < b.id ? -1 : 1))) byDay.set(r.date, [...(byDay.get(r.date) ?? []), r]);
-    const seen = new Set();
+    const seen = new Set(), keyOf = speciesKey(records);
     const tally = { observation: 0, notes: 0, identified: 0, newSpecies: 0, fieldDay: 0 };
     for (const [, list] of byDay) {
       tally.fieldDay++;
@@ -30,7 +36,7 @@ const TerraXP = (() => {
         tally.observation++;
         if (words(r.notes) >= 15) tally.notes++;
         if (r.taxon) tally.identified++;
-        const species = (r.taxon?.scientificName ?? (unknown(r.name) ? "" : r.name)).trim().toLowerCase();
+        const species = keyOf(r);
         if (species && !seen.has(species)) { seen.add(species); tally.newSpecies++; }
       }
     }
@@ -55,6 +61,6 @@ const TerraXP = (() => {
     const progress = next ? (xp - current.xp) / (next.xp - current.xp) : 1;
     return { level: current.level, name: current.name, icon: current.icon, next, progress: Math.round(progress * 1000) / 1000, toNext: next ? next.xp - xp : 0 };
   }
-  return Object.freeze({ LEVELS, RULES, compute, level });
+  return Object.freeze({ LEVELS, RULES, compute, level, speciesKey });
 })();
 if (typeof module !== "undefined") module.exports = TerraXP;

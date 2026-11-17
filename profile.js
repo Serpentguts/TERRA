@@ -253,6 +253,42 @@
   const SAMPLE_FINDS = ["frog", "fern", "bee", "fish", "spider", "worm", "shelf", "flower", "moss", "lichen", "rabbit", "beetle"]
     .map((kind, i) => ({ id: `sample-${kind}`, kind, name: TerraLife.KINDS[kind].name, date: "Sample", type: "other", i }));
   document.addEventListener("terra:participation-changed", () => refresh());
+  document.addEventListener("terra:workspace-changed", () => refresh());
+  // Dashboard and résumé, from the same participation summary as Home.
+  let resumeData = null;
+  function renderWorkspace(records, projects) {
+    const p = lastParticipation;
+    if (!p) return;
+    TerraDashboard.render(TerraData.active(records), projects, p, { matches: FieldSummary.matches, photoCounts, today: localToday() });
+    let profile = { ...defaults };
+    try { profile = readProfile(); } catch { /* Default name; profile errors are shown in the profile card. */ }
+    let achievements = [];
+    try { achievements = TerraRewards.parse(localStorage.getItem(TerraRewards.KEY)).grants.map(g => TerraRewards.labels[g.badge]); } catch { /* None shown. */ }
+    resumeData = TerraResume.build({ profile, records: TerraData.active(records), projects, p, achievements, rares: TerraTerrarium.rares(), matches: FieldSummary.matches, today: localToday() });
+    const face = document.createElement("span"); face.className = "resume-avatar"; face.setAttribute("aria-hidden", "true");
+    try { TerraAvatars.render(face, profile.avatar === "photo" ? "photo" : TerraAvatars.iconId(profile.avatar) ?? "leaf", profile.photo); } catch { /* No picture. */ }
+    TerraResume.render($("resume-sheet"), resumeData, face);
+  }
+  if (typeof TerraPhotos !== "undefined") TerraPhotos.counts().then(map => { photoCounts = map; refresh(); }).catch(() => {});
+  $("resume-print").addEventListener("click", () => {
+    document.body.classList.add("print-resume");
+    window.addEventListener("afterprint", () => document.body.classList.remove("print-resume"), { once: true });
+    try { window.print(); } catch { $("resume-status").textContent = "Printing isn't available here. Use Copy as text or Download .txt instead."; }
+    setTimeout(() => document.body.classList.remove("print-resume"), 1000);
+  });
+  $("resume-copy").addEventListener("click", async () => {
+    if (!resumeData) return;
+    try { await navigator.clipboard.writeText(TerraResume.text(resumeData)); $("resume-status").textContent = "Résumé copied as text."; }
+    catch { $("resume-status").textContent = "Copying isn't allowed here. Use Download .txt instead."; }
+  });
+  $("resume-download").addEventListener("click", () => {
+    if (!resumeData) return;
+    const url = URL.createObjectURL(new Blob([TerraResume.text(resumeData)], { type: "text/plain" }));
+    const a = document.createElement("a"); a.href = url; a.download = `terra-resume-${localToday()}.txt`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    $("resume-status").textContent = "Résumé downloaded as text.";
+  });
   if (TerraTerrarium.paused) {
     for (const other of document.querySelectorAll(".terrarium-speed button")) other.setAttribute("aria-pressed", String(other.dataset.speed === "0"));
     $("terrarium-caption").textContent = "Paused because your device prefers reduced motion. Choose a speed to play.";
@@ -346,6 +382,16 @@
     const streak = TerraRewards.streak(records, dateOK, today, bridge);
     return { today, active, xp, streak, leaves, bridge, review, validator, standing: TerraValidators.standing(xp.level, review) };
   }
+  let lastParticipation = null, photoCounts = new Map();
+  // Professional workspace: a data-quality line on Home instead of quests.
+  function renderQuality(records, projects) {
+    const card = $("home-quality");
+    const s = TerraDashboard.summary(TerraData.active(records), projects, { matches: FieldSummary.matches, photoCounts, today: localToday() });
+    if (!s.n) { card.hidden = true; return; }
+    const done = s.checks.filter(c => c.ok).length, q = s.quality;
+    card.replaceChildren(textNode("strong", "", "Data quality"), textNode("span", "", `${Math.round(q.identified / q.total * 100)}% scientific names · ${Math.round(q.located / q.total * 100)}% located · ${done}/${s.checks.length} readiness checks`));
+    card.hidden = false;
+  }
   function renderLevel(p) {
     const card = $("home-level");
     if (!p.active.length) { card.hidden = true; return; }
@@ -432,8 +478,10 @@
     }
     $("home-empty").hidden = active.length > 0;
     const p = participation(records);
+    lastParticipation = p;
     renderStreak(p);
     renderLevel(p);
+    renderQuality(records, projects);
     if (typeof TerraValidateUI !== "undefined") TerraValidateUI.render(p);
     renderQuests();
     const next = $("home-next");
@@ -525,6 +573,7 @@
       try { updateQuests(records); } catch { questCache = { state: null, board: null }; }
       renderRewards(records, projects);
       renderHome(records, projects);
+      renderWorkspace(records, projects);
     } catch {
       item(posts, "Journal/projects unavailable; existing data untouched. Check storage before editing.");
       clearRewards();

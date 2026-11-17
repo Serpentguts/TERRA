@@ -20,6 +20,8 @@
   <script src="xp.js" defer></script>
   <script src="validators.js" defer></script>
   <script src="validate-ui.js" defer></script>
+  <script src="dashboard.js" defer></script>
+  <script src="resume.js" defer></script>
   <script src="quests.js" defer></script>
   <script src="terrarium-life.js" defer></script>
   <script src="terrarium.js" defer></script>
@@ -75,6 +77,7 @@
       </ul>
       <a id="home-streak" class="home-streak" href="#record" hidden></a>
       <a id="home-level" class="home-level" href="#profile" hidden></a>
+      <a id="home-quality" class="home-quality" href="#profile" hidden></a>
       <section id="home-quests" class="home-quests" aria-labelledby="quests-title" hidden>
         <div class="home-recent-heading"><h3 id="quests-title">Field quests</h3><span id="quest-days" class="quest-days"></span></div>
         <ul id="quest-daily" class="quest-list" aria-label="Today's quests"></ul>
@@ -160,11 +163,35 @@
         <div role="tablist" aria-label="Local profile sections" id="profile-tabs">
           <button type="button" role="tab" id="posts-tab" aria-selected="true" aria-controls="profile-posts">Posts</button>
           <button type="button" role="tab" id="projects-tab" aria-selected="false" aria-controls="profile-projects" tabindex="-1">Projects</button>
+          <button type="button" role="tab" id="dashboard-tab" aria-selected="false" aria-controls="profile-dashboard" tabindex="-1">Dashboard</button>
+          <button type="button" role="tab" id="resume-tab" aria-selected="false" aria-controls="profile-resume" tabindex="-1">Résumé</button>
           <button type="button" role="tab" id="awards-tab" aria-selected="false" aria-controls="profile-awards" tabindex="-1">Terrarium</button>
           <button type="button" role="tab" id="validate-tab" aria-selected="false" aria-controls="profile-validate" tabindex="-1">Validate</button>
         </div>
         <div role="tabpanel" id="profile-posts" aria-labelledby="posts-tab"><h3>Posts</h3><p><a href="#form-title">Record a discovery</a> · <a href="#saved-title">Manage journal / provenance / Trash</a></p><ul id="profile-observations"></ul></div>
         <div role="tabpanel" id="profile-projects" aria-labelledby="projects-tab" hidden><h3>Your projects</h3><ul id="profile-project-list"></ul><a href="#projects-title">Manage projects</a></div>
+        <div role="tabpanel" id="profile-dashboard" aria-labelledby="dashboard-tab" hidden>
+          <div class="dash-head">
+            <h3>Dashboard</h3>
+            <div class="dash-mode" role="group" aria-label="Dashboard view">
+              <button type="button" data-dashboard-mode="citizen" aria-pressed="true">Citizen</button>
+              <button type="button" data-dashboard-mode="professional" aria-pressed="false">Professional</button>
+            </div>
+          </div>
+          <p class="dash-intro">Citizen shows your field life: level, streak, species and activity. Professional shows data quality and project readiness for agencies, consultants and GBIF. The professional view also swaps Home's quests for a data-quality summary.</p>
+          <div id="dashboard-view" aria-live="polite"></div>
+        </div>
+        <div role="tabpanel" id="profile-resume" aria-labelledby="resume-tab" hidden>
+          <h3>TERRA résumé</h3>
+          <p class="resume-intro">A one-page record of your field work for applications, volunteering or a portfolio. It's built from your own journal and never includes locations, notes or photos.</p>
+          <div class="resume-actions">
+            <button id="resume-print" class="primary-button" type="button">Print or save as PDF</button>
+            <button id="resume-copy" class="secondary-button" type="button">Copy as text</button>
+            <button id="resume-download" class="secondary-button" type="button">Download .txt</button>
+          </div>
+          <p id="resume-status" class="resume-status" role="status" aria-live="polite"></p>
+          <article id="resume-sheet" class="resume-sheet" aria-label="Résumé preview"></article>
+        </div>
         <div role="tabpanel" id="profile-validate" aria-labelledby="validate-tab" hidden>
           <h3>Validate</h3>
           <p class="validate-intro">Help confirm what people find. Your level unlocks review tiers; how much your vote counts comes from how often your reviews are right, so careful reviewers count most, not just busy ones.</p>

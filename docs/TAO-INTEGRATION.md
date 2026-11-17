@@ -116,6 +116,10 @@ There's no "iNat Pro" tier to rely on. What exists:
 - **Per-organization export templates:** column sets and controlled vocabularies an agency requires (e.g. state natural heritage program forms), saved per workspace.
 - **Release rules apply to exports too:** a professional project's embargo and precision settings should limit what any export contains.
 
+**Dashboards (built Nov 17):** Profile → Dashboard has a Citizen view (field life) and a Professional view (data quality, readiness checklist, project completeness, export), on the same local data. Next with accounts: organization workspaces where the professional view aggregates a team's projects, shows reviewer coverage and release-rule status, and is the default for professional members.
+
+**TERRA résumé (built Nov 17):** a printable record of field work from the user's own journal, with no notes or locations, and honest about verification. Later it can carry *verified* statistics (community-agreed records, validator reliability) and a shareable link, which makes it useful for jobs, internships and volunteer applications, and gives professional partners a way to recruit skilled observers.
+
 **Baseline database:** the union of everything released, de-identified, licensed and quality-tagged. It's the long-term asset that research buyers, models and the subnet can use, and it never mixes in data nobody agreed to share.
 
 **Risks to handle:** client confidentiality contracts, sensitive-species locations, liability for professional-grade claims, mixed quality (keep tiers visible, never average them away), and data licensing conflicts.
