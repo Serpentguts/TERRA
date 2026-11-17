@@ -96,6 +96,12 @@ There's no "iNat Pro" tier to rely on. What exists:
 - **Provenance and quality travel with every record:** source workspace type, protocol, reviewer level and license. Professional records can raise the quality tier of an area; citizen records can feed professional projects as clearly labelled supplementary evidence.
 - **Contracts drive it:** a research-marketplace job can recruit citizen scientists into a professional protocol (paid by quality), and their contributions follow that job's release policy.
 
+**Getting data out (built Nov 13):** a spreadsheet export (`.xlsx`) from the Journal and Projects screens, with plain-language or **Darwin Core** columns. It opens in Excel and imports into Google Sheets. Locations follow each record's privacy, and exact points are generalized unless the user opts in. Next steps for the professional side:
+- **Send straight to Google Sheets / Drive and Microsoft 365:** needs accounts plus a Google Cloud OAuth app (and a Microsoft Entra app), so it waits for the accounts phase. Ask only for file-level access (`drive.file`), never the whole Drive.
+- **Darwin Core Archive** (zipped CSVs + `meta.xml` + EML metadata) for direct upload to GBIF and agency portals.
+- **Per-organization export templates:** column sets and controlled vocabularies an agency requires (e.g. state natural heritage program forms), saved per workspace.
+- **Release rules apply to exports too:** a professional project's embargo and precision settings should limit what any export contains.
+
 **Baseline database:** the union of everything released, de-identified, licensed and quality-tagged. It's the long-term asset that research buyers, models and the subnet can use, and it never mixes in data nobody agreed to share.
 
 **Risks to handle:** client confidentiality contracts, sensitive-species locations, liability for professional-grade claims, mixed quality (keep tiers visible, never average them away), and data licensing conflicts.
@@ -161,6 +167,7 @@ Keep all of these participation-based and free of monetary value unless the toke
 | 2026-11-11 | Locations moved to real-world coordinates with the same Exact / Approximate / Hidden rules. |
 | 2026-11-13 | Genetics stays a "Sequencing" section on each observation plus a list in the Journal, not its own bottom tab, until there's enough sequencing activity to justify one. The tab bar stays focused on the five everyday screens. |
 | 2026-11-13 | Streaks use observation dates (backfilled days count) and reset gently: the best streak is kept and nothing earned is lost. Field quests are checked only against the journal; colour quests need the colour in the name or notes. |
+| 2026-11-13 | Spreadsheet export is a single `.xlsx` that works in both Excel and Google Sheets, written in the browser with no dependency. Exact points are generalized unless the user opts in. Direct "send to Google Sheets" waits for accounts and OAuth. |
 | 2026-11-13 | Extra jars and visiting friends are deferred: jars need per-habitat art; friends needs accounts and a server. |
 | 2026-11-11 | Observation photos are saved locally (IndexedDB, resized, metadata stripped) when "Save photos" is checked; still never uploaded or in backups. |
 
