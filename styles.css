@@ -494,3 +494,51 @@ section[data-screen][tabindex="-1"]:focus { outline: none; }
 .dwca-options small { font-weight: 400; color: var(--muted); }
 .dwca-options input, .dwca-options select { min-height: 42px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; }
 .sheet-export details[hidden] { display: none; }
+/* TERRA agent */
+.card-taxon { margin: -4px 0 6px; font-style: italic; color: #536354; font-size: 14px; }
+.name-picker { position: relative; }
+.agent-lookup { margin-top: 6px; font-size: 14px; }
+.agent-card { margin: 10px 0 16px; padding: 14px 16px; border: 1px solid #cfe0d2; border-radius: 12px; background: linear-gradient(160deg, #f6fbf6, #eef6f0); }
+.agent-card[hidden] { display: none; }
+.agent-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.agent-head h3 { margin: 0; font-size: 18px; flex: 1; }
+.agent-badge { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--green); color: #fff; font-size: 14px; }
+.agent-auto { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.agent-auto input { width: 18px; height: 18px; accent-color: var(--green); }
+.agent-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+.agent-controls select { min-height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font: inherit; background: #fff; }
+.agent-steps { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.agent-step { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+.agent-step-mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #b9cbbd; font-size: 11px; font-weight: 800; flex: none; }
+.agent-step.done .agent-step-mark { background: var(--green); border-color: var(--green); color: #fff; }
+.agent-step.done { color: var(--ink); }
+.agent-step.active .agent-step-mark { border-color: var(--green); color: var(--green); }
+.agent-step.failed .agent-step-mark { border-color: #b3261e; color: #b3261e; }
+.agent-status:empty { display: none; }
+.agent-status { margin: 6px 0; }
+.agent-results { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.agent-result { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.agent-result-text { display: flex; flex-direction: column; min-width: 0; }
+.agent-result-text em, .agent-sci { font-style: italic; color: #536354; }
+.agent-result-text small { color: var(--muted); }
+.agent-score { position: relative; width: 64px; height: 22px; border-radius: 999px; background: #e3ece4; overflow: hidden; font-size: 12px; font-weight: 700; }
+.agent-score::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--score); background: #9cc9a5; }
+.agent-score span { position: relative; display: grid; place-items: center; height: 100%; }
+.agent-result .secondary-button { min-height: 38px; padding: 6px 12px; }
+.agent-species { margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: #fff; border: 1px solid var(--line); }
+.agent-species[hidden] { display: none; }
+.agent-species-head { display: flex; gap: 12px; align-items: flex-start; }
+.agent-species h4 { margin: 0; font-size: 18px; }
+.agent-sci { margin: 2px 0 0; }
+.agent-photo { margin: 0; flex: none; width: 96px; }
+.agent-photo img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; display: block; }
+.agent-photo figcaption { font-size: 10px; color: var(--muted); line-height: 1.2; margin-top: 2px; overflow-wrap: anywhere; }
+.agent-facts { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr); gap: 2px 12px; margin: 10px 0; font-size: 14px; }
+.agent-facts dd, .agent-facts dt { overflow-wrap: anywhere; }
+.agent-controls #agent-identify { min-height: 42px; padding: 8px 16px; font-size: 15px; font-weight: 650; }
+.agent-facts dt { color: var(--muted); }
+.agent-facts dd { margin: 0; }
+.agent-extract { margin: 8px 0; font-size: 14px; line-height: 1.5; }
+.agent-links { display: flex; gap: 14px; margin: 6px 0; font-weight: 600; }
+.agent-sources, .agent-note { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+@media (max-width: 480px) { .agent-result { grid-template-columns: 1fr auto; } .agent-result .secondary-button { grid-column: 1 / -1; } }

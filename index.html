@@ -22,6 +22,7 @@
   <script src="terrarium.js" defer></script>
   <script src="avatars.js" defer></script>
   <script src="profile.js" defer></script>
+  <script src="agent.js" defer></script>
   <script src="xlsx-writer.js" defer></script>
   <script src="export-sheet.js" defer></script>
   <script src="export-ui.js" defer></script>
@@ -282,7 +283,7 @@
             <small id="organism-help">Search this dropdown by typing a group, then choose one of the eight options. Use arrow keys and Enter; choose Other when unsure. No species identification.</small>
           </div>
           <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label>
-            <div class="name-picker"><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help">
+            <div class="name-picker"><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help"><button id="agent-lookup" class="text-button agent-lookup" type="button" aria-label="Look up species info for this name">ⓘ Species info</button>
             <ul id="name-suggestions" class="name-suggestions" role="listbox" aria-label="Starter species suggestions and custom name" hidden></ul></div>
             <small id="name-help">Type any part of a name to see every matching entry (case-insensitive) in this two-name starter list—not all real species. Use ↑/↓ and Enter, or click/tap to fill the field without saving. You can always keep your own name. Blank saves as “Unknown”.</small>
             <small id="name-status" role="status" aria-live="polite" aria-atomic="true"></small>
@@ -300,6 +301,23 @@
           <div class="field"><label for="notes">Field notes <span class="optional">(optional)</span></label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Colors, textures, habitat… what caught your eye?" aria-describedby="notes-help"></textarea><small id="notes-help">Avoid sensitive details or exact locations in names and notes.</small></div>
           <div class="field"><label for="photo">Take a closer look <span class="optional">(optional)</span></label><input id="photo" type="file" accept="image/*" aria-describedby="photo-help"><small id="photo-help">Up to 10 MB. With “Save photos” checked, a resized copy is kept in this browser with the observation (location data in the file is removed). Photos are never uploaded and aren't in backups yet.</small><p id="photo-error" class="error" role="alert" hidden></p><div id="preview-wrap" hidden><img id="photo-preview" alt="Preview of your selected observation image"><button id="remove-photo" class="text-button" type="button">Remove preview</button></div></div>
           <label class="check-field"><input id="save-photos" type="checkbox" checked> Save photos with this observation (kept only in this browser)</label>
+          <section id="agent-card" class="agent-card" aria-labelledby="agent-title" hidden>
+            <div class="agent-head">
+              <span class="agent-badge" aria-hidden="true">✦</span>
+              <h3 id="agent-title">TERRA agent</h3>
+              <label class="agent-auto"><input id="agent-auto" type="checkbox"> Auto-identify new photos</label>
+            </div>
+            <div class="agent-controls">
+              <label for="agent-organ">Photo shows</label>
+              <select id="agent-organ"><option value="auto">Whole plant / not sure</option><option value="leaf">Leaf</option><option value="flower">Flower</option><option value="fruit">Fruit</option><option value="bark">Bark</option></select>
+              <button id="agent-identify" class="secondary-button" type="button">Identify this photo</button>
+            </div>
+            <ol id="agent-steps" class="agent-steps" aria-label="Agent progress"></ol>
+            <p id="agent-status" class="agent-status" role="status" aria-live="polite"></p>
+            <ul id="agent-results" class="agent-results" aria-label="Suggested species"></ul>
+            <article id="agent-species" class="agent-species" aria-live="polite" hidden></article>
+            <p class="agent-note"><small>Sends only the photo (resized, location data removed) through your TERRA server to Pl@ntNet, which identifies plants. Species details come from GBIF, iNaturalist and Wikipedia. Suggestions are a starting point, not a verified ID. iNaturalist photo ID for animals and fungi will plug in once iNaturalist approves TERRA.</small></p>
+          </section>
           <fieldset id="discovery-location" class="location-context" data-location="discovery"><legend>Temporary location context · review only</legend></fieldset>
           <div id="discovery-images" hidden><p>Transferred photo previews · temporary only. Choosing a new journal photo replaces all transferred views. Resetting Explore a photo does not clear this independent draft; remove here, save, or reload to clear.</p><ul id="discovery-previews" class="identify-previews" aria-label="Temporary discovery photo previews"></ul><button id="discovery-clear-images" class="text-button" type="button">Remove all transferred previews</button></div>
           <p id="discovery-transfer-status" class="status" role="status" aria-live="polite"></p>

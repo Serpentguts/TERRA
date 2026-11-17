@@ -65,6 +65,7 @@ A living planning document. It collects the ideas from earlier conversations (Oc
   - Encryption for object storage isn't clearly documented. Treat stored data as potentially readable: consented and de-identified only.
 - **Training compute** lives elsewhere: rented GPUs (cloud or a Bittensor GPU-rental subnet). Bittensor's main decentralized-training subnet (Templar, SN3) trains LLMs and currently uses Cloudflare R2, not Hippius, so it isn't a fit for image models today.
 - **Practical path:** fine-tune an existing biodiversity vision model, measure it on held-out expert data, and only then consider training at larger scale.
+- **Discounted GPU rental (Texel and similar), reviewed Nov 17:** [Texel](https://texel.run/) is an onchain GPU cloud on Robinhood Chain: whole GPUs with SSH or Jupyter, billed per second in prepaid credits sold at a discount (an H100 listed at $3.99/hr comes to about $2.79/hr), and payable in its $TEXEL token. Good for **short, restartable fine-tuning runs on public data** (iNat/GBIF images). Cautions: the disk is wiped when a rental ends; the page doesn't say how data on provider machines is protected; and decentralized GPU markets in general have thin real supply, providers that come and go, and little support. Rules: datasets and checkpoints live in our storage (Hippius or S3), never only on the rented disk; checkpoint often so runs can resume; **no private or professional client data on unverified providers** (use confidential-compute VMs or a mainstream cloud for that); keep the training pipeline portable (container + scripts) and compare **cost per finished run** across Texel, Vast.ai, io.net, RunPod and Lambda before committing.
 
 ## 6. iNaturalist in the meantime
 
@@ -74,6 +75,11 @@ There's no "iNat Pro" tier to rely on. What exists:
 - **Writing** (creating observations, uploading photos) uses OAuth with a registered iNaturalist application. Plan: user reviews the observation in TERRA, chooses geoprivacy, then explicitly approves publishing.
 - **Computer vision (species suggestions)** is **not public**. iNat staff have granted a small number of research and citizen-science apps fee-based access by request. Worth emailing them about once TERRA has a clear use case and user base.
 - Respect iNat licensing and attribution (each photo and observation has its own license) and their geoprivacy for sensitive taxa.
+
+**TERRA agent (built Nov 17).** An observation workflow on the Record screen: prepare the photo (resize, re-encode, strip EXIF/GPS) → ask **Pl@ntNet** for plant suggestions → on a pick, gather species info from **GBIF** (taxonomy, backbone key), **iNaturalist** (common name, observation count, conservation status, reference photo) and **Wikipedia** (summary) → fill the name and group. The chosen scientific name is saved as the record's `taxon` (source, confidence, GBIF key), shown as provenance ("suggested by Pl@ntNet and chosen by you; not yet reviewed"), and exported as Darwin Core `scientificName`, `taxonID` and `identificationRemarks`.
+- Calls go through TERRA's server (`/api/identify`, `/api/species`), so the **Pl@ntNet key never reaches the browser** (`PLANTNET_API_KEY` env var). Only the re-encoded photo and the organ are sent; never location, notes or ids. Species lookups are cached for a day.
+- Off by default; "Auto-identify new photos" is a remembered opt-in.
+- **Next:** iNaturalist computer vision for animals and fungi once iNat grants access (email them with TERRA's use case); Pl@ntNet's multi-species "survey" endpoint for plots and transects (professional workspace); our own model (§5) as a third suggester, compared side by side; agreement between suggesters raises confidence; check Pl@ntNet's terms and quota tier before any commercial use.
 
 ## 7. Professional and citizen-science workspaces
 

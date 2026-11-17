@@ -54,14 +54,18 @@ const TerraSheetExport = (() => {
     const geoOpts = { exact, ...(geo ? { geo } : {}), ...(cell ? { cell } : {}) }, lic = licenseFor(license), who = String(recordedBy).trim().slice(0, 200);
     const terms = [
       ["occurrenceID", DWC, 30], ["basisOfRecord", DWC, 18], ["occurrenceStatus", DWC, 14], ["eventDate", DWC, 12, "date"],
-      ["verbatimIdentification", DWC, 26], ["vernacularName", DWC, 22], ["kingdom", DWC, 10], ["phylum", DWC, 12], ["class", DWC, 10],
+      ["verbatimIdentification", DWC, 26], ["vernacularName", DWC, 22], ["scientificName", DWC, 26], ["taxonRank", DWC, 10], ["taxonID", DWC, 34],
+      ["kingdom", DWC, 10], ["phylum", DWC, 12], ["class", DWC, 10], ["family", DWC, 16], ["identificationRemarks", DWC, 40],
       ["occurrenceRemarks", DWC, 40, "wrap"], ["decimalLatitude", DWC, 14, "number"], ["decimalLongitude", DWC, 14, "number"],
       ["geodeticDatum", DWC, 12], ["coordinateUncertaintyInMeters", DWC, 14, "number"], ["informationWithheld", DWC, 30], ["dataGeneralizations", DWC, 34],
       ["associatedMedia", DWC, 16], ["recordedBy", DWC, 18], ["license", DCT, 40], ["rightsHolder", DCT, 18], ["datasetName", DWC, 22]
     ].map(([term, ns, width, type]) => ({ term, uri: ns + term, width, type }));
     const rows = records.map(r => {
       const p = place(r, geoOpts), ranks = DWC_RANKS[r.type] ?? {}, photos = photoCounts.get(r.id) ?? 0, name = unknown(r.name) ? "" : r.name.trim();
-      return [r.id, "HumanObservation", "present", r.date, name, name, ranks.kingdom ?? "", ranks.phylum ?? "", ranks.class ?? "",
+      const t = r.taxon;
+      const remark = t ? `${t.source === "plantnet" ? "Suggested by Pl@ntNet photo ID" : t.source === "inat" ? "Suggested by iNaturalist photo ID" : "Name matched with GBIF"}${typeof t.score === "number" ? ` (${Math.round(t.score * 100)}% confidence)` : ""} and chosen by the observer; not verified.` : "";
+      return [r.id, "HumanObservation", "present", r.date, name, name, t?.scientificName ?? "", t?.rank ?? "", t?.gbifKey ? `https://www.gbif.org/species/${t.gbifKey}` : "",
+        t?.kingdom ?? ranks.kingdom ?? "", ranks.phylum ?? "", t?.class ?? ranks.class ?? "", t?.family ?? "", remark,
         r.notes, p.lat ?? "", p.lon ?? "", p.lat === undefined ? "" : "WGS84", p.lat === undefined ? "" : p.uncertainty,
         p.lat === undefined ? p.note : "", p.box ? p.note : "", photos ? `${photos} photo${photos === 1 ? "" : "s"} kept by observer` : "",
         who, lic.url, who, "TERRA field journal"];
@@ -91,7 +95,8 @@ ${terms.map((t, i) => `    <field index="${i}" term="${t.uri}"/>`).join("\n")}
 </archive>
 `;
     const party = who ? `<individualName><surName>${xml(who)}</surName></individualName>` : "<organizationName>TERRA user</organizationName>";
-    const located = rows.filter(r => r[10] !== "").map(r => [r[10], r[11]]);
+    const lat = terms.findIndex(t => t.term === "decimalLatitude"), lon = terms.findIndex(t => t.term === "decimalLongitude");
+    const located = rows.filter(r => r[lat] !== "").map(r => [r[lat], r[lon]]);
     const bounds = located.length && {
       w: Math.min(...located.map(l => l[1])), e: Math.max(...located.map(l => l[1])), s: Math.min(...located.map(l => l[0])), n: Math.max(...located.map(l => l[0]))
     };
@@ -131,7 +136,7 @@ ${bounds ? `      <geographicCoverage><geographicDescription>Bounding box of the
       : {
         name: "Observations",
         columns: [
-          { header: "Observation ID", width: 30 }, { header: "Date", type: "date", width: 12 }, { header: "Name", width: 26 }, { header: "Group", width: 16 },
+          { header: "Observation ID", width: 30 }, { header: "Date", type: "date", width: 12 }, { header: "Name", width: 26 }, { header: "Scientific name", width: 26 }, { header: "Group", width: 16 },
           { header: "Notes", type: "wrap", width: 44 }, { header: "Privacy setting", width: 14 }, { header: "Location in this export", width: 30 },
           { header: "Latitude", type: "number", width: 11 }, { header: "Longitude", type: "number", width: 11 }, { header: "Uncertainty (m)", type: "number", width: 14 },
           { header: "Area south", type: "number", width: 11 }, { header: "Area north", type: "number", width: 11 }, { header: "Area west", type: "number", width: 11 }, { header: "Area east", type: "number", width: 11 },
@@ -139,7 +144,7 @@ ${bounds ? `      <geographicCoverage><geographicDescription>Bounding box of the
         ],
         rows: active.map(r => {
           const p = place(r, geoOpts);
-          return [r.id, r.date, r.name, GROUPS[r.type] ?? r.type, r.notes, r.privacy[0].toUpperCase() + r.privacy.slice(1), p.shown,
+          return [r.id, r.date, r.name, r.taxon?.scientificName ?? "", GROUPS[r.type] ?? r.type, r.notes, r.privacy[0].toUpperCase() + r.privacy.slice(1), p.shown,
             p.lat ?? "", p.lon ?? "", p.lat === undefined ? "" : p.uncertainty, p.box?.y1 ?? "", p.box?.y2 ?? "", p.box?.x1 ?? "", p.box?.x2 ?? "",
             photoCounts.get(r.id) ?? 0, (inProjects.get(r.id) ?? []).join("; ")];
         })
