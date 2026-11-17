@@ -205,6 +205,11 @@
   }
   TerraTerrarium.onMove((badge, x, y) => {
     if (sandbox) { sandboxSpots[badge] = { x, y }; return; }
+    if (badge.startsWith("d:")) {
+      try { localStorage.setItem(TerraDex.KEY, JSON.stringify(TerraDex.move(TerraDex.parse(localStorage.getItem(TerraDex.KEY)), badge.slice(2), x, y))); }
+      catch { $("rewards-status").textContent = "That spot couldn't be saved. The decoration will return to its last saved place after reloading."; }
+      return;
+    }
     if (badge.startsWith("q:")) {
       try { localStorage.setItem(TerraQuests.KEY, JSON.stringify(TerraQuests.move(TerraQuests.parse(localStorage.getItem(TerraQuests.KEY)), badge.slice(2), x, y))); }
       catch { $("rewards-status").textContent = "That spot couldn't be saved. The decoration will return to its last saved place after reloading."; }
@@ -236,6 +241,61 @@
   $("terrarium-season").addEventListener("change", previewEnv);
   $("terrarium-time").addEventListener("change", previewEnv);
   // Rare sightings: a "???" card for each one you haven't spotted yet.
+  // Field guide: species cards, sets with ??? slots, evolution and set-complete celebrations.
+  function renderDex(species) {
+    const g = TerraDex.guide(species, TerraLife.KINDS);
+    let state = null;
+    try { state = TerraDex.parse(localStorage.getItem(TerraDex.KEY)); } catch { /* Damaged: show the guide, celebrate nothing, overwrite nothing. */ }
+    if (state) {
+      const firstRun = !localStorage.getItem(TerraDex.KEY);
+      const u = TerraDex.update(state, species, g, localToday());
+      if (JSON.stringify(u.state) !== JSON.stringify(state)) { try { localStorage.setItem(TerraDex.KEY, JSON.stringify(u.state)); } catch { /* Celebrated again next time. */ } }
+      state = u.state;
+      const news = [
+        ...u.evolved.map(sp => `✨ Your ${sp.name} evolved into ${/^[aeiou]/i.test(sp.form) ? "an" : "a"} ${sp.form}!`),
+        ...u.completed.map(set => `📖 Set complete: ${set.name}! ${set.reward.icon} ${set.reward.item} added to your jar.`),
+        ...(firstRun ? [] : u.added.slice(0, 1).map(sp => `📖 New field-guide card: ${sp.name}.`))
+      ];
+      if (news.length) TerraScreens.toast(news.join(" "), { href: "#terrarium", label: "See jar" });
+    }
+    $("dex-summary").textContent = `${g.cards.length} species · ${g.completeSets} of ${g.sets.length} sets complete. Log a species again to evolve it (stages at ${TerraLife.STAGE_AT.join(", ")} sightings).`;
+    const sets = $("dex-sets"); sets.replaceChildren();
+    for (const set of g.sets) {
+      const box = document.createElement("section");
+      box.className = `dex-set${set.complete ? " complete" : ""}`; box.dataset.set = set.id;
+      const head = document.createElement("header");
+      head.append(textNode("strong", "", set.name), textNode("span", "dex-set-count", `${set.found}/${set.slots.length}`), textNode("span", "dex-set-reward", `${set.reward.icon} ${set.complete ? set.reward.item : "Reward"}`));
+      const slots = document.createElement("ul"); slots.className = "dex-slots";
+      for (const slot of set.slots) {
+        const li = document.createElement("li");
+        li.className = `dex-slot${slot.found ? " found" : ""}`;
+        const icon = textNode("span", "dex-slot-icon", TerraLife.iconFor(slot.kind, 2)); icon.setAttribute("aria-hidden", "true");
+        li.append(icon, textNode("span", "", slot.found ? slot.found.name : "???"));
+        li.title = slot.found ? `${slot.name}: ${slot.found.name}` : `${slot.hint} (${slot.name.toLowerCase()})`;
+        li.setAttribute("aria-label", slot.found ? `${slot.name}: found, ${slot.found.name}` : `Not found yet. Hint: ${slot.hint}.`);
+        slots.append(li);
+      }
+      box.append(head, slots);
+      sets.append(box);
+    }
+    const cards = $("dex-cards"); cards.replaceChildren();
+    if (!g.cards.length) { const li = textNode("li", "dex-empty", "No cards yet. Every species you log gets a card here."); cards.append(li); }
+    g.cards.forEach((sp, i) => {
+      const f = TerraLife.form(sp.kind, sp.stage);
+      const li = document.createElement("li");
+      const b = document.createElement("button"); b.type = "button"; b.className = `dex-card stage-${sp.stage}`; b.dataset.species = sp.id;
+      const icon = textNode("span", "dex-card-icon", TerraLife.iconFor(sp.kind, sp.stage)); icon.setAttribute("aria-hidden", "true");
+      const meter = document.createElement("span"); meter.className = "dex-stage";
+      for (let st = 0; st < 3; st++) meter.append(textNode("span", st <= sp.stage ? "on" : "", ""));
+      b.append(textNode("span", "dex-no", `#${String(i + 1).padStart(3, "0")}`), icon, textNode("strong", "", sp.name));
+      if (sp.scientific) b.append(textNode("em", "", sp.scientific));
+      b.append(meter, textNode("small", "", `${f.name} · seen ${sp.count}× · ${sp.next ? `${sp.next - sp.count} to evolve` : "fully evolved ★"}`));
+      b.setAttribute("aria-label", `${sp.name}${sp.scientific ? `, ${sp.scientific}` : ""}. Stage ${sp.stage + 1} of 3, ${f.name}. Seen ${sp.count} times, first on ${sp.first}. ${sp.next ? `${sp.next - sp.count} more sightings to evolve.` : "Fully evolved."} Show in the jar.`);
+      b.addEventListener("click", () => { TerraTerrarium.select(sp.id); $("rewards-terrarium").scrollIntoView({ block: "center", behavior: "smooth" }); });
+      li.append(b); cards.append(li);
+    });
+    return state ? TerraDex.rewards(state).map(r => ({ ...r, uid: `d:${r.id}` })) : [];
+  }
   function renderRares() {
     const list = $("rare-list"); list.replaceChildren();
     for (const rare of TerraTerrarium.rares()) {
@@ -250,8 +310,8 @@
   }
   TerraTerrarium.onRare(() => renderRares());
   // Sample finds for the sandbox, so you can see how journal entries come to life.
-  const SAMPLE_FINDS = ["frog", "fern", "bee", "fish", "spider", "worm", "shelf", "flower", "moss", "lichen", "rabbit", "beetle"]
-    .map((kind, i) => ({ id: `sample-${kind}`, kind, name: TerraLife.KINDS[kind].name, date: "Sample", type: "other", i }));
+  const SAMPLE_FINDS = ["frog", "fern", "bee", "fish", "spider", "worm", "shelf", "flower", "moss", "lichen", "rabbit", "beetle", "butterfly", "sapling", "sparrow"]
+    .map((kind, i) => { const stage = i % 3, count = TerraLife.STAGE_AT[stage]; return { id: `s:sample-${kind}`, key: `sample-${kind}`, kind, habitat: TerraLife.habitatOf(kind), name: TerraLife.KINDS[kind].name, scientific: "", count, stage, next: TerraLife.nextAt(stage), first: "Sample", last: "Sample", unknown: false }; });
   document.addEventListener("terra:participation-changed", () => refresh());
   document.addEventListener("terra:workspace-changed", () => refresh());
   // Dashboard and résumé, from the same participation summary as Home.
@@ -333,11 +393,13 @@
       let inventory = { seeds: [], decor: [] };
       try { if (questCache.state) inventory = TerraQuests.inventory(questCache.state); } catch { /* Quest rewards unavailable; the jar still shows. */ }
       const sampleToken = i => i.toString(16).padStart(32, "0");
+      const speciesNow = TerraLife.species(active);
+      const dexRewards = renderDex(speciesNow);
       const living = sandbox
         ? { finds: SAMPLE_FINDS,
             garden: TerraQuests.SEEDS.map((seed, i) => ({ ...seed, token: sampleToken(i + 1), planted: "2000-01-01" })),
             questDecor: TerraQuests.DECOR.map((d, i) => ({ ...d, token: sampleToken(i + 20), ...(sandboxSpots[`q:${sampleToken(i + 20)}`] ?? {}) })) }
-        : { finds: TerraLife.inhabitants(active), garden: inventory.seeds, questDecor: inventory.decor, journalCount: active.length };
+        : { finds: speciesNow, garden: inventory.seeds, questDecor: [...inventory.decor, ...dexRewards], journalCount: active.length };
       TerraTerrarium.show(entries, { growth: sandbox ? TerraRewards.CATALOG.length : next.grants.length, fresh: sandbox ? [] : [...fresh], label: sandbox ? "Sandbox terrarium with every item." : label,
         ...living, south: southern(records), sandbox, date: localToday() });
       renderRares();

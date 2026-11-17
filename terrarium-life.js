@@ -35,10 +35,32 @@ const TerraLife = (() => {
     moss: { name: "Moss", draw: "moss", move: "static", fact: "Mosses have no roots or flowers. They soak up water directly and can grow on bare rock." },
     lbm: { name: "Little brown mushroom", draw: "lbm", move: "static", fact: "“Little brown mushrooms” are notoriously hard to identify and some are deadly. Never eat a wild mushroom without expert confirmation." },
     shelf: { name: "Shelf fungus", draw: "shelf", move: "static", fact: "Shelf (bracket) fungi grow from wood and help break down dead trees, recycling their nutrients." },
-    lichen: { name: "Lichen", draw: "lichen", move: "static", fact: "A lichen is a partnership: a fungus living together with algae or cyanobacteria." }
+    lichen: { name: "Lichen", draw: "lichen", move: "static", fact: "A lichen is a partnership: a fungus living together with algae or cyanobacteria." },
+    // Desert, tide-pool and rainforest life (each lives in its own habitat jar).
+    scorpion: { name: "Scorpion", icon: "🦂", move: "crawl", habitat: "desert", fact: "Scorpions glow blue-green under ultraviolet light, thanks to compounds in their outer skeleton." },
+    crab: { name: "Crab", icon: "🦀", move: "scurry", habitat: "tidepool", fact: "Many shore crabs walk sideways because their leg joints bend that way, which is fastest for them." },
+    octopus: { name: "Octopus", icon: "🐙", move: "swim", habitat: "tidepool", fact: "An octopus has three hearts and can change colour and texture in a fraction of a second." },
+    shrimp: { name: "Shrimp", icon: "🦐", move: "swim", habitat: "tidepool", fact: "Some small shrimp run 'cleaning stations', picking parasites off visiting fish." },
+    seastar: { name: "Sea star", draw: "seastar", move: "static", habitat: "tidepool", fact: "Sea stars can regrow lost arms, and many eat by pushing their stomach out of their body onto prey." },
+    anemone: { name: "Sea anemone", draw: "anemone", move: "static", habitat: "tidepool", fact: "Sea anemones are relatives of jellyfish and catch food with stinging tentacles." },
+    parrot: { name: "Parrot", icon: "🦜", move: "fly", habitat: "rainforest", fact: "Many parrots live for decades and some learn to mimic sounds, including human speech." },
+    monkey: { name: "Monkey", icon: "🐒", move: "perch", habitat: "rainforest", fact: "Many rainforest monkeys spread seeds as they eat fruit, helping the forest regrow." },
+    sloth: { name: "Sloth", icon: "🦥", move: "perch", habitat: "rainforest", fact: "Sloths move so slowly that algae grows in their fur, giving them a green camouflage." },
+    orchid: { name: "Orchid", draw: "orchid", move: "static", habitat: "rainforest", fact: "Orchids are one of the largest flowering-plant families; many grow on trees without harming them." }
   });
+  // Habitat jars. Everything without a habitat lives in the forest jar.
+  const HABITATS = Object.freeze({
+    forest: { name: "Forest jar", icon: "🌲" },
+    desert: { name: "Desert jar", icon: "🌵" },
+    tidepool: { name: "Tide-pool jar", icon: "🦀" },
+    rainforest: { name: "Rainforest jar", icon: "🦜" }
+  });
+  const habitatOf = kind => KINDS[kind]?.habitat ?? (["cactus", "lizard", "snake"].includes(kind) ? "desert" : "forest");
   // First match wins. Checked against the find's name.
   const KEYWORDS = Object.freeze([
+    [/\b(scorpion)s?\b/i, "scorpion"], [/\b(crab|hermit crab)s?\b/i, "crab"], [/\b(octopus|octopuses|octopi)\b/i, "octopus"], [/\b(shrimp|prawn)s?\b/i, "shrimp"],
+    [/\b(sea ?star|starfish)s?\b/i, "seastar"], [/\b(anemone)s?\b/i, "anemone"], [/\b(parrot|macaw|parakeet|toucan|cockatoo)s?\b/i, "parrot"],
+    [/\b(monkey|lemur|capuchin|howler|tamarin|marmoset)s?\b/i, "monkey"], [/\b(sloth)s?\b/i, "sloth"], [/\b(orchid|bromeliad)s?\b/i, "orchid"],
     [/\b(frog|toad|tree ?frog|bullfrog|peeper)s?\b/i, "frog"], [/\b(newt|salamander)s?\b/i, "lizard"],
     [/\bferns?\b|\bbracken\b|maidenhair|sword fern/i, "fern"], [/\b(moss|mosses|liverwort)\b/i, "moss"], [/\blichens?\b/i, "lichen"],
     [/\b(bee|bees|bumble ?bee|honey ?bee|wasp|hornet)\b/i, "bee"], [/\bants?\b/i, "ant"], [/\b(spider|tarantula|orb ?weaver|daddy long ?legs)s?\b/i, "spider"],
@@ -70,6 +92,59 @@ const TerraLife = (() => {
     }
     return list;
   }
+  // ---- evolution: one resident per species, growing with repeat sightings ----
+  const STAGE_AT = Object.freeze([1, 3, 5]); // sightings needed for stage 1, 2 and 3
+  const generic = (kind, young, adult, mighty) => [{ name: young, scale: 0.65 }, { name: adult, scale: 0.85 }, { name: mighty, scale: 1.1, crown: true }];
+  const FORMS = Object.freeze({
+    frog: [{ name: "Tadpole", draw: "tadpole", move: "swim", scale: 1 }, { name: "Froglet", scale: 0.6 }, { name: "Frog", scale: 1.05, crown: true }],
+    butterfly: [{ name: "Caterpillar", icon: "🐛", move: "crawl", scale: 0.8 }, { name: "Chrysalis", draw: "chrysalis", move: "dangle", scale: 1 }, { name: "Butterfly", scale: 1.05, crown: true }],
+    caterpillar: [{ name: "Tiny caterpillar", scale: 0.6 }, { name: "Caterpillar", scale: 0.85 }, { name: "Chrysalis", draw: "chrysalis", move: "dangle", scale: 1, crown: true }],
+    sparrow: [{ name: "Egg", icon: "🥚", move: "static-icon", scale: 0.6 }, { name: "Chick", icon: "🐣", move: "hop", scale: 0.8 }, { name: "Bird", scale: 1.05, crown: true }],
+    owl: [{ name: "Egg", icon: "🥚", move: "static-icon", scale: 0.6 }, { name: "Owlet", icon: "🐣", move: "perch", scale: 0.8 }, { name: "Owl", scale: 1.05, crown: true }],
+    duck: [{ name: "Egg", icon: "🥚", move: "static-icon", scale: 0.6 }, { name: "Duckling", icon: "🐥", move: "swim", scale: 0.8 }, { name: "Duck", scale: 1.05, crown: true }],
+    parrot: [{ name: "Egg", icon: "🥚", move: "static-icon", scale: 0.6 }, { name: "Chick", icon: "🐣", move: "perch", scale: 0.8 }, { name: "Parrot", scale: 1.05, crown: true }],
+    sapling: [{ name: "Seed", draw: "seed", scale: 1 }, { name: "Sapling", scale: 0.75 }, { name: "Young tree", scale: 1.3, crown: true }],
+    fern: [{ name: "Fiddlehead", draw: "fiddlehead", scale: 1 }, { name: "Young fern", scale: 0.7 }, { name: "Fern", scale: 1.1, crown: true }],
+    lbm: [{ name: "Pin", scale: 0.4 }, { name: "Button", scale: 0.7 }, { name: "Mushroom troop", scale: 1.15, crown: true }],
+    shelf: [{ name: "Young bracket", scale: 0.5 }, { name: "Bracket", scale: 0.8 }, { name: "Old bracket", scale: 1.15, crown: true }],
+    herb: [{ name: "Seedling", scale: 0.5 }, { name: "Young plant", scale: 0.8 }, { name: "Plant", scale: 1.15, crown: true }],
+    flower: [{ name: "Seedling", scale: 0.5 }, { name: "Bud", scale: 0.8, bud: true }, { name: "In bloom", scale: 1.15, crown: true }],
+    orchid: [{ name: "Seedling", scale: 0.5 }, { name: "Bud", scale: 0.8, bud: true }, { name: "In bloom", scale: 1.15, crown: true }]
+  });
+  // The stage for a number of sightings (0, 1 or 2) and the form to draw.
+  const stageFor = count => count >= STAGE_AT[2] ? 2 : count >= STAGE_AT[1] ? 1 : 0;
+  function form(kind, stage) {
+    const k = KINDS[kind], list = FORMS[kind] ?? generic(kind, `Young ${k.name.toLowerCase()}`, k.name, `Mighty ${k.name.toLowerCase()}`);
+    const f = list[Math.max(0, Math.min(2, stage))];
+    return { name: f.name, icon: f.icon ?? k.icon, draw: f.draw ?? (f.icon ? undefined : k.draw), move: f.move ?? k.move, scale: f.scale ?? 1, crown: Boolean(f.crown), bud: Boolean(f.bud), stage };
+  }
+  const nextAt = stage => STAGE_AT[stage + 1] ?? null;
+  // Card icons for each stage (drawn residents need an emoji stand-in on cards).
+  const CARD_ICONS = Object.freeze({
+    sapling: ["🌰", "🌱", "🌳"], fern: ["🌱", "🌿", "🌿"], herb: ["🌱", "🌿", "🪴"], flower: ["🌱", "🌷", "🌸"], orchid: ["🌱", "🌷", "🌺"],
+    lbm: ["🍄", "🍄", "🍄"], shelf: ["🍄", "🍄", "🍄"], moss: ["☘️", "☘️", "☘️"], lichen: ["🪨", "🪨", "🪨"], seastar: ["⭐", "⭐", "🌟"], anemone: ["🪸", "🪸", "🪸"],
+    frog: ["🐸", "🐸", "🐸"], butterfly: ["🐛", "🦋", "🦋"], caterpillar: ["🐛", "🐛", "🦋"]
+  });
+  const iconFor = (kind, stage = 1) => CARD_ICONS[kind]?.[Math.max(0, Math.min(2, stage))] ?? form(kind, stage).icon ?? KINDS[kind].icon ?? "🌿";
+  // One entry per species (newest common name; scientific name when known), at most 24, most-seen first.
+  function species(records) {
+    const keyOf = (typeof TerraXP !== "undefined" ? TerraXP : require("./xp.js")).speciesKey(records);
+    const groups = new Map();
+    for (const r of [...records].sort((a, b) => a.date.localeCompare(b.date))) {
+      const key = keyOf(r) || `unknown-${r.type}`;
+      const g = groups.get(key) ?? { key, records: [] };
+      g.records.push(r); groups.set(key, g);
+    }
+    const slug = k => k.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "species";
+    return [...groups.values()].map(g => {
+      const last = g.records[g.records.length - 1], named = [...g.records].reverse().find(r => r.name && r.name.trim().toLowerCase() !== "unknown");
+      const sci = [...g.records].reverse().find(r => r.taxon)?.taxon.scientificName ?? "";
+      const kind = kindFor(named ?? last), count = g.records.length, stage = stageFor(count);
+      return { id: `s:${slug(g.key)}`, key: g.key, kind, habitat: habitatOf(kind), name: named?.name.trim() ?? (sci || "Unknown"), scientific: sci, type: last.type,
+        count, stage, form: form(kind, stage).name, next: nextAt(stage), first: g.records[0].date, last: last.date, unknown: g.key.startsWith("unknown-") };
+    }).sort((a, b) => b.count - a.count || b.last.localeCompare(a.last)).slice(0, 24);
+  }
+
   // Facts for collection items (reward ids) and things that appear on their own.
   const ITEM_FACTS = Object.freeze({
     first: "A seedling's first leaves (cotyledons) often look different from the true leaves that follow.",
@@ -92,6 +167,6 @@ const TerraLife = (() => {
     { id: "luna-moth", name: "Moonlight moth", tier: "Legendary", icon: "🦋", odds: 0.02, fact: "The luna moth's adults have no working mouths and live only about a week, flying mainly at night." },
     { id: "white-stag", name: "White fawn", tier: "Legendary", icon: "🦌", odds: 0.01, fact: "White (leucistic) deer occur in the wild but are very rare, which made them legendary in many folktales." }
   ].map(Object.freeze));
-  return Object.freeze({ KINDS, kindFor, inhabitants, ITEM_FACTS, RARES, GROUP_DEFAULT });
+  return Object.freeze({ KINDS, kindFor, inhabitants, species, form, iconFor, stageFor, nextAt, STAGE_AT, FORMS, HABITATS, habitatOf, ITEM_FACTS, RARES, GROUP_DEFAULT });
 })();
 if (typeof module !== "undefined") module.exports = TerraLife;
