@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });

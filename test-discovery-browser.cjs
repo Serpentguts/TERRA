@@ -1,6 +1,7 @@
 // Flask on :8080; isolated Chromium profile; all application network APIs forbidden.
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
@@ -174,7 +175,8 @@ const { chromium } = require('playwright');
       await page.locator('#identify-remaining button').last().click();
       const selectedName = await page.locator('#identify-remaining h4').last().textContent();
       const beforeTransfer = await raw(J);
-      await page.getByRole('button', { name: 'Close Record a discovery view', exact: true }).click();
+      // Leave the Record screen; a confirmed handoff must bring the draft back into view.
+      await page.evaluate(() => TerraScreens.show('map'));
       await transfer();
       assert.equal(await page.locator('#name').isVisible(), true, 'Confirmed handoff reopens a closed draft');
       assert.equal(await raw(J), beforeTransfer, 'Photo confirmation must not save');

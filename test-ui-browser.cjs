@@ -1,5 +1,6 @@
 // Start python server.py, then run node test-ui-browser.cjs (Playwright test-only).
 const assert = require('node:assert/strict');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 
 (async () => {
@@ -27,24 +28,26 @@ const { chromium } = require('playwright');
     await page.goto(origin);
     const storage = () => page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }));
     const initial = await storage();
+    // Checks what is on screen right now, without opening another screen first.
+    const onScreen = selector => page.locator(selector).first().evaluate(el => el.checkVisibility());
     assert.equal(await page.locator('#home').isVisible(), true);
-    assert.equal(await page.locator('.map-legend').isVisible(), false);
-    assert.equal(await page.locator('.map-filters').isVisible(), false);
+    assert.equal(await onScreen('.map-legend'), false);
+    assert.equal(await onScreen('.map-filters'), false);
     assert.equal(await page.locator('#demo-feed, #feed-tab, #profile-tab, #profile-link, .discovery-tabs').count(), 0);
     assert.equal(await page.locator('#discover #profile, #discover a, #discover [role=tab]').count(), 0);
     assert.equal(await page.locator('#discover').count(), 0, 'Redundant Discover section removed');
     assert.equal(await page.locator('#profile').evaluate(el => !el.closest('#discover')), true);
     assert.equal(await page.locator('.site-header a[href="#profile"]').count(), 1);
     const bottom = page.getByRole('navigation', { name: 'Primary', exact: true });
-    const destinations = ['workspace', 'map', 'profile', 'feed', 'identify-title', 'genetic-title', 'projects-title'];
-    assert.deepEqual(await bottom.locator('a span').allTextContents(), ['Workspace', 'Map', 'Profile', 'Feed', 'Observation', 'Genetics', 'Projects / Journal']);
+    const destinations = ['home', 'journal', 'record', 'map', 'profile'];
+    assert.deepEqual(await bottom.locator('a span').allTextContents(), ['Home', 'Journal', 'Record', 'Map', 'Profile']);
     assert.deepEqual(await bottom.locator('a').evaluateAll(links => links.map(link => link.hash.slice(1))), destinations);
-    assert.equal(await bottom.locator('svg[aria-hidden="true"][focusable="false"]').count(), 7, "Every destination has a matching line icon");
+    assert.equal(await bottom.locator('svg[aria-hidden="true"][focusable="false"]').count(), 5, "Every destination has a matching line icon");
     assert.equal(await bottom.evaluate(el => !el.closest('main, header, #discover')), true);
     assert.match(await page.locator('meta[name="viewport"]').getAttribute('content'), /viewport-fit=cover/);
     const bottomRule = await page.evaluate(() => [...document.styleSheets[0].cssRules].find(rule => rule.selectorText === '#bottom-navigation').cssText);
     for (const inset of ['bottom', 'left', 'right']) assert.ok(bottomRule.includes(`env(safe-area-inset-${inset})`));
-    for (const label of ['Map', 'Profile', 'Feed', 'Observation', 'Genetics', 'Projects / Journal']) {
+    for (const label of ['Home', 'Journal', 'Record', 'Map', 'Profile']) {
       assert.equal(await bottom.getByRole('link', { name: label, exact: true }).isVisible(), true);
     }
 
@@ -52,7 +55,8 @@ const { chromium } = require('playwright');
     const toggle = page.getByRole('button', { name: 'Navigation', exact: true });
     await toggle.focus(); await page.keyboard.press('Enter');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
-    assert.equal(await page.locator('#site-navigation a').count(), 9);
+    assert.deepEqual(await page.locator('#site-navigation a').evaluateAll(links => links.map(link => link.hash.slice(1))),
+      ['home', 'journal', 'projects', 'record', 'photo', 'map', 'profile', 'terrarium', 'feed', 'genetics']);
     await page.keyboard.press('Tab');
     assert.equal(await page.locator('#site-navigation a').first().evaluate(el => el === document.activeElement), true);
     await page.keyboard.press('Escape');
@@ -60,16 +64,19 @@ const { chromium } = require('playwright');
     assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
     await page.keyboard.press('Space');
     await page.locator('#site-navigation').getByRole('link', { name: 'Map', exact: true }).click();
-    assert.equal(await page.locator('#map').isVisible(), true);
-    assert.equal(await page.locator('#home').isVisible(), true); // Opened views coexist until closed.
-    assert.equal(await page.locator('#map').evaluate(el => el === document.activeElement), true);
-    assert.equal(await page.locator('#map').getAttribute('tabindex'), '-1');
+    // One screen at a time: Map replaces Home, and focus moves to the new screen's heading.
+    assert.equal(await onScreen('#map'), true);
+    assert.equal(await onScreen('#home'), false);
+    assert.equal(await page.locator('#map-title').evaluate(el => el === document.activeElement), true);
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
-    await toggle.click(); await page.locator('#page-title').click();
+    assert.equal(await page.title(), 'Map · TERRA');
+    assert.equal(await onScreen('#screen-back'), true);
+    assert.equal(await page.locator('#screen-back').textContent(), '← Home');
+    await toggle.click(); await page.locator('#map-title').click();
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
-    await page.getByRole('button', { name: 'Close Map view', exact: true }).click();
-    await toggle.click(); await page.getByRole('link', { name: 'Record a discovery', exact: true }).click();
+    await toggle.click(); await page.locator('#site-navigation').getByRole('link', { name: 'Record a discovery', exact: true }).click();
     assert.equal(await page.locator('#form-title').evaluate(el => el === document.activeElement), true);
+    assert.equal(await onScreen('#map'), false);
     await toggle.click(); await page.locator('#site-navigation a').last().focus();
     await page.keyboard.press('Tab');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
@@ -79,26 +86,43 @@ const { chromium } = require('playwright');
     await page.keyboard.press('Tab');
     assert.equal(await bottom.locator('a[href="#profile"]').evaluate(el => el === document.activeElement), true);
     await page.keyboard.press('Enter');
-    assert.equal(await page.locator('#profile').isVisible(), true);
-    assert.equal(await page.locator('.map-legend').isVisible(), false);
+    assert.equal(await onScreen('#profile'), true);
+    assert.equal(await onScreen('.map-legend'), false);
+    const headings = { home: '#page-title', journal: '#saved-title', record: '#form-title', map: '#map-title', profile: '#profile-title' };
     for (const id of destinations) {
-      if (id !== 'map' && await page.locator('#map').isVisible()) {
-        await page.getByRole('button', { name: 'Close Map view', exact: true }).click();
-      }
       await bottom.locator(`a[href="#${id}"]`).click();
-      assert.equal(await page.locator(`#${id}`).evaluate(el => el === document.activeElement), true);
-      assert.equal(await bottom.locator('[aria-current="location"]').count(), 1);
-      assert.equal(await bottom.locator(`a[href="#${id}"]`).getAttribute('aria-current'), 'location');
-      if (id !== 'map') {
-        assert.equal(await page.locator('.map-legend').isVisible(), false);
-        assert.equal(await page.locator('.map-filters').isVisible(), false);
-      }
+      assert.equal(await page.locator(headings[id]).evaluate(el => el === document.activeElement), true, id);
+      assert.equal(await bottom.locator('[aria-current="page"]').count(), 1);
+      assert.equal(await bottom.locator(`a[href="#${id}"]`).getAttribute('aria-current'), 'page');
+      assert.equal(await page.evaluate(() => scrollY), 0, `${id} opens at the top`);
+      if (id !== 'map') assert.equal(await onScreen('.map-legend'), false);
     }
-    // Back/forward and direct links retain the right area and current indicator.
+    // Sub-screens highlight their parent tab and link back to it.
+    await bottom.locator('a[href="#journal"]').click();
+    await page.locator('.segmented a[href="#projects"]').first().click();
+    assert.equal(await bottom.locator('a[href="#journal"]').getAttribute('aria-current'), 'page');
+    assert.equal(await page.locator('#screen-back').textContent(), '← Journal');
+    assert.equal(await onScreen('#projects-title'), true);
+    assert.equal(await onScreen('#saved-title'), false);
+    // Older deep links still land on the right screen.
+    await page.goto(origin + '/#form-title');
+    assert.equal(await onScreen('#form-title'), true);
+    assert.equal(await bottom.locator('a[href="#record"]').getAttribute('aria-current'), 'page');
+    await page.goto(origin + '/#genetic-title');
+    assert.equal(await onScreen('#genetic-data'), true);
+    assert.equal(await bottom.locator('[aria-current]').count(), 0, 'Menu-only screens have no tab');
+    // Back/forward and direct links retain the right screen and current indicator.
     await page.goBack();
-    assert.equal(await bottom.locator('a[href="#genetic-title"]').getAttribute('aria-current'), 'location');
+    assert.equal(await bottom.locator('a[href="#record"]').getAttribute('aria-current'), 'page');
+    assert.equal(await onScreen('#form-title'), true);
     await page.goForward();
-    assert.equal(await bottom.locator('a[href="#projects-title"]').getAttribute('aria-current'), 'location');
+    assert.equal(await onScreen('#genetic-data'), true);
+    // The back link mirrors the browser's back button after in-app navigation.
+    await bottom.locator('a[href="#journal"]').click();
+    await page.locator('.segmented a[href="#projects"]').first().click();
+    await page.click('#screen-back');
+    await page.waitForFunction(() => location.hash === '#journal');
+    assert.equal(await onScreen('#saved-title'), true);
     await bottom.locator('a[href="#map"]').click();
     assert.match(await page.locator('.map-legend').textContent(), /Green:.*natural setting.*Yellow:.*cultivated setting.*Red:.*for-sale listing, never an observation/s);
     assert.equal(await page.locator('.map-legend').isVisible(), true);
@@ -144,26 +168,25 @@ const { chromium } = require('playwright');
     await page.keyboard.press('Home'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');
     assert.equal(await page.locator('#map-purpose').inputValue(), 'natural');
     await page.locator('#map-reset').click();
-    await page.getByRole('button', { name: 'Close Map view', exact: true }).click();
     await page.evaluate(() => { location.hash = 'home'; });
     await page.waitForFunction(() => !document.getElementById('home').hidden);
-    assert.equal(await page.locator('.map-legend').isVisible(), false);
-    assert.equal(await page.locator('.map-filters').isVisible(), false);
+    assert.equal(await onScreen('.map-legend'), false);
+    assert.equal(await onScreen('.map-filters'), false);
     await page.goto(origin + '/#feed');
     assert.equal(await page.locator('#feed').isVisible(), true);
-    assert.equal(await page.locator('#map').isVisible(), false);
-    assert.match(await page.locator('#feed').textContent(), /local demo.*Not published.*fictional.*nobody is notified/is);
+    assert.equal(await onScreen('#map'), false);
+    assert.match(await page.locator('#feed').textContent(), /Demo.*Not published.*fictional.*nobody is notified/is);
     assert.equal(await page.locator('#feed-samples > li').count(), 5);
-    assert.equal(await bottom.locator('a[href="#feed"]').getAttribute('aria-current'), 'location');
+    assert.equal(await bottom.locator('[aria-current]').count(), 0, 'Feed is a menu-only preview');
 
     // Profile now reads the journal; metadata persistence is covered in the next-UI suite.
     await toggle.click();
     await page.locator('#site-navigation a[href="#profile"]').click();
     assert.equal(await page.locator('#profile').isVisible(), true);
-    assert.equal(await page.locator('#profile').evaluate(el => el === document.activeElement), true);
+    assert.equal(await page.locator('#profile-title').evaluate(el => el === document.activeElement), true);
     assert.match(await page.locator('#profile-help').textContent(), /no upload, account sync or real follows/);
-    assert.equal(await page.locator('.map-legend').isVisible(), false);
-    assert.equal(await page.locator('.map-filters').isVisible(), false);
+    assert.equal(await onScreen('.map-legend'), false);
+    assert.equal(await onScreen('.map-filters'), false);
     assert.deepEqual(await storage(), initial);
     await page.goto(origin + '/#home');
 
@@ -171,6 +194,7 @@ const { chromium } = require('playwright');
     // are hidden, disabled, unnamed (absent from FormData), and empty.
     for (const prefix of ['identify', 'discovery']) {
       const fieldset = page.locator(`#${prefix}-location`);
+      await page.evaluate(prefix => TerraScreens.show(prefix === 'identify' ? 'photo' : 'record'), prefix);
       assert.equal(await fieldset.locator('select:visible, input:visible').count(), 1);
       const select = (key, value) => page.selectOption(`#${prefix}-${key}`, value);
       const value = key => page.locator(`#${prefix}-${key}`).inputValue();
@@ -328,6 +352,6 @@ const { chromium } = require('playwright');
     assert.deepEqual(await page.evaluate(() => window.outbound), []);
     assert.deepEqual(errors, []); assert.deepEqual(network, []);
     await context.close();
-    console.log('PASS: native context disclosure/clearing, setting handoff/nonpersistence/export/reset, seven-destination persistent navigation/hash/history/focus/spacing, Map-only legend/combined filters/empty/reset, journal-backed local Profile, icons/sale separation, labels/mobile, no GPS or network.');
+    console.log('PASS: native context disclosure/clearing, setting handoff/nonpersistence/export/reset, five-tab one-screen navigation/hash/history/focus/spacing, Map-only legend/combined filters/empty/reset, journal-backed local Profile, icons/sale separation, labels/mobile, no GPS or network.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

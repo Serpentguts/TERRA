@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -70,7 +71,7 @@ const { chromium } = require('playwright');
 
     // Profile tabs, unverified text and persistence; never copy journal or project records.
     await page.click('#bottom-navigation a[href="#profile"]');
-    await page.locator('#profile > details > summary').click();
+    await page.locator('#profile > details:not(.more) > summary').click();
     await page.fill('#profile-display-name', '<img src=x> Explorer');
     await page.fill('#profile-description', 'My local fieldbook');
     await page.fill('#profile-credential-input', 'Self-described botanist');
@@ -122,26 +123,20 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('#profile-observations li').count(), 7);
     assert.equal(await state(R), completeRewards, 'Delete/restore cannot farm rewards');
 
-    // Non-destructive minimized stack, overview states, repeated same-hash reopening.
-    await page.fill('#notes', 'Unsaved workspace draft');
-    const formView = page.locator('#form-title').locator('xpath=ancestor::section[1]');
-    await formView.locator('.minimize-view').click();
-    assert.equal(await page.locator('#notes').isVisible(), false);
-    await page.click('#bottom-navigation a[href="#workspace"]');
-    assert.match(await page.locator('#workspace-views').textContent(), /Record a discovery · minimized/);
-    await page.click('#workspace-views a[href="#form-title"]');
-    assert.equal(await page.locator('#notes').inputValue(), 'Unsaved workspace draft');
-    assert.equal(await page.locator('#notes').isVisible(), true);
-    await formView.locator('.close-view').click();
-    assert.match(await page.locator('#workspace-views').textContent(), /Record a discovery · closed/);
-    await page.click('#workspace-views a[href="#form-title"]');
-    await formView.locator('.minimize-view').click();
-    await page.click('#bottom-navigation a[href="#identify-title"]');
-    assert.equal(await page.locator('#notes').isVisible(), true, 'Grouped destinations expand minimized related draft');
-    assert.equal(await page.locator('#notes').inputValue(), 'Unsaved workspace draft');
-    await page.click('#workspace-close');
-    assert.equal(await page.locator('#workspace').isVisible(), false);
-    assert.equal(await page.locator('#bottom-navigation a:visible').count(), 7);
+    // Switching screens keeps unsaved drafts; repeated same-hash links still route.
+    await page.click('#bottom-navigation a[href="#record"]');
+    await page.fill('#notes', 'Unsaved draft');
+    await page.click('#bottom-navigation a[href="#map"]');
+    assert.equal(await page.locator('#notes').evaluate(el => el.checkVisibility()), false);
+    await page.click('#bottom-navigation a[href="#record"]');
+    assert.equal(await page.locator('#notes').inputValue(), 'Unsaved draft');
+    await page.click('#bottom-navigation a[href="#record"]');
+    assert.equal(await page.locator('#form-title').evaluate(el => el === document.activeElement), true);
+    await page.click('.photo-hint a');
+    assert.equal(await page.locator('#identify-title').evaluate(el => el.checkVisibility()), true);
+    assert.equal(await page.locator('#bottom-navigation a[href="#record"]').getAttribute('aria-current'), 'page');
+    assert.equal(await page.locator('#notes').inputValue(), 'Unsaved draft');
+    assert.equal(await page.locator('#bottom-navigation a:visible').count(), 5);
     assert.equal(await state(R), completeRewards);
 
     // Cross-tab changes refresh derived views and profile without duplicate grants.
@@ -171,7 +166,7 @@ const { chromium } = require('playwright');
     assert.equal(JSON.parse(await state(J)).length, 6);
     await failure.goto(origin + '/#profile'); await failure.reload();
     assert.equal(await failure.evaluate(R => JSON.parse(localStorage.getItem(R)).grants.map(g => g.badge).join(), R), 'first,obs5,project', 'Six remaining days + complete project: no seven-day streak');
-    await failure.locator('#profile > details > summary').click();
+    await failure.locator('#profile > details:not(.more) > summary').click();
     await failure.fill('#profile-description', 'Kept failed draft');
     await failure.evaluate(U => { const original = Storage.prototype.setItem; Storage.prototype.setItem = function (key, value) { if (key === U) throw Error('Quota'); return original.call(this, key, value); }; }, U);
     await failure.click('#profile-form button');
@@ -186,9 +181,10 @@ const { chromium } = require('playwright');
     assert.match(await page.locator('#rewards-status').textContent(), /unavailable/);
     assert.equal(await page.locator('#profile-form button').isDisabled(), true);
     assert.equal(await page.locator('#rewards-terrarium span').count(), 0);
+    // Old #workspace links land on Home.
     await page.goto(origin + '/#workspace'); await page.reload();
-    assert.equal(await page.locator('#workspace').isVisible(), true);
-    assert.equal(await page.locator('#bottom-navigation a[href="#workspace"]').getAttribute('aria-current'), 'location');
+    assert.equal(await page.locator('#home').evaluate(el => el.checkVisibility()), true);
+    assert.equal(await page.locator('#bottom-navigation a[href="#home"]').getAttribute('aria-current'), 'page');
     assert.deepEqual(errors, []); assert.deepEqual(outbound, []);
     await context.close();
     console.log('PASS: multi-select union/intersection/order/reset, searchable groups, same-source profile/tabs/credentials, three awards/random decor/placement/reload, duplicate-event/completion/trash farming prevention, legacy schema, cross-tab updates, nav minimize/close/reopen, quota/corrupt-store isolation, no network/GPS.');

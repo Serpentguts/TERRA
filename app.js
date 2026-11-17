@@ -476,6 +476,7 @@ function saveDiscovery(withProject = false) {
   render();
   projectObservation.value = observation.id;
   status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist. Image previews are not saved.`;
+  document.dispatchEvent(new CustomEvent("terra:observation-saved", { detail: { name: observation.name } }));
   document.querySelector("#name").focus();
 }
 form.addEventListener("submit", event => { event.preventDefault(); saveDiscovery(); });
