@@ -122,6 +122,23 @@ New ideas go here first, then move into a phase above when they're scheduled.
 - [ ] NFT/provenance records for Trichocereus clone lineages and seed lots.
 - [ ] Terrarium × rewards: if contributors ever earn tokens, decide whether Terrarium items stay purely cosmetic (recommended) or link to on-chain receipts.
 
+### Terrarium and gamification ideas (Nov 11)
+
+Ideas for making the terrarium more engaging, roughly in recommended order:
+
+1. **Your finds live in the jar.** Each new species group you record adds a small inhabitant: log a frog and a frog appears; log a fern and one sprouts. The jar becomes a living picture of your journal.
+2. **Seasons, weather and day/night** follow the real date and time: autumn colors, winter frost, spring blooms, fireflies at night. Recording observations brings rain, and rain makes mushrooms fruit.
+3. **Field quests:** small daily and weekly missions ("photograph something purple", "3 fungi this week") that reward seed packets or decorations, with a gentle streak counter that never punishes missed days.
+4. **Rare variants:** a small chance of a glowing mushroom, an albino snail or an iridescent beetle after real observations, kept in a "rare sightings" log.
+5. **Care interactions:** mist the plants, scatter seed for the bird, turn over a log to find a beetle. Small taps that make the jar respond.
+6. **Field guide cards:** tap a creature for real facts. Completing the guide unlocks a decoration.
+7. **More jars:** unlock desert, rainforest, tide pool and alpine jars by observing in different habitats, and switch between them.
+8. **Food webs:** ladybugs eat aphids, birds eat beetles, fungi feed the plants. Jars with more species have richer interactions, which quietly teaches ecology.
+9. **Social:** visit friends' terrariums, leave a pebble or seed as a gift, and earn limited-time items for attending BioBlitz events.
+10. **Snapshot:** save or share a picture of your terrarium.
+
+Keep all of these participation-based and free of monetary value unless the token decision (§2) changes.
+
 ## 10. Decisions log
 
 | Date | Decision |
@@ -132,6 +149,7 @@ New ideas go here first, then move into a phase above when they're scheduled.
 | 2026-10-21 | Image contributions for model training are opt-in, with files off-chain and receipts on-chain. |
 | 2026-11-11 | Hippius for datasets and checkpoints; rented GPUs for fine-tuning; build up to it. |
 | 2026-11-11 | Locations moved to real-world coordinates with the same Exact / Approximate / Hidden rules. |
+| 2026-11-11 | Observation photos are saved locally (IndexedDB, resized, metadata stripped) when "Save photos" is checked; still never uploaded or in backups. |
 
 ## References
 

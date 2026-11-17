@@ -587,7 +587,9 @@ async function testDiscoveryHandoff(page, key) {
   await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
   await page.waitForTimeout(1100); // Delayed JSON export URL revocation.
   urls = await page.evaluate(() => window.handoffUrls);
-  assert.deepEqual([...urls.created].sort(), [...urls.revoked].sort());
+  const unrevoked = urls.created.filter(u => !urls.revoked.includes(u)), extra = urls.revoked.filter(u => !urls.created.includes(u));
+  // Nothing created during the handoff leaks. (Thumbnails made earlier, before tracking began, are also released here.)
+  assert.deepEqual(unrevoked, [], JSON.stringify({ created: urls.created.length, revoked: urls.revoked.length, extra: extra.length }));
   assert.equal(new Set(urls.revoked).size, urls.revoked.length);
   assert.equal(requests.every(url => url.startsWith('blob:')), true, `Unexpected handoff network: ${requests}`);
   page.off('request', capture);

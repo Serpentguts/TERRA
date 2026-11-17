@@ -45,14 +45,17 @@ const assert = require('node:assert/strict');
     // Life cycles: mushrooms pin, fruit and decay along a growing mycelium; the bird can be poisoned and hatches again.
     const seen = new Set(), phases = new Set();
     const states = ['perch', 'fly', 'ground', 'peck', 'sick', 'dead', 'egg', 'chick'], stages = ['pin', 'growing', 'mature', 'decaying'];
-    for (let i = 0; i < 1500 && !(states.every(s => seen.has(s)) && stages.every(p => phases.has(p))); i++) {
+    for (let i = 0; i < 2500 && !(states.every(s => seen.has(s)) && stages.every(p => phases.has(p)) && seen.has('snail-snack')); i++) {
       await page.evaluate(() => TerraTerrarium.step(2));
       const d = await debug();
       seen.add(d.bird.state); for (const f of d.fruits) phases.add(f.phase);
+      if (d.snail.eating) seen.add('snail-snack');
     }
     for (const state of states) assert.ok(seen.has(state), `bird reached ${state}`);
     for (const phase of stages) assert.ok(phases.has(phase), `mushroom reached ${phase}`);
+    assert.ok(seen.has('snail-snack'), 'Snails sometimes nibble mushrooms');
     assert.ok((await debug()).mycelium > 40, 'Mycelium network grows');
+    assert.ok((await debug()).nodes > 30, 'Mycelium grows along a lattice of nodes');
 
     // "Show in terrarium" highlights an item and describes what it's doing.
     await page.locator('#decor-list [data-achievement="obs5"] .collection-find').click();

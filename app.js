@@ -46,6 +46,7 @@ let activeChoice = -1;
 let observations = [];
 let storageReady = false;
 let previewUrl = null;
+let previewFile = null;
 // Retry identity is in memory only; never persist workflow bookkeeping.
 let pendingDiscovery = null;
 const projectObservation = document.querySelector("#project-observation");
@@ -125,7 +126,7 @@ document.addEventListener("terra:prefill-discovery", event => {
     const card = element("li", "identify-photo");
     const img = element("img");
     const url = URL.createObjectURL(file);
-    const image = { img, url };
+    const image = { img, url, file };
     img.alt = `Temporary discovery preview: ${file.name}`;
     img.onerror = () => {
       img.onerror = null;
@@ -142,7 +143,7 @@ document.addEventListener("terra:prefill-discovery", event => {
     img.src = url;
   }
   discoveryImageWrap.hidden = false;
-  transferStatus.textContent = "Draft prefilled only. Review name, date, group, temporary images/location, notes and privacy, then Save separately. Images and location detail are not saved or exported. Nothing sent to iNaturalist.";
+  transferStatus.textContent = "Draft prefilled only. Review name, date, group, temporary images/location, notes and privacy, then Save separately. Transferred photos are saved with the observation only if “Save photos” stays checked; location detail is not saved or exported. Nothing sent to iNaturalist.";
   nameInput.focus();
 });
 
@@ -295,6 +296,9 @@ function load() {
 function persist(next, errorElement = formError) {
   try {
     const retained = TerraData.retain(next);
+    // Records that just expired from Trash take their photos with them.
+    const expired = next.filter(r => !retained.includes(r)).map(r => r.id);
+    if (expired.length && typeof TerraPhotos !== "undefined") TerraPhotos.remove(expired).catch(() => {});
     localStorage.setItem(STORAGE_KEY, JSON.stringify(retained));
     observations = retained;
     showError(errorElement, "");
@@ -395,6 +399,7 @@ function clearPreview() {
   clearDiscoveryImages();
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = null;
+  previewFile = null;
   preview.removeAttribute("src");
   previewWrap.hidden = true;
   photoInput.value = "";
@@ -410,6 +415,7 @@ photoInput.addEventListener("change", () => {
     return;
   }
   previewUrl = URL.createObjectURL(file);
+  previewFile = file; // Kept for saving: the file input itself is cleared above.
   preview.src = previewUrl;
   previewWrap.hidden = false;
 });
@@ -462,6 +468,10 @@ function saveDiscovery(withProject = false) {
     }
   }
   pendingDiscovery = null;
+  // Photos to keep with this observation: the picked photo plus any transferred from Explore a photo.
+  const photoFiles = document.querySelector("#save-photos").checked
+    ? [...(previewUrl && previewFile ? [previewFile] : []), ...discoveryImages.map(image => image.file).filter(Boolean)]
+    : [];
   const targetProject = discoveryProject.value;
   form.reset();
   TerraLocation.sync("discovery");
@@ -475,8 +485,14 @@ function saveDiscovery(withProject = false) {
   transferStatus.textContent = "";
   render();
   projectObservation.value = observation.id;
-  status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist. Image previews are not saved.`;
+  status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist.${photoFiles.length ? " Saving photo…" : " No photo saved."}`;
   document.dispatchEvent(new CustomEvent("terra:observation-saved", { detail: { name: observation.name } }));
+  if (photoFiles.length) {
+    const savedName = observation.name;
+    TerraPhotos.save(observation.id, photoFiles)
+      .then(count => { status.textContent = `Saved “${savedName}” with ${count} photo${count === 1 ? "" : "s"} in this browser. Nothing was uploaded or published.`; })
+      .catch(() => { status.textContent = `Saved “${savedName}”, but its photo couldn't be stored in this browser (storage blocked or full). The observation itself is safe.`; });
+  }
   document.querySelector("#name").focus();
 }
 form.addEventListener("submit", event => { event.preventDefault(); saveDiscovery(); });

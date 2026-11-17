@@ -389,3 +389,28 @@ section[data-screen][tabindex="-1"]:focus { outline: none; }
 .terrarium-caption { max-width: 560px; min-height: 2.8em; margin: -12px auto 18px; color: var(--muted); text-align: center; font-size: 14px; }
 .collection-find { margin-top: 2px; font-size: 13px; }
 @media (max-width: 480px) { .rewards-terrarium { height: 270px; } }
+
+/* Posts grid and photo viewer */
+.post-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0; margin: 12px 0; list-style: none; }
+#profile-observations.post-grid > li { min-width: 0; margin: 0; padding: 0; border: 0; }
+.post-grid .post-empty { grid-column: 1 / -1; color: var(--muted); }
+.post-tile { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1; padding: 0; overflow: hidden; border: 0; border-radius: 6px; background: #edf2e6; color: var(--ink); cursor: pointer; }
+.post-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.post-face { font-size: clamp(24px, 7vw, 40px); }
+.post-label { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 5px; overflow: hidden; background: linear-gradient(transparent, rgba(20, 35, 25, .72)); color: #fff; font-size: 11px; line-height: 1.25; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.post-tile:not(.has-photo) .post-label { background: none; color: var(--muted); }
+.post-tile:hover img { transform: scale(1.04); }
+.post-tile img { transition: transform .25s ease; }
+.post-tile:focus-visible { outline: 3px solid #a06c25; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .post-tile img { transition: none; } }
+.post-viewer { width: min(92vw, 640px); max-height: 88vh; padding: 16px 18px 6px; border: 0; border-radius: 14px; box-shadow: 0 20px 60px #0005; }
+.post-viewer::backdrop { background: rgba(20, 30, 24, .55); }
+.post-viewer-close { display: flex; justify-content: flex-end; margin: -6px -6px 4px; }
+.post-viewer-close button { min-width: 44px; min-height: 44px; font-size: 18px; }
+.post-viewer-photos { display: grid; gap: 8px; }
+.post-viewer-photos img { width: 100%; max-height: 60vh; object-fit: contain; border-radius: 8px; background: #f3f5ef; }
+.post-viewer-none { color: var(--muted); }
+.post-viewer h3 { margin: 12px 0 2px; }
+.post-viewer-meta { margin: 0; color: var(--muted); }
+.check-field { display: flex; align-items: center; gap: 8px; margin: -4px 0 14px; font-size: 14px; }
+.check-field input { width: 18px; height: 18px; accent-color: var(--green); }
