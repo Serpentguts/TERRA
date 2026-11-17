@@ -5,13 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#214c3c">
   <title>TERRA · Your field journal</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="styles.css">
   <script src="local-data.js" defer></script>
+  <script src="vendor/leaflet/leaflet.js" defer></script>
+  <script src="vendor/topojson-client/topojson-client.min.js" defer></script>
+  <script src="basemap.js" defer></script>
   <script src="local-map.js" defer></script>
   <script src="ui.js" defer></script>
+  <script src="map.js" defer></script>
+  <script src="photos.js" defer></script>
   <script src="app.js" defer></script>
   <script src="rewards.js" defer></script>
+  <script src="xp.js" defer></script>
+  <script src="validators.js" defer></script>
+  <script src="validate-ui.js" defer></script>
+  <script src="dashboard.js" defer></script>
+  <script src="resume.js" defer></script>
+  <script src="quests.js" defer></script>
+  <script src="weather.js" defer></script>
+  <script src="terrarium-life.js" defer></script>
+  <script src="dex.js" defer></script>
+  <script src="terrarium.js" defer></script>
+  <script src="avatars.js" defer></script>
   <script src="profile.js" defer></script>
+  <script src="agent.js" defer></script>
+  <script src="xlsx-writer.js" defer></script>
+  <script src="export-sheet.js" defer></script>
+  <script src="export-ui.js" defer></script>
   <script src="feed-data.js" defer></script>
   <script src="feed.js" defer></script>
 </head>
@@ -22,90 +43,121 @@
     <span class="header-note">A little closer to nature.</span>
     <div class="site-navigation">
       <button id="navigation-toggle" class="secondary-button" type="button" aria-label="Navigation" aria-expanded="false" aria-controls="site-navigation"><span aria-hidden="true">☰</span></button>
-      <nav id="site-navigation" aria-label="TERRA areas" hidden>
-        <a href="#home">Home</a><a href="#map">Map</a><a href="#profile">Profile · local demo</a>
-        <a href="#identify-title">Explore a photo</a><a href="#form-title">Record a discovery</a>
-        <a href="#saved-title">Your observations</a><a href="#projects-title">Projects / Field Summary</a>
-        <a href="#feed">Feed · local demo</a><a href="#genetic-title">Genetic Data</a>
+      <nav id="site-navigation" aria-label="All of TERRA" hidden>
+        <a href="#home">Home</a><a href="#journal">Journal</a><a href="#projects">Projects</a>
+        <a href="#record">Record a discovery</a><a href="#photo">Explore a photo</a>
+        <a href="#map">Map</a><a href="#profile">Profile</a><a href="#terrarium">Terrarium</a>
+        <span class="menu-label">Previews</span>
+        <a href="#feed">Feed <small>demo</small></a><a href="#genetics">Genetic data <small>preview</small></a>
       </nav>
     </div>
   </header>
   <nav id="bottom-navigation" aria-label="Primary">
-    <a href="#workspace"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 9 5-9 5-9-5Z M3 12.5l9 5 9-5 M3 17l9 5 9-5"/></svg><span>Workspace</span></a>
+    <a href="#home"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11 12 4l9 7 M5 9.5V20h5v-6h4v6h5V9.5"/></svg><span>Home</span></a>
+    <a href="#journal"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5C9 3 5 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z M12 5v16"/></svg><span>Journal</span></a>
+    <a href="#record" class="record-tab"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14 M5 12h14"/></svg><span>Record</span></a>
     <a href="#map"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Z M9 3v16 M15 5v16"/></svg><span>Map</span></a>
     <a href="#profile"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="7" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3"/></svg><span>Profile</span></a>
-    <a href="#feed"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10 M7 12h10 M7 17h10"/></svg><span>Feed</span></a>
-    <a href="#identify-title" aria-current="location"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h4l2-3h6l2 3h4v14H3Z"/><circle cx="12" cy="13" r="4"/></svg><span>Observation</span></a>
-    <a href="#genetic-title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 2c0 10 12 10 12 20 M18 2C18 12 6 12 6 22 M7 5h10 M9 9h6 M9 15h6 M7 19h10"/></svg><span>Genetics</span></a>
-    <a href="#projects-title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5C9 3 5 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z M12 5v16"/></svg><span>Projects / Journal</span></a>
   </nav>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <main id="main">
-    <section id="home" class="intro" aria-labelledby="page-title" tabindex="-1">
+    <div id="screen-bar" class="screen-bar" hidden><a id="screen-back" class="back-link" href="#home"><span aria-hidden="true">←</span> <span id="screen-back-label">Home</span></a></div>
+    <p id="view-stack-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+    <section id="home" class="intro" data-screen="home" aria-labelledby="page-title" tabindex="-1">
       <p class="eyebrow">YOUR PERSONAL FIELD JOURNAL</p>
       <h1 id="page-title">Small discoveries.<br>A growing connection.</h1>
       <p>Notice a leaf, a mushroom, something new. Give your observations a place to take root.</p>
       <div class="local-badge"><span aria-hidden="true">●</span> Browser-only · No account needed</div>
     </section>
-    <aside class="privacy-note" aria-labelledby="privacy-title">
+    <section id="home-dashboard" class="home-dashboard" data-screen="home" aria-labelledby="home-glance-title">
+      <h2 id="home-glance-title" class="visually-hidden">Your journal at a glance</h2>
+      <a href="#record" class="primary-button home-record"><span aria-hidden="true">＋</span> Record a discovery</a>
+      <ul class="home-stats">
+        <li><a href="#journal"><strong id="home-count">0</strong><span>observations</span></a></li>
+        <li><a href="#journal"><strong id="home-days">0</strong><span>days in the field</span></a></li>
+        <li><a href="#terrarium"><strong id="home-items">0</strong><span>terrarium items</span></a></li>
+      </ul>
+      <a id="home-streak" class="home-streak" href="#record" hidden></a>
+      <a id="home-level" class="home-level" href="#profile" hidden></a>
+      <a id="home-quality" class="home-quality" href="#profile" hidden></a>
+      <section id="home-quests" class="home-quests" aria-labelledby="quests-title" hidden>
+        <div class="home-recent-heading"><h3 id="quests-title">Field quests</h3><span id="quest-days" class="quest-days"></span></div>
+        <ul id="quest-daily" class="quest-list" aria-label="Today's quests"></ul>
+        <h4 class="quest-sub">This week</h4>
+        <ul id="quest-weekly" class="quest-list" aria-label="This week's quests"></ul>
+        <p class="quest-note">Daily quests earn seed packets that bloom in your <a href="#terrarium">jar</a>. Weekly quests earn decorations. Missing a day never costs you anything.</p>
+      </section>
+      <a id="home-next" class="home-next" href="#terrarium" hidden></a>
+      <div class="home-recent-heading"><h3>Recent finds</h3><a href="#journal">See all</a></div>
+      <ul id="home-recent" class="home-recent"></ul>
+      <p id="home-empty" class="home-empty" hidden>Nothing recorded yet. Your first find will show up here.</p>
+    </section>
+    <aside class="privacy-note" data-screen="home" aria-labelledby="privacy-title">
       <span class="note-icon" aria-hidden="true">↳</span>
       <div><strong id="privacy-title">Your journal stays with you.</strong>
       <p>Saved only in this browser on this device. Nothing is synced, backed up, or submitted to iNaturalist. Clearing browser data can erase your journal—export a copy to keep it.</p></div>
     </aside>
-    <section id="workspace" class="panel" aria-labelledby="workspace-title" tabindex="-1" hidden>
-      <h2 id="workspace-title">Your workspace</h2><p>Open, minimize or close a section without deleting data or clearing drafts. Map remains a separate destination.</p>
-      <ul id="workspace-views" class="workspace-views"></ul><button type="button" id="workspace-close" class="secondary-button">Close workspace overview</button>
-    </section>
-    <p id="view-stack-help">Opened views stay in the main screen stack until closed. Minimize collapses a section’s content; open restores it. Close view only hides a section; it does not delete saved data or clear drafts. Reopen any view from the menu or persistent bottom navigation. Observation opens photo review and the discovery draft; Projects / Journal opens projects and saved observations.</p>
-    <p id="view-stack-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
 
-      <section id="map" class="panel demo-discovery" aria-labelledby="map-title" tabindex="-1" hidden>
-        <h2 id="map-title">Map · local schematic</h2>
-        <p id="map-help">Imaginary layout only — not geography, coordinates, distances, or organism ranges. No GPS, tiles, geocoding, or journal locations are used.</p>
-        <div id="map-canvas">
-          <h4>Observation markers · fictional</h4>
-          <ul id="demo-map" class="schematic-map" aria-label="Fictional observation schematic" aria-describedby="map-help"></ul>
-          <h4>Demo for-sale listings · not observations</h4>
-          <p>Separate illustration only. No seller, ordering, payment, contact, or external posting.</p>
-          <ul id="demo-listings" class="demo-feed" aria-label="Fictional for-sale listings"></ul>
+      <section id="map" data-screen="map" class="panel map-screen" aria-labelledby="map-title" tabindex="-1" hidden>
+        <h2 id="map-title">Map <span class="tag">Example data</span></h2>
+        <p id="map-help">Example observations around the San Francisco Bay Area, for trying out the map. Your own journal entries don't have map locations yet.</p>
+        <div class="map-shell">
+          <form id="map-search" class="map-search" role="search" aria-label="Search the map">
+            <div class="map-search-field"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="map-query" type="search" placeholder="Search organisms" autocomplete="off" aria-label="Search organisms on the map"></div>
+            <button id="map-filters-toggle" class="map-filters-button" type="button" aria-expanded="false" aria-controls="map-filter-panel"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16 M7 12h10 M10 18h4"/></svg><span>Filters</span> <span id="map-filter-count" class="map-filter-count" hidden></span></button>
+          </form>
+          <div id="map-filter-panel" class="map-filter-panel map-filters" hidden>
+            <fieldset><legend>Organisms</legend><div class="chip-row"><label class="chip"><input type="checkbox" name="map-organism" value="fungus"><span><span aria-hidden="true">🍄</span> Mushroom</span></label><label class="chip"><input type="checkbox" name="map-organism" value="plant"><span><span aria-hidden="true">🌿</span> Plant</span></label><label class="chip"><input type="checkbox" name="map-organism" value="bird"><span><span aria-hidden="true">🐦</span> Bird</span></label><label class="chip"><input type="checkbox" name="map-organism" value="reptile"><span><span aria-hidden="true">🐍</span> Snake / reptile</span></label><label class="chip"><input type="checkbox" name="map-organism" value="mammal"><span><span aria-hidden="true">🐁</span> Mouse / mammal</span></label><label class="chip"><input type="checkbox" name="map-organism" value="insect"><span><span aria-hidden="true">🐞</span> Bug / insect</span></label></div></fieldset>
+            <fieldset><legend>Show</legend><div class="chip-row"><label class="chip"><input type="checkbox" name="map-purpose" value="natural"><span><span class="legend-swatch natural" aria-hidden="true"></span> Natural setting</span></label><label class="chip"><input type="checkbox" name="map-purpose" value="cultivated"><span><span class="legend-swatch cultivated" aria-hidden="true"></span> Cultivated / garden</span></label><label class="chip"><input type="checkbox" name="map-purpose" value="sale"><span><span class="legend-swatch sale" aria-hidden="true"></span> For-sale listings</span></label></div></fieldset>
+            <div class="map-filter-actions"><button id="map-reset" class="text-button" type="button">Reset filters</button><button id="map-filters-done" class="secondary-button" type="button">Done</button></div>
+          </div>
+          <div id="map-active" class="map-active" aria-label="Active filters"></div>
+          <div id="map-view" class="map-view" role="region" aria-label="Map of example observations" aria-describedby="map-help"></div>
+          <p class="map-options"><small id="map-street-note">Loading the map…</small> <small>Streets and Terrain load map images from OpenStreetMap/OpenTopoMap, which can see the area you view; Outline works offline.</small></p>
         </div>
-        <fieldset class="map-filters" aria-describedby="map-filter-help">
-          <legend>Refine Map results</legend>
-          <p id="map-filter-help">Choose multiple in either list (Ctrl/Command + click, or Shift + arrow keys). Any selected organism AND any selected color match. All or an empty selection means unrestricted. Fictional markers only, never your journal.</p>
-          <div class="field"><label for="map-purpose">Color / entry purpose</label><select id="map-purpose" multiple size="4">
-            <option value="all">All colors / purposes</option>
-            <option value="natural">Green · natural observations</option>
-            <option value="cultivated">Yellow · cultivated observations</option>
-            <option value="sale">Red · for-sale listings (not observations)</option>
-          </select></div>
-          <div class="field"><label for="map-organism">Organism icon / category</label><select id="map-organism" multiple size="7">
-            <option value="all">All organisms</option>
-            <option value="fungus">🍄 Mushroom</option><option value="plant">🌿 Plant</option>
-            <option value="bird">🐦 Bird</option><option value="reptile">🐍 Snake / reptile</option>
-            <option value="mammal">🐁 Mouse / mammal</option><option value="insect">🐞 Bug / insect</option>
-          </select></div>
-          <p id="map-selected" role="status" aria-live="polite"></p>
-          <button id="map-reset" class="secondary-button" type="button">Reset Map filters</button>
-        </fieldset>
-        <p id="map-results" role="status" aria-live="polite" aria-atomic="true"></p>
-        <p id="map-empty" hidden>No matching Map results. Try another category or reset the filters.</p>
-        <h4>Color legend · entry purpose</h4>
-        <ul class="map-legend" aria-label="Map color meanings">
-          <li><span class="legend-swatch natural" aria-hidden="true"></span><strong>Green:</strong> observation in a natural setting</li>
-          <li><span class="legend-swatch cultivated" aria-hidden="true"></span><strong>Yellow:</strong> observation in a cultivated setting</li>
-          <li><span class="legend-swatch sale" aria-hidden="true"></span><strong>Red:</strong> for-sale listing, never an observation</li>
-        </ul>
-        <p>Organism icons: <span aria-hidden="true">🍄</span> Mushroom · <span aria-hidden="true">🌿</span> Plant · <span aria-hidden="true">🐦</span> Bird · <span aria-hidden="true">🐍</span> Snake / reptile · <span aria-hidden="true">🐁</span> Mouse / mammal · <span aria-hidden="true">🐞</span> Bug / insect. Every marker also has a text label.</p>
+        <p id="map-selected" class="visually-hidden" role="status" aria-live="polite"></p>
+        <p id="map-results" class="map-results" role="status" aria-live="polite" aria-atomic="true"></p>
+        <p id="map-empty" hidden>Nothing matches. Try another search or <button type="button" class="text-button" data-map-reset>reset the filters</button>.</p>
+        <div id="map-canvas" class="map-list">
+          <h3>Observations</h3>
+          <ul id="demo-map" class="schematic-map" aria-label="Example observations"></ul>
+          <h3>For-sale listings</h3>
+          <p class="map-listing-note">Example only. No seller, ordering, payment, contact or posting.</p>
+          <ul id="demo-listings" class="demo-feed" aria-label="Example for-sale listings"></ul>
+        </div>
+        <details class="more"><summary>Map key</summary>
+          <ul class="map-legend" aria-label="Map color meanings">
+            <li><span class="legend-swatch natural" aria-hidden="true"></span><strong>Green:</strong> observation in a natural setting</li>
+            <li><span class="legend-swatch cultivated" aria-hidden="true"></span><strong>Yellow:</strong> observation in a cultivated setting</li>
+            <li><span class="legend-swatch sale" aria-hidden="true"></span><strong>Red:</strong> for-sale listing, never an observation</li>
+          </ul>
+          <p>Pins show the organism: 🍄 Mushroom · 🌿 Plant · 🐦 Bird · 🐍 Snake / reptile · 🐁 Mouse / mammal · 🐞 Bug / insect. Map styles: Streets (© OpenStreetMap contributors), Terrain (OpenTopoMap) and Outline (Natural Earth, bundled with the app).</p>
+        </details>
       </section>
-      <section id="profile" class="panel demo-discovery" aria-labelledby="profile-title" tabindex="-1" hidden>
-        <h2 id="profile-title">Your local profile</h2>
+      <section id="profile" data-screen="profile" class="panel demo-discovery" aria-labelledby="profile-title" tabindex="-1" hidden>
+        <h2 id="profile-title">Your profile</h2>
+        <details class="more"><summary>About your profile</summary>
         <p id="profile-help">Not an account or public page. Profile details and rewards stay in this browser only: no upload, account sync or real follows. Posts read the same local journal; projects read the same ID-only collections. Nothing is stored twice. Journal photos remain temporary and are not displayed here.</p>
-        <div class="profile-heading"><span id="profile-avatar" class="profile-avatar" aria-label="Symbolic profile avatar">🌿</span><div><h3 id="profile-name">Local explorer</h3><p id="profile-bio"></p><p id="profile-credentials">Credentials: none · user-entered / unverified</p><p><strong>0</strong> followers · <strong>0</strong> following · not connected</p></div></div>
-        <details><summary>Edit local profile</summary>
+        </details>
+        <div class="profile-heading"><span id="profile-avatar" class="profile-avatar" role="img" aria-label="Profile picture: Leaf"></span><div><h3 id="profile-name">Local explorer</h3><p id="profile-bio"></p><p id="profile-credentials">Credentials: none · user-entered / unverified</p><p><strong>0</strong> followers · <strong>0</strong> following · not connected</p></div></div>
+        <details id="avatar-picker" class="avatar-picker"><summary>Change picture</summary>
+          <fieldset class="avatar-choices">
+            <legend>Pick an icon or use your own photo</legend>
+            <div id="avatar-grid" class="avatar-grid"></div>
+          </fieldset>
+          <div class="avatar-upload">
+            <input id="avatar-photo-input" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">
+            <label class="secondary-button" for="avatar-photo-input">Upload a photo</label>
+            <button id="avatar-remove-photo" class="text-button" type="button" hidden>Remove photo</button>
+          </div>
+          <small>Photos are cropped to a square, shrunk, and kept only in this browser. Location details stored in the file are dropped.</small>
+          <p id="avatar-status" role="status" aria-live="polite"></p>
+        </details>
+        <details id="profile-edit"><summary>Edit local profile</summary>
           <form id="profile-form">
             <div class="field"><label for="profile-display-name">Display name</label><input id="profile-display-name" maxlength="80" required value="Local explorer"></div>
             <div class="field"><label for="profile-description">Description</label><textarea id="profile-description" maxlength="500"></textarea></div>
             <div class="field"><label for="profile-credential-input">Credentials · user-entered / unverified</label><input id="profile-credential-input" maxlength="300"><small>No LinkedIn connection or credential verification. Avoid private details.</small></div>
-            <div class="field"><label for="profile-avatar-input">Symbolic avatar · no photo stored</label><select id="profile-avatar-input"><option>🌿</option><option>🍄</option><option>🐦</option><option>❧</option></select></div>
             <button type="submit" class="secondary-button">Save local profile</button>
           </form>
         </details>
@@ -113,28 +165,116 @@
         <div role="tablist" aria-label="Local profile sections" id="profile-tabs">
           <button type="button" role="tab" id="posts-tab" aria-selected="true" aria-controls="profile-posts">Posts</button>
           <button type="button" role="tab" id="projects-tab" aria-selected="false" aria-controls="profile-projects" tabindex="-1">Projects</button>
+          <button type="button" role="tab" id="dashboard-tab" aria-selected="false" aria-controls="profile-dashboard" tabindex="-1">Dashboard</button>
+          <button type="button" role="tab" id="resume-tab" aria-selected="false" aria-controls="profile-resume" tabindex="-1">Résumé</button>
           <button type="button" role="tab" id="awards-tab" aria-selected="false" aria-controls="profile-awards" tabindex="-1">Terrarium</button>
+          <button type="button" role="tab" id="validate-tab" aria-selected="false" aria-controls="profile-validate" tabindex="-1">Validate</button>
         </div>
-        <div role="tabpanel" id="profile-posts" aria-labelledby="posts-tab"><h3>Journal observations</h3><p><a href="#form-title">Record a discovery</a> · <a href="#saved-title">Manage journal / provenance / Trash</a></p><ul id="profile-observations"></ul></div>
+        <div role="tabpanel" id="profile-posts" aria-labelledby="posts-tab"><h3>Posts</h3><p><a href="#form-title">Record a discovery</a> · <a href="#saved-title">Manage journal / provenance / Trash</a></p><ul id="profile-observations"></ul></div>
         <div role="tabpanel" id="profile-projects" aria-labelledby="projects-tab" hidden><h3>Your projects</h3><ul id="profile-project-list"></ul><a href="#projects-title">Manage projects</a></div>
+        <div role="tabpanel" id="profile-dashboard" aria-labelledby="dashboard-tab" hidden>
+          <div class="dash-head">
+            <h3>Dashboard</h3>
+            <div class="dash-mode" role="group" aria-label="Dashboard view">
+              <button type="button" data-dashboard-mode="citizen" aria-pressed="true">Citizen</button>
+              <button type="button" data-dashboard-mode="professional" aria-pressed="false">Professional</button>
+            </div>
+          </div>
+          <p class="dash-intro">Citizen shows your field life: level, streak, species and activity. Professional shows data quality and project readiness for agencies, consultants and GBIF. The professional view also swaps Home's quests for a data-quality summary.</p>
+          <div id="dashboard-view" aria-live="polite"></div>
+        </div>
+        <div role="tabpanel" id="profile-resume" aria-labelledby="resume-tab" hidden>
+          <h3>TERRA résumé</h3>
+          <p class="resume-intro">A one-page record of your field work for applications, volunteering or a portfolio. It's built from your own journal and never includes locations, notes or photos.</p>
+          <div class="resume-actions">
+            <button id="resume-print" class="primary-button" type="button">Print or save as PDF</button>
+            <button id="resume-copy" class="secondary-button" type="button">Copy as text</button>
+            <button id="resume-download" class="secondary-button" type="button">Download .txt</button>
+          </div>
+          <p id="resume-status" class="resume-status" role="status" aria-live="polite"></p>
+          <article id="resume-sheet" class="resume-sheet" aria-label="Résumé preview"></article>
+        </div>
+        <div role="tabpanel" id="profile-validate" aria-labelledby="validate-tab" hidden>
+          <h3>Validate</h3>
+          <p class="validate-intro">Help confirm what people find. Your level unlocks review tiers; how much your vote counts comes from how often your reviews are right, so careful reviewers count most, not just busy ones.</p>
+          <section id="validate-standing" class="validate-standing" aria-live="polite"></section>
+          <ol id="validate-tiers" class="validate-tiers" aria-label="Review tiers"></ol>
+          <section class="practice" aria-labelledby="practice-title">
+            <h4 id="practice-title">Practice reviews</h4>
+            <p class="practice-intro">Each card describes a real find. Pick the identification you'd vote for. Answers are final, and every review builds your track record. Community reviews of real observations open when TERRA has accounts.</p>
+            <p id="practice-progress" class="practice-progress"></p>
+            <div id="practice-card" class="practice-card" aria-live="polite"></div>
+          </section>
+          <details class="validate-how">
+            <summary>How community agreement works</summary>
+            <ul>
+              <li><strong>Unlock by participating:</strong> XP from observing, quests and streaks moves you up levels, and levels unlock tiers.</li>
+              <li><strong>Weight by accuracy:</strong> a validator's vote weight is the tier's base × (0.5 + reliability), where reliability is a cautious (95% Wilson lower bound) estimate of how often your reviews are right. Capped at 2×.</li>
+              <li><strong>No one decides alone:</strong> each voter counts for at most 40% of a record's total weight. A name is agreed when at least two validators with a combined weight of 2 or more vote, and it holds two-thirds of the weight.</li>
+              <li><strong>Hard to game:</strong> the number of reviews alone never adds weight; wrong reviews lower it. Later, real reviews are checked against expert-confirmed records, and the same scores can become validator trust on a TERRA subnet.</li>
+            </ul>
+          </details>
+        </div>
         <div role="tabpanel" id="profile-awards" aria-labelledby="awards-tab" hidden>
           <h3>Your terrarium</h3>
-          <p class="terrarium-intro">Every achievement adds a nature item to your terrarium. Each item gets its own look and spot, and you choose which ones to show.</p>
+          <p class="terrarium-intro">A small living ecosystem. Your journal finds live here, plants grow with every achievement, and the seasons, day and night follow your real clock. New finds bring rain, and rain makes mushrooms fruit. Tap anything for its field-guide card; drag decorations to move them.</p>
           <p id="rewards-status" role="status" aria-live="polite"></p>
-          <div id="rewards-terrarium" class="rewards-terrarium" role="img" aria-label="Local decorative terrarium"></div>
+          <div class="terrarium-controls">
+            <button id="terrarium-sandbox" class="secondary-button" type="button" aria-pressed="false">Try every item</button>
+            <div class="terrarium-speed" role="group" aria-label="Time speed">
+              <button type="button" data-speed="0" aria-pressed="false" aria-label="Pause">❚❚</button>
+              <button type="button" data-speed="1" aria-pressed="true" aria-label="Normal speed">1×</button>
+              <button type="button" data-speed="4" aria-pressed="false" aria-label="Four times speed">4×</button>
+              <button type="button" data-speed="16" aria-pressed="false" aria-label="Sixteen times speed">16×</button>
+            </div>
+          </div>
+          <p id="terrarium-sandbox-note" class="sandbox-note" hidden>Sandbox: every item, sample finds and quest rewards are in the jar so you can play with them. Nothing here is earned or saved; turn it off to see your own collection.</p>
+          <div id="jar-switcher" class="jar-switcher" role="group" aria-label="Habitat jars"></div>
+          <div class="terrarium-env">
+            <span id="terrarium-sky" class="terrarium-sky"></span>
+            <div class="terrarium-care" role="group" aria-label="Care for the jar">
+              <button type="button" class="secondary-button" data-care="mist"><span aria-hidden="true">💧</span> Mist</button>
+              <button type="button" class="secondary-button" data-care="seed"><span aria-hidden="true">🌾</span> Scatter seed</button>
+            </div>
+          </div>
+          <div id="terrarium-preview" class="terrarium-preview" hidden>
+            <label>Season <select id="terrarium-season"><option value="">Real</option><option value="spring">Spring</option><option value="summer">Summer</option><option value="autumn">Autumn</option><option value="winter">Winter</option></select></label>
+            <label>Time <select id="terrarium-time"><option value="">Real</option><option value="dawn">Dawn</option><option value="day">Day</option><option value="dusk">Dusk</option><option value="night">Night</option></select></label>
+            <label>Weather <select id="terrarium-weather"><option value="">Real</option><option value="clear">Clear</option><option value="rain">Rain</option><option value="snow">Snow</option><option value="fog">Fog</option><option value="storm">Storm</option><option value="heat">Heat wave</option><option value="frost">Frost</option></select></label>
+            <button type="button" class="secondary-button" data-care="rain"><span aria-hidden="true">🌧️</span> Make it rain</button>
+          </div>
+          <div class="terrarium-weather">
+            <label class="weather-toggle"><input id="weather-enabled" type="checkbox"> Use real local weather</label>
+            <span id="weather-status" class="weather-status" role="status" aria-live="polite"></span>
+          </div>
+          <ul id="terrarium-event" class="terrarium-event" aria-label="Seasonal events" hidden></ul>
+          <div id="rewards-terrarium" class="rewards-terrarium"></div>
+          <p id="terrarium-live" class="visually-hidden" role="status" aria-live="polite"></p>
+          <p id="terrarium-caption" class="terrarium-caption">Tap an item, or pick one in your collection, to see what it's up to.</p>
+          <aside id="terrarium-guide" class="terrarium-guide" aria-label="Field guide" hidden></aside>
           <h4 id="collection-title">Collection</h4>
           <ul id="decor-list" class="collection-grid" aria-labelledby="collection-title"></ul>
+          <h4 id="rares-title">Rare sightings</h4>
+          <p class="rares-intro">Like shinies: rare and legendary variants turn up by chance. Some only at night, or at dawn and dusk. Each one you spot is logged here.</p>
+          <ul id="rare-list" class="rare-grid" aria-labelledby="rares-title"></ul>
+          <h4 id="dex-title">Field guide</h4>
+          <p id="dex-summary" class="dex-summary"></p>
+          <div id="dex-sets" class="dex-sets" aria-label="Sets to complete"></div>
+          <ul id="dex-cards" class="dex-cards" aria-labelledby="dex-title"></ul>
           <details class="terrarium-rules"><summary>How collecting works</summary>
             <p>Participation achievements, not identification or conservation credentials. Observations count when they are active, valid and not future-dated. Seven-day fieldbook: entries dated on seven consecutive distinct days (backfilled/imported dates count; not proof of daily uploads). Different names count exact, trimmed names, excluding Unknown. Project completion: one complete project with at least one eligible active observation. Each item unlocks only once, ever in this local store. Duplicates, repeat events, reopen/complete, delete/restore and reload cannot multiply rewards.</p>
+            <p>Streaks count consecutive days that have observations dated on them, so a streak is still alive until today ends. Field quests are checked against your own journal; finishing one adds a flower or decoration to the jar, and missed days are never held against you. Rare sightings, weather and seasons are just for fun and change nothing about your data.</p>
             <p>Follower and verified-observation items are shown as goals but stay locked: this prototype has no real accounts or followers and no genuine verification evidence. No rewards for rare species, precise locations, transactions or collecting wildlife. Observe safely without disturbing habitats.</p>
             <p><strong>Randomized digital collectibles are unique within this local prototype only, not guaranteed unique globally. No cash, trade, NFT, blockchain or financial value.</strong> Local data can be edited or erased; this is not fraud-resistant validation. Profile/rewards are not in journal backups.</p>
           </details>
         </div>
       </section>
-    <section id="feed" class="panel demo-discovery" aria-labelledby="feed-title" tabindex="-1" hidden>
-      <h2 id="feed-title">Feed · local demo</h2>
+    <section id="feed" data-screen="feed" class="panel demo-discovery" aria-labelledby="feed-title" tabindex="-1" hidden>
+      <h2 id="feed-title">Feed <span class="tag">Demo</span></h2>
       <p class="demo-badge">DEMO · Not published · No live community connection</p>
+      <details class="more"><summary>About this demo</summary>
       <p>Mock profiles and sample posts are fictional. Follow/unfollow is a local preference only: nobody is notified, and there are no real followers, likes, sales or uploads. Your journal is never automatically shared.</p>
+      </details>
       <details><summary>Observation, discovery, or post?</summary><p>An <strong>observation</strong> is the underlying record: what you saw, when and where (subject to privacy). A <strong>discovery / identification</strong> is the organism or finding attached to that record, not proof of a verified identification. A <strong>post</strong> is a separate shareable presentation with its own caption, linked to a saved observation when relevant. Sharing here only creates a local demo.</p></details>
       <p><a href="#feed-compose-title">Create a local demo post / preparation</a> · <a href="#feed-profiles-title">Explore mock profiles</a></p>
       <p id="feed-storage-error" class="error" role="alert" hidden></p>
@@ -160,8 +300,8 @@
       <h3 id="feed-profiles-title" tabindex="-1">Mock profiles · not real accounts</h3><p id="feed-follow-summary"></p><div id="feed-profiles"></div>
       <p>Future idea only: music on posts. No music or audio feature is implemented.</p>
     </section>
-    <noscript><p>Enable JavaScript to display the local Map, Profile and unconnected Feed previews. Observation, Genetics and Projects / Journal links lead to the sections below.</p></noscript>
-    <section class="panel identification-panel" aria-labelledby="identify-title">
+    <noscript><p>Enable JavaScript to use the Map, Profile and Feed previews. The photo explorer, journal, projects and genetic data preview appear below.</p></noscript>
+    <section class="panel identification-panel" data-screen="photo" aria-labelledby="identify-title">
       <div class="identify-heading"><div><p class="eyebrow">A CLOSER LOOK · LOCAL PROTOTYPE</p><h2 id="identify-title">Explore a photo</h2><p>Practice an identification review, without uploading a thing.</p></div><span class="demo-badge">MOCK · Not real AI</span></div>
       <p id="identify-privacy" class="identify-notice">Images are not uploaded. Previews and location detail stay temporary. Only after your explicit confirmation can a name, photos, date, and location context prefill Record a discovery for review; nothing is automatically saved or sent to iNaturalist.</p>
       <noscript><p class="error">Enable JavaScript to use the local photo prototype.</p></noscript>
@@ -198,8 +338,9 @@
       </div>
     </section>
     <div class="journal-layout">
-      <section class="panel" aria-labelledby="form-title">
-        <div class="section-heading"><span class="step" aria-hidden="true">01</span><div><h2 id="form-title">Record a discovery</h2><p>You don’t need to know its name to notice it.</p></div></div>
+      <section class="panel" data-screen="record" aria-labelledby="form-title">
+        <div class="section-heading"><div><h2 id="form-title">Record a discovery</h2><p>You don’t need to know its name to notice it.</p></div></div>
+        <p class="photo-hint"><a href="#photo">Have a photo? Explore it first <span aria-hidden="true">→</span></a></p>
         <noscript><p class="error">JavaScript is needed to save observations. Enable it in your browser to use this journal.</p></noscript>
         <form id="observation-form">
           <div class="field"><label for="organism-choice">What did you find?</label>
@@ -208,7 +349,7 @@
             <small id="organism-help">Search this dropdown by typing a group, then choose one of the eight options. Use arrow keys and Enter; choose Other when unsure. No species identification.</small>
           </div>
           <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label>
-            <div class="name-picker"><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help">
+            <div class="name-picker"><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help"><button id="agent-lookup" class="text-button agent-lookup" type="button" aria-label="Look up species info for this name">ⓘ Species info</button>
             <ul id="name-suggestions" class="name-suggestions" role="listbox" aria-label="Starter species suggestions and custom name" hidden></ul></div>
             <small id="name-help">Type any part of a name to see every matching entry (case-insensitive) in this two-name starter list—not all real species. Use ↑/↓ and Enter, or click/tap to fill the field without saving. You can always keep your own name. Blank saves as “Unknown”.</small>
             <small id="name-status" role="status" aria-live="polite" aria-atomic="true"></small>
@@ -224,12 +365,30 @@
             <small id="date-help">Type YYYY-MM-DD, today or earlier, or use the calendar icon. Future observation dates are not allowed.</small>
           </div>
           <div class="field"><label for="notes">Field notes <span class="optional">(optional)</span></label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Colors, textures, habitat… what caught your eye?" aria-describedby="notes-help"></textarea><small id="notes-help">Avoid sensitive details or exact locations in names and notes.</small></div>
-          <div class="field"><label for="photo">Take a closer look <span class="optional">(optional)</span></label><input id="photo" type="file" accept="image/*" aria-describedby="photo-help"><small id="photo-help">Image preview only, up to 10 MB. Images are never uploaded, saved, or included in exports.</small><p id="photo-error" class="error" role="alert" hidden></p><div id="preview-wrap" hidden><img id="photo-preview" alt="Preview of your selected observation image"><button id="remove-photo" class="text-button" type="button">Remove preview</button></div></div>
+          <div class="field"><label for="photo">Take a closer look <span class="optional">(optional)</span></label><input id="photo" type="file" accept="image/*" aria-describedby="photo-help"><small id="photo-help">Up to 10 MB. With “Save photos” checked, a resized copy is kept in this browser with the observation (location data in the file is removed). Photos are never uploaded and aren't in backups yet.</small><p id="photo-error" class="error" role="alert" hidden></p><div id="preview-wrap" hidden><img id="photo-preview" alt="Preview of your selected observation image"><button id="remove-photo" class="text-button" type="button">Remove preview</button></div></div>
+          <label class="check-field"><input id="save-photos" type="checkbox" checked> Save photos with this observation (kept only in this browser)</label>
+          <section id="agent-card" class="agent-card" aria-labelledby="agent-title" hidden>
+            <div class="agent-head">
+              <span class="agent-badge" aria-hidden="true">✦</span>
+              <h3 id="agent-title">TERRA agent</h3>
+              <label class="agent-auto"><input id="agent-auto" type="checkbox"> Auto-identify new photos</label>
+            </div>
+            <div class="agent-controls">
+              <label for="agent-organ">Photo shows</label>
+              <select id="agent-organ"><option value="auto">Whole plant / not sure</option><option value="leaf">Leaf</option><option value="flower">Flower</option><option value="fruit">Fruit</option><option value="bark">Bark</option></select>
+              <button id="agent-identify" class="secondary-button" type="button">Identify this photo</button>
+            </div>
+            <ol id="agent-steps" class="agent-steps" aria-label="Agent progress"></ol>
+            <p id="agent-status" class="agent-status" role="status" aria-live="polite"></p>
+            <ul id="agent-results" class="agent-results" aria-label="Suggested species"></ul>
+            <article id="agent-species" class="agent-species" aria-live="polite" hidden></article>
+            <p class="agent-note"><small>Sends only the photo (resized, location data removed) through your TERRA server to Pl@ntNet, which identifies plants. Species details come from GBIF, iNaturalist and Wikipedia. Suggestions are a starting point, not a verified ID. iNaturalist photo ID for animals and fungi will plug in once iNaturalist approves TERRA.</small></p>
+          </section>
           <fieldset id="discovery-location" class="location-context" data-location="discovery"><legend>Temporary location context · review only</legend></fieldset>
           <div id="discovery-images" hidden><p>Transferred photo previews · temporary only. Choosing a new journal photo replaces all transferred views. Resetting Explore a photo does not clear this independent draft; remove here, save, or reload to clear.</p><ul id="discovery-previews" class="identify-previews" aria-label="Temporary discovery photo previews"></ul><button id="discovery-clear-images" class="text-button" type="button">Remove all transferred previews</button></div>
           <p id="discovery-transfer-status" class="status" role="status" aria-live="polite"></p>
           <div class="field"><label for="privacy">Location privacy preference</label><select id="privacy" name="privacy" aria-describedby="location-help"><option value="hidden">Hidden</option><option value="approximate">Approximate</option><option value="exact">Exact</option></select><small id="location-help">Choose a location below. Exact retains a local schematic pin; Approximate retains only a coarse region. Hidden discards location entirely. No GPS or real geographic accuracy.</small></div>
-          <fieldset><legend>Required location · local schematic only</legend><div id="observation-map"></div><div class="field"><label for="location-project-site">Saved project site (Approximate / Hidden)</label><select id="location-project-site"></select></div></fieldset>
+          <fieldset class="location-picker"><legend>Where was it? (required)</legend><div id="observation-map"></div><div class="field"><label for="location-project-site">Or use a saved project site (Approximate / Hidden)</label><select id="location-project-site"></select></div></fieldset>
           <p id="form-error" class="error" role="alert" hidden></p>
           <button id="save-button" class="primary-button" type="submit" disabled>Save to local journal <span aria-hidden="true">↗</span></button>
           <div class="field"><label for="project-observation">Observation to add</label><select id="project-observation" aria-describedby="add-project-help"><option value="">Current discovery draft (save once, then add)</option></select></div>
@@ -241,10 +400,13 @@
           <p class="integration-note">iNaturalist publishing is a future integration only: review your saved observation and privacy, then explicitly approve publishing. No connection or publishing is available now.</p>
         </form>
       </section>
-      <section class="saved-section" aria-labelledby="saved-title">
-        <div class="saved-heading"><div><p class="eyebrow">THE THINGS YOU NOTICED</p><h2 id="saved-title">Your observations <span id="count" class="count">0</span></h2></div><button id="export-button" class="secondary-button" type="button" disabled>Export JSON <span aria-hidden="true">↓</span></button></div>
+      <section class="saved-section" data-screen="journal" aria-labelledby="saved-title">
+        <nav class="segmented" aria-label="Journal sections"><a href="#journal" aria-current="page">Observations</a><a href="#projects">Projects</a></nav>
+        <div class="saved-heading"><div><p class="eyebrow">THE THINGS YOU NOTICED</p><h2 id="saved-title">Your observations <span id="count" class="count">0</span></h2></div><div class="export-buttons"><button id="sheet-export-open" class="secondary-button" type="button" data-sheet-export>Export data <span aria-hidden="true">▦</span></button><button id="export-button" class="secondary-button" type="button" disabled>Export JSON <span aria-hidden="true">↓</span></button></div></div>
         <p id="status" class="status" role="status" aria-live="polite"></p>
         <p id="storage-error" class="error" role="alert" hidden></p>
+        <div id="empty-state" class="empty-state"><div class="empty-illustration" aria-hidden="true">❧</div><h3>Every journal starts with a first find.</h3><p>Add an observation and it will appear here.<br>There’s a whole world worth noticing.</p><span class="empty-caption">LOOK CLOSELY. START SMALL.</span></div>
+        <ul id="observation-list" class="observation-list" aria-label="Saved observations"></ul>
         <section class="restore-panel" aria-labelledby="restore-title">
           <h3 id="restore-title">Restore a JSON backup</h3>
           <div class="field"><label for="import-file">Choose a TERRA JSON export</label><input id="import-file" type="file" accept=".json,application/json" aria-describedby="import-help" disabled><small id="import-help">Up to 5 MB. Preview first, then confirm. Duplicate IDs are skipped, never overwritten. Files stay in your browser.</small></div>
@@ -256,20 +418,23 @@
             <div class="restore-actions"><button id="confirm-import" class="secondary-button" type="button" disabled>Confirm merge</button><button id="cancel-import" class="text-button" type="button">Cancel restore</button></div>
           </div>
         </section>
-        <div id="empty-state" class="empty-state"><div class="empty-illustration" aria-hidden="true">❧</div><h3>Every journal starts with a first find.</h3><p>Add an observation and it will appear here.<br>There’s a whole world worth noticing.</p><span class="empty-caption">LOOK CLOSELY. START SMALL.</span></div>
-        <ul id="observation-list" class="observation-list" aria-label="Saved observations"></ul>
       </section>
     </div>
-    <section class="panel" aria-labelledby="trash-title">
+    <section class="panel" data-screen="journal" aria-labelledby="trash-title">
       <h2 id="trash-title">🗑 Trash · <span id="trash-count">0</span></h2>
+      <details class="more"><summary>How Trash works</summary>
       <p>Delete moves a record here, not out of storage. Restore within 3 days (72 hours). After that Restore is disabled; the record is permanently removed on the next successful journal change. Closing the app pauses cleanup, not the recovery clock. No background service runs. Export includes unexpired Trash; keep backups private. Project references do not count trashed observations.</p>
+      </details>
       <ul id="trash-list" class="observation-list"></ul>
     </section>
-    <section id="projects" class="panel projects-panel" aria-labelledby="projects-title">
+    <nav class="segmented" data-screen="projects" aria-label="Journal sections"><a href="#journal">Observations</a><a href="#projects" aria-current="page">Projects</a></nav>
+    <section id="projects" data-screen="projects" class="panel projects-panel" aria-labelledby="projects-title">
       <p class="eyebrow">LOCAL DESCRIPTIVE REPORTING</p>
-      <h2 id="projects-title">Projects / Field Summary</h2>
+      <h2 id="projects-title">Projects</h2>
       <p>Collect existing journal observations. This is a count of your selected records, not an AI summary, ecological inference, species verification, or evidence of trends.</p>
-      <p>Membership is always chosen manually, including previous journal entries in the inclusive start/end timeframe. Site rectangles use the same local demo grid as observation locations, not geographic boundaries. Hidden or legacy records without location cannot prove inclusion. Approximate regions must fit entirely inside a boundary.</p>
+      <details class="more"><summary>How projects work</summary>
+      <p>Membership is always chosen manually, including previous journal entries in the inclusive start/end timeframe. Site areas are drawn on the same real map as observation locations, not geographic boundaries. Hidden or legacy records without location cannot prove inclusion. Approximate regions must fit entirely inside a boundary.</p>
+      </details>
       <p id="project-error" class="error" role="alert" hidden></p>
       <p id="project-status" class="status" role="status" aria-live="polite"></p>
       <div class="project-toolbar">
@@ -305,13 +470,18 @@
       <div class="project-toolbar">
         <button id="project-toggle" class="secondary-button" type="button" hidden>Mark complete</button>
         <button id="project-csv" class="secondary-button" type="button" disabled>Export summary CSV</button>
+        <button id="project-sheet-export" class="secondary-button" type="button" data-sheet-export>Export all data</button>
       </div>
       <div id="project-report" aria-labelledby="project-report-title"></div>
+      <details class="more"><summary>Saving and completion</summary>
       <p><small>Projects stay in this browser. Completion locks editing until reopened; it is not a frozen snapshot. Deleting a journal record changes its summaries; missing references are shown, never counted. Journal JSON backups do not include projects. CSV is a readable report, not a project restore file.</small></p>
+      </details>
     </section>
-    <section id="genetic-data" class="panel projects-panel" aria-labelledby="genetic-title">
-      <h2 id="genetic-title">Genetic Data</h2>
+    <section id="genetic-data" data-screen="genetics" class="panel projects-panel" aria-labelledby="genetic-title">
+      <h2 id="genetic-title">Genetic data <span class="tag">Preview</span></h2>
+      <details class="more"><summary>About this preview</summary>
       <p>Unconnected planning preview only. BOLD identification/search and GenBank record search are separate paths. No results, network calls, credentials, sequence submission or outbound data. GenBank submission would be a separate reviewed workflow, not a lookup.</p>
+      </details>
       <div class="field"><label for="genetic-query">Taxon name or record identifier (optional)</label><input id="genetic-query" maxlength="120" autocomplete="off"></div>
       <div class="field"><label for="genetic-sequence">Temporary DNA sequence (optional; local validation only)</label><textarea id="genetic-sequence" rows="3" maxlength="10000" autocomplete="off" spellcheck="false" aria-describedby="genetic-help"></textarea><small id="genetic-help">Up to 10,000 input characters. Plain IUPAC DNA or one FASTA record; no RNA, gaps or multiple records. Validation checks syntax, not quality, identity, or biological meaning. Never saved in journal, projects or exports. Clear when finished.</small></div>
       <div class="restore-actions"><button id="bold-preview" class="secondary-button" type="button">BOLD lookup — future / local preview</button><button id="genbank-preview" class="secondary-button" type="button">GenBank lookup — future / local preview</button><button id="genetic-clear" class="text-button" type="button">Clear genetic inputs</button></div>
@@ -319,6 +489,42 @@
       <p id="genetic-preview" class="status" role="status" aria-live="polite"></p>
     </section>
     <footer> TERRA <span aria-hidden="true">/</span> A space for curiosity, not a species identification service.</footer>
+    <dialog id="sheet-export" class="post-viewer sheet-export" aria-labelledby="sheet-export-title">
+      <form method="dialog" class="post-viewer-close"><button class="text-button" type="submit" aria-label="Close">✕</button></form>
+      <h2 id="sheet-export-title">Export your data</h2>
+      <p>Download your observations as a spreadsheet for Excel or Google Sheets, or as a Darwin Core Archive to share with GBIF and biodiversity portals.</p>
+      <fieldset class="sheet-options">
+        <legend>Format</legend>
+        <label><input type="radio" name="sheet-style" value="terra" checked> <span><strong>Spreadsheet</strong><small>Plain-language columns, plus your projects. Easy to read, sort and filter. (.xlsx)</small></span></label>
+        <label><input type="radio" name="sheet-style" value="dwc"> <span><strong>Spreadsheet, Darwin Core columns</strong><small>The biodiversity data standard used by GBIF, agencies and museums. (.xlsx)</small></span></label>
+        <label><input type="radio" name="sheet-style" value="dwca"> <span><strong>Darwin Core Archive</strong><small>A ready-to-publish dataset for GBIF's IPT and agency portals: your observations plus dataset details. (.zip)</small></span></label>
+      </fieldset>
+      <fieldset id="dwca-options" class="dwca-options" hidden>
+        <legend>Dataset details</legend>
+        <label>Dataset title <input id="dwca-title" type="text" maxlength="200" placeholder="TERRA field observations"></label>
+        <label>Recorded by <small>Optional. Your name as it should be credited; left out if blank.</small><input id="dwca-recorded-by" type="text" maxlength="200" autocomplete="name"></label>
+        <label>Licence <small>How others may reuse your observations. GBIF accepts these three.</small><select id="dwca-license"></select></label>
+      </fieldset>
+      <label class="sheet-exact"><input type="checkbox" id="sheet-exact"> <span><strong>Include exact locations</strong><small>Only for observations you marked Exact. When this is off, exact points are generalized to an area about 11 km across. Approximate stays approximate and Hidden stays hidden.</small></span></label>
+      <button id="sheet-download" class="primary-button" type="button">Download .xlsx</button>
+      <p id="sheet-status" class="sheet-status" role="status" aria-live="polite"></p>
+      <details class="sheet-google" id="sheet-google-help"><summary>Using Google Sheets</summary>
+        <ol><li>Download the file.</li><li>Open <a href="https://sheets.google.com" target="_blank" rel="noopener">Google Sheets</a>, then File → Import → Upload.</li><li>Or drop the file into Google Drive and choose Open with → Google Sheets.</li></ol>
+        <p>Sending straight to Google Sheets will come with TERRA accounts.</p>
+      </details>
+      <details class="sheet-google" id="dwca-help" hidden><summary>Publishing to GBIF</summary>
+        <p>GBIF publishes data through an endorsed organization (a museum, university, agency or your country's GBIF node), usually with its IPT. Send them this archive, or upload it to their IPT. Agency portals that take Darwin Core accept it too.</p>
+        <p>Names are your own labels. Records called “Unknown” are still included, matched only to their broad group.</p>
+      </details>
+      <p class="sheet-note"><small>Not a backup: to restore TERRA, use Export JSON. Deleted observations and the photos themselves aren't included.</small></p>
+    </dialog>
+    <dialog id="post-viewer" class="post-viewer" aria-labelledby="post-viewer-title">
+      <form method="dialog" class="post-viewer-close"><button class="text-button" type="submit" aria-label="Close">✕</button></form>
+      <div id="post-viewer-photos" class="post-viewer-photos"></div>
+      <h3 id="post-viewer-title"></h3>
+      <p id="post-viewer-meta" class="post-viewer-meta"></p>
+      <p><a id="post-viewer-journal" href="#journal">Open in journal</a></p>
+    </dialog>
   </main>
   <script>
   "use strict";
@@ -543,7 +749,7 @@
       const date = $("identify-date").value;
       if (date && !TerraData.observationDate(date)) { error("Observation date must be today or earlier.", $("identify-date")); return; }
       const summary = `Name: ${selectedName}\nPhotos: ${images.length} temporary preview(s)\nDate: ${date || "Not supplied — required before save"}\nTemporary garden / region / administrative context: ${Object.values(location).filter(Boolean).join(" / ") || "Not supplied"}`;
-      if (!window.confirm(`Review unverified selection:\n${summary}\n\nReplace these fields in the discovery draft? Notes and privacy stay unchanged. Photos and location are not saved/exported. This only prefills; nothing is saved or sent to iNaturalist.`)) return;
+      if (!window.confirm(`Review unverified selection:\n${summary}\n\nReplace these fields in the discovery draft? Notes and privacy stay unchanged. Location detail is not saved; photos are saved only if “Save photos” stays checked. This only prefills; nothing is saved or sent to iNaturalist.`)) return;
       document.dispatchEvent(new CustomEvent("terra:prefill-discovery", { detail: {
         name: selectedName, type: group.value === "unsure" ? "other" : group.value,
         date, location, files: images.map(image => image.file)
