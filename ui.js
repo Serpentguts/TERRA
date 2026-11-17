@@ -2,7 +2,7 @@
 
 // Shared ephemeral controls. No storage, coordinates, metadata, or network access.
 const TerraLocation = (() => {
-  const keys = ["context", "setting", "region", "precision", "country", "state", "city"];
+  const keys = ["context", "setting", "region", "precision", "country", "state", "county", "city"];
   const control = (prefix, key) => document.getElementById(`${prefix}-${key}`);
   function sync(prefix) {
     const context = control(prefix, "context").value;
@@ -23,6 +23,7 @@ const TerraLocation = (() => {
     reveal("location-detail", active && Boolean(region));
     const precision = control(prefix, "precision").value;
     reveal("manual-location", active && Boolean(region) && Boolean(precision));
+    reveal("county-field", active && Boolean(region) && (precision === "county" || precision === "city"));
     reveal("city-field", active && Boolean(region) && precision === "city");
   }
   function read(prefix) {
@@ -50,10 +51,11 @@ const TerraLocation = (() => {
         <div id="${prefix}-setting-field" class="field" hidden><label id="${prefix}-setting-label" for="${prefix}-setting">Garden / cultivation details (optional, temporary)</label><input id="${prefix}-setting" maxlength="120" autocomplete="off"></div>
         <div class="field"><label for="${prefix}-region">Broad region (optional, temporary)</label><select id="${prefix}-region"><option value="">Prefer not to say</option><option>Africa</option><option>Antarctica</option><option>Asia</option><option>Europe</option><option>North America</option><option>Oceania</option><option>South America</option></select></div>
         <fieldset id="${prefix}-location-detail" hidden><legend>Optional manual locality · no lookup</legend>
-          <div class="field"><label for="${prefix}-precision">Location precision</label><select id="${prefix}-precision"><option value="">Broad region only · no finer detail</option><option value="state">Enter state / province manually</option><option value="city">Enter city / locality manually</option></select></div>
+          <div class="field"><label for="${prefix}-precision">Location precision</label><select id="${prefix}-precision"><option value="">Broad region only · no finer detail</option><option value="state">Enter state / province manually</option><option value="county">Enter county / district manually</option><option value="city">Enter city / locality manually</option></select></div>
           <div id="${prefix}-manual-location" hidden>
             <div class="field"><label for="${prefix}-country">Country / territory (optional, temporary)</label><input id="${prefix}-country" maxlength="120" autocomplete="off"></div>
             <div class="field"><label for="${prefix}-state">State / province (optional, temporary)</label><input id="${prefix}-state" maxlength="120" autocomplete="off"></div>
+            <div id="${prefix}-county-field" class="field" hidden><label for="${prefix}-county">County / district (optional, temporary)</label><input id="${prefix}-county" maxlength="120" autocomplete="off"></div>
             <div id="${prefix}-city-field" class="field" hidden><label for="${prefix}-city">City / locality (optional, temporary)</label><input id="${prefix}-city" maxlength="120" autocomplete="off"></div>
           </div>
         </fieldset>
@@ -231,63 +233,4 @@ const TerraScreens = (() => {
   // Reveal the screen holding an element (used by automated tests that act on any control).
   const reveal = element => { const screen = element?.closest?.("[data-screen]")?.dataset.screen; if (screen && screen !== current) show(screen); };
   return Object.freeze({ show, reveal, toast, get current() { return current; } });
-})();
-
-(() => {
-  // Fictional observations are deliberately separate from the private journal.
-  const samples = [
-    { category: "fungus", icon: "🍄", type: "Mushroom", name: "Woodland mushroom", setting: "natural", note: "A cap among fallen leaves." },
-    { category: "plant", icon: "🌿", type: "Plant", name: "Garden seedling", setting: "cultivated", note: "New leaves in an imaginary garden bed." },
-    { category: "bird", icon: "🐦", type: "Bird", name: "Woodland bird", setting: "natural", note: "A small bird resting on a branch." },
-    { category: "reptile", icon: "🐍", type: "Snake / reptile", name: "Grass snake", setting: "natural", note: "Observed from a safe distance in a fictional meadow." },
-    { category: "mammal", icon: "🐁", type: "Mouse / mammal", name: "Field mouse", setting: "natural", note: "A brief glimpse near a fictional hedgerow." },
-    { category: "insect", icon: "🐞", type: "Bug / insect", name: "Garden ladybird", setting: "cultivated", note: "A bug on a cultivated plant." }
-  ];
-  function card(sample, sale = false) {
-    const li = document.createElement("li");
-    li.className = `demo-card ${sale ? "sale" : sample.setting}`;
-    li.dataset.purpose = sale ? "sale" : sample.setting;
-    li.dataset.category = sample.category;
-    const icon = document.createElement("span");
-    icon.className = "organism-icon";
-    icon.setAttribute("aria-hidden", "true");
-    icon.textContent = sample.icon;
-    const title = document.createElement("h4");
-    title.textContent = `${sample.type} · ${sample.name}`;
-    const purpose = document.createElement("p");
-    purpose.className = "demo-purpose";
-    purpose.textContent = sale ? "DEMO FOR-SALE LISTING · NOT AN OBSERVATION" : `DEMO OBSERVATION · ${sample.setting === "natural" ? "Natural / wild setting" : "Cultivated / garden setting"}`;
-    const note = document.createElement("p");
-    note.textContent = sample.note;
-    li.append(icon, title, purpose, note);
-    return li;
-  }
-  for (const sample of samples) document.getElementById("demo-map").append(card(sample));
-  document.getElementById("demo-listings").append(card({ category: "plant", icon: "🌿", type: "Plant", name: "Seed packet example", note: "Fictional seeds listing. Not available to buy; no transaction or posting." }, true));
-  const purpose = document.getElementById("map-purpose");
-  const organism = document.getElementById("map-organism");
-  function filterMap() {
-    const values = select => [...select.selectedOptions].some(option => option.value === "all") ? [] : [...select.selectedOptions].map(option => option.value);
-    const purposes = values(purpose), organisms = values(organism);
-    document.getElementById("map-selected").textContent = `Selected colors: ${purposes.join(", ") || "all"} · organisms: ${organisms.join(", ") || "all"}`;
-    let observations = 0, listings = 0;
-    for (const marker of document.querySelectorAll("#map .demo-card")) {
-      marker.hidden = (purposes.length > 0 && !purposes.includes(marker.dataset.purpose))
-        || (organisms.length > 0 && !organisms.includes(marker.dataset.category));
-      if (!marker.hidden) {
-        if (marker.dataset.purpose === "sale") listings++;
-        else observations++;
-      }
-    }
-    document.getElementById("map-results").textContent = `${observations} observation markers and ${listings} for-sale listings shown · fictional results only.`;
-    document.getElementById("map-empty").hidden = observations + listings > 0;
-  }
-  purpose.addEventListener("change", filterMap);
-  organism.addEventListener("change", filterMap);
-  document.getElementById("map-reset").addEventListener("click", () => {
-    purpose.value = organism.value = "all";
-    filterMap();
-  });
-  filterMap();
-
 })();

@@ -4,14 +4,13 @@
 (() => {
   const $ = id => document.getElementById(id);
   const PROFILE_KEY = "terra.profile.v1";
-  const avatars = ["🌿", "🍄", "🐦", "❧"];
-  const defaults = { version: 1, name: "Local explorer", bio: "", credentials: "", avatar: "🌿" };
+  const defaults = { version: 1, name: "Local explorer", bio: "", credentials: "", avatar: "leaf" };
   function readProfile() {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (raw === null) return { ...defaults };
     const p = JSON.parse(raw);
     if (!p || p.version !== 1 || typeof p.name !== "string" || !p.name.trim() || p.name.length > 80 ||
-        typeof p.bio !== "string" || p.bio.length > 500 || typeof p.credentials !== "string" || p.credentials.length > 300 || !avatars.includes(p.avatar)) throw Error("Unsupported profile data");
+        typeof p.bio !== "string" || p.bio.length > 500 || typeof p.credentials !== "string" || p.credentials.length > 300 || !TerraAvatars.isValid(p.avatar, p.photo)) throw Error("Unsupported profile data");
     return p;
   }
   let profileReadable = false;
@@ -22,25 +21,94 @@
       $("profile-name").textContent = p.name;
       $("profile-bio").textContent = p.bio;
       $("profile-credentials").textContent = `Credentials: ${p.credentials || "none"} · user-entered / unverified`;
-      $("profile-avatar").textContent = p.avatar;
+      renderAvatar(p);
       $("profile-display-name").value = p.name;
       $("profile-description").value = p.bio;
       $("profile-credential-input").value = p.credentials;
-      $("profile-avatar-input").value = p.avatar;
       $("profile-status").textContent = "Profile stays on this device only. Nothing published.";
     } catch {
       profileReadable = false;
       $("profile-status").textContent = "Profile storage blocked or damaged. Editing paused; existing data untouched. Do not clear site data.";
     }
     $("profile-form").querySelector("button").disabled = !profileReadable;
+    for (const control of $("avatar-picker").querySelectorAll("input, button")) control.disabled = !profileReadable;
   }
+  // Profile picture: one of the drawn icons, or the person's own photo.
+  const avatarGrid = $("avatar-grid");
+  function choiceFor(value, label) {
+    const option = document.createElement("label");
+    option.className = "avatar-option";
+    option.title = label;
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = "avatar-choice"; input.value = value;
+    input.className = "visually-hidden";
+    const face = document.createElement("span");
+    face.className = "avatar-face";
+    const name = document.createElement("span");
+    name.className = "avatar-name"; name.textContent = label;
+    option.append(input, face, name);
+    input.addEventListener("change", () => saveAvatar({ avatar: value }));
+    return { option, face, input };
+  }
+  for (const icon of TerraAvatars.ICONS) {
+    const { option, face } = choiceFor(icon.id, icon.label);
+    TerraAvatars.render(face, icon.id);
+    avatarGrid.append(option);
+  }
+  const photoChoice = choiceFor("photo", "Your photo");
+  photoChoice.option.hidden = true;
+  avatarGrid.prepend(photoChoice.option);
+  function renderAvatar(p) {
+    const avatar = p.avatar === "photo" ? "photo" : TerraAvatars.iconId(p.avatar);
+    TerraAvatars.render($("profile-avatar"), avatar, p.photo);
+    $("profile-avatar").setAttribute("aria-label", `Profile picture: ${TerraAvatars.labelFor(avatar, p.photo)}`);
+    photoChoice.option.hidden = !p.photo;
+    if (p.photo) TerraAvatars.render(photoChoice.face, "photo", p.photo);
+    $("avatar-remove-photo").hidden = !p.photo;
+    for (const input of avatarGrid.querySelectorAll("input")) input.checked = input.value === avatar;
+  }
+  // Writes only the picture fields, keeping whatever name and bio are already saved.
+  function saveAvatar(change, message) {
+    try {
+      const current = readProfile();
+      const next = { ...current, avatar: TerraAvatars.iconId(current.avatar) ?? current.avatar, ...change };
+      if (next.photo === undefined) delete next.photo;
+      if (!TerraAvatars.isValid(next.avatar, next.photo)) throw Error("invalid");
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+      loadProfile();
+      $("avatar-status").textContent = message ?? `Picture changed to ${TerraAvatars.labelFor(next.avatar, next.photo)}.`;
+    } catch {
+      loadProfile();
+      $("avatar-status").textContent = "The picture couldn't be saved. Your previous picture is unchanged; check that this browser allows site storage.";
+    }
+  }
+  $("avatar-photo-input").addEventListener("change", async event => {
+    const file = event.target.files[0];
+    event.target.value = "";
+    if (!file) return;
+    $("avatar-status").textContent = "Preparing your photo…";
+    try {
+      const photo = await TerraAvatars.photoFromFile(file);
+      saveAvatar({ avatar: "photo", photo }, "Photo set as your profile picture.");
+    } catch (error) {
+      $("avatar-status").textContent = error.message.startsWith("Choose") || error.message.startsWith("That") ? error.message : "That image couldn't be used. Try a different file.";
+    }
+  });
+  $("avatar-remove-photo").addEventListener("click", () => {
+    const current = (() => { try { return readProfile(); } catch { return null; } })();
+    const fallback = current && current.avatar !== "photo" ? TerraAvatars.iconId(current.avatar) : "leaf";
+    saveAvatar({ avatar: fallback, photo: undefined }, "Photo removed from this browser.");
+    $("avatar-photo-input").focus();
+  });
   $("profile-form").addEventListener("submit", event => {
     event.preventDefault();
     if (!profileReadable || !$("profile-display-name").value.trim()) return;
     try {
-      readProfile(); // Do not overwrite damaged data from another tab.
-      localStorage.setItem(PROFILE_KEY, JSON.stringify({ version: 1, name: $("profile-display-name").value.trim(),
-        bio: $("profile-description").value, credentials: $("profile-credential-input").value, avatar: $("profile-avatar-input").value }));
+      const current = readProfile(); // Do not overwrite damaged data from another tab.
+      const next = { version: 1, name: $("profile-display-name").value.trim(), bio: $("profile-description").value,
+        credentials: $("profile-credential-input").value, avatar: TerraAvatars.iconId(current.avatar) ?? current.avatar };
+      if (current.photo) next.photo = current.photo;
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
       loadProfile();
     } catch { $("profile-status").textContent = "Profile could not be saved. Draft kept; existing data untouched. Check browser storage."; }
   });
@@ -76,7 +144,7 @@
     return [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join("");
   }
   function clearRewards() {
-    $("decor-list").replaceChildren(); $("rewards-terrarium").replaceChildren();
+    $("decor-list").replaceChildren();
   }
   function togglePlacement(grant) {
     try {
@@ -121,6 +189,42 @@
     }
     return li;
   }
+  // Terrarium controls: sandbox, speed, "Show in terrarium" and saving moved decorations.
+  let sandbox = false;
+  const sandboxSpots = {};
+  function findButton(achievement) {
+    const button = textNode("button", "text-button collection-find", "Show in terrarium");
+    button.type = "button";
+    button.setAttribute("aria-label", `Show ${achievement.item} in the terrarium`);
+    button.addEventListener("click", () => {
+      TerraTerrarium.select(achievement.id);
+      $("terrarium-live").textContent = $("terrarium-caption").textContent;
+      $("rewards-terrarium").scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    });
+    return button;
+  }
+  TerraTerrarium.onMove((badge, x, y) => {
+    if (sandbox) { sandboxSpots[badge] = { x, y }; return; }
+    try { localStorage.setItem(TerraRewards.KEY, JSON.stringify(TerraRewards.move(TerraRewards.parse(localStorage.getItem(TerraRewards.KEY)), badge, x, y))); }
+    catch { $("rewards-status").textContent = "That spot couldn't be saved. The item will return to its last saved place after reloading."; }
+  });
+  $("terrarium-sandbox").addEventListener("click", event => {
+    sandbox = !sandbox;
+    event.currentTarget.setAttribute("aria-pressed", String(sandbox));
+    event.currentTarget.textContent = sandbox ? "Back to my collection" : "Try every item";
+    $("terrarium-sandbox-note").hidden = !sandbox;
+    refresh();
+  });
+  for (const button of document.querySelectorAll(".terrarium-speed button")) {
+    button.addEventListener("click", () => {
+      TerraTerrarium.setSpeed(Number(button.dataset.speed));
+      for (const other of document.querySelectorAll(".terrarium-speed button")) other.setAttribute("aria-pressed", String(other === button));
+    });
+  }
+  if (TerraTerrarium.paused) {
+    for (const other of document.querySelectorAll(".terrarium-speed button")) other.setAttribute("aria-pressed", String(other.dataset.speed === "0"));
+    $("terrarium-caption").textContent = "Paused because your device prefers reduced motion. Choose a speed to play.";
+  }
   function renderRewards(records, projects) {
     clearRewards();
     try {
@@ -130,23 +234,21 @@
       const fresh = new Set(next.grants.filter(g => !prior.grants.some(p => p.badge === g.badge)).map(g => g.badge));
       const counts = TerraRewards.progress(records, projects, TerraData.observationDate, FieldSummary.matches);
       const placed = next.grants.filter(g => g.placed);
-      // Scale spacing and size to the jar so items stay apart on narrow phones.
-      const width = $("rewards-terrarium").clientWidth || 500, scale = Math.min(1, width / 480);
-      for (const item of TerraRewards.layout(placed, Math.max(12, Math.min(20, 4400 / width)))) {
-        const achievement = achievementFor(item.grant);
-        const object = textNode("span", fresh.has(item.grant.badge) ? "fresh" : "", item.icon);
-        object.title = `${achievement.item} · ${achievement.label}`;
-        object.style.cssText = `left:${item.x}%;top:${item.y}%;font-size:${Math.round(item.size * Math.max(.75, scale))}px;--tilt:${item.rotation}deg;z-index:${Math.round(item.y)}`;
-        $("rewards-terrarium").append(object);
-      }
+      const label = `Your terrarium, ${placed.length} item${placed.length === 1 ? "" : "s"} on display${placed.length ? `: ${placed.map(g => achievementFor(g).item).join(", ")}` : ""}.`;
+      // Sandbox shows every item without earning or saving anything.
+      const entries = sandbox
+        ? TerraRewards.CATALOG.map(a => ({ achievement: a, grant: { badge: a.id, token: "0".repeat(32), placed: true, ...(sandboxSpots[a.id] ?? {}) } }))
+        : placed.map(g => ({ achievement: achievementFor(g), grant: g }));
+      TerraTerrarium.show(entries, { growth: sandbox ? TerraRewards.CATALOG.length : next.grants.length, fresh: sandbox ? [] : [...fresh], label: sandbox ? "Sandbox terrarium with every item." : label });
       for (const achievement of TerraRewards.CATALOG) {
         const grant = next.grants.find(g => g.badge === achievement.id);
-        $("decor-list").append(collectionCard(achievement, grant, counts[achievement.metric] ?? 0, fresh.has(achievement.id)));
+        const card = collectionCard(achievement, grant, counts[achievement.metric] ?? 0, fresh.has(achievement.id));
+        if (sandbox || grant?.placed) card.append(findButton(achievement));
+        $("decor-list").append(card);
       }
       const unlocked = next.grants.filter(g => fresh.has(g.badge)).map(g => achievementFor(g).item);
       $("rewards-status").textContent = (unlocked.length ? `New for your terrarium: ${unlocked.join(", ")}! ` : "") +
         `${next.grants.length} of ${TerraRewards.CATALOG.length} items collected · ${placed.length} on display. Local participation only, not verified quality.`;
-      $("rewards-terrarium").setAttribute("aria-label", `Your terrarium, ${placed.length} item${placed.length === 1 ? "" : "s"} on display${placed.length ? `: ${placed.map(g => achievementFor(g).item).join(", ")}` : ""}. Collection and placement controls below.`);
     } catch {
       $("rewards-status").textContent = "Rewards unavailable or could not be saved: local storage blocked/damaged or unlock could not be saved. Existing rewards untouched. Journal is unaffected. Do not clear site data.";
     }
@@ -218,4 +320,6 @@
   // The terrarium lays itself out to the jar's width, which is 0 while Profile is hidden.
   document.addEventListener("terra:screen-shown", event => { if (event.detail.screen === "profile" || event.detail.screen === "home") refresh(); });
   loadProfile(); refresh();
+  // A #terrarium link opened before this script loaded still lands on the Terrarium tab.
+  if (location.hash === "#terrarium") selectTab($("awards-tab"));
 })();
