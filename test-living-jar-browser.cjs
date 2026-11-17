@@ -67,7 +67,7 @@ const assert = require('node:assert/strict');
     // The jar: finds become residents, the seed is a flower in the garden.
     await page.goto(origin + '/#terrarium');
     let d = await debug();
-    assert.deepEqual(d.residents.filter(r => r.id.startsWith('r:')).map(r => r.kind).sort(), ['fern', 'flower', 'frog', 'ladybug', 'shelf']);
+    assert.deepEqual(d.residents.filter(r => r.id.startsWith('s:')).map(r => r.kind).sort(), ['fern', 'flower', 'frog', 'ladybug', 'shelf'], 'one resident per species');
     assert.ok(d.residents.some(r => r.id === 'streak3' && r.kind === 'caterpillar'), 'streak reward creature lives in the jar');
     assert.ok(d.residents.some(r => r.id === 'streak5' && r.kind === 'bee'));
     assert.equal(d.garden.length, Object.values(quests.claimed).filter(r => r.type === 'seed').length);
@@ -76,9 +76,9 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#terrarium-preview').isVisible(), false, 'season preview is for the sandbox');
 
     // Tapping a find opens its field-guide card.
-    await page.evaluate(() => TerraTerrarium.select('r:b'));
+    await page.evaluate(() => TerraTerrarium.select('s:pacific-tree-frog'));
     assert.equal(await page.locator('#terrarium-guide').isVisible(), true);
-    assert.match(await page.locator('#terrarium-guide').textContent(), /Pacific tree frog.*Your find from 2024-03-10.*frog.*Frogs absorb water/);
+    assert.match(await page.locator('#terrarium-guide').textContent(), /Pacific tree frog.*Stage 1: Tadpole.*Seen 1 time \(first 2024-03-10\)\. 2 more sightings to evolve\..*Frogs absorb water/);
     await page.evaluate(() => TerraTerrarium.select('followers10'));
     assert.equal(await page.locator('#terrarium-guide').isVisible(), false, 'Songbird not earned: no card');
     await page.locator('#decor-list [data-achievement="first"] .collection-find').click();
@@ -105,6 +105,7 @@ const assert = require('node:assert/strict');
     assert.match(await page.locator('#terrarium-caption').textContent(), /scattered seed/);
 
     // Sandbox: preview seasons and night, make it rain, food webs, everything selectable.
+    const raresBeforeSandbox = await page.evaluate(TK => JSON.parse(localStorage.getItem(TK)).rare, TK); // Real sightings happen by chance.
     await page.click('#terrarium-sandbox');
     assert.equal(await page.locator('#terrarium-preview').isVisible(), true);
     await page.selectOption('#terrarium-season', 'summer'); await page.selectOption('#terrarium-time', 'night');
@@ -130,7 +131,7 @@ const assert = require('node:assert/strict');
     assert.ok(crunch, 'ladybugs eat aphids on the sprout');
     assert.ok(snap, 'frogs catch flies after rain');
     const sandboxRares = await page.evaluate(TK => JSON.parse(localStorage.getItem(TK)).rare, TK);
-    assert.deepEqual(sandboxRares, {}, 'sandbox sightings are not logged');
+    assert.deepEqual(sandboxRares, raresBeforeSandbox, 'sandbox sightings are not logged');
     // A quest decoration can be moved in the sandbox without saving.
     const qid = Object.keys((await debug()).decor).find(id => id.startsWith('q:'));
     await page.evaluate(id => TerraTerrarium.select(id), qid);

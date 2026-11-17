@@ -212,7 +212,9 @@ const TerraScreens = (() => {
   // Short confirmation that floats above the tab bar.
   const toastEl = document.getElementById("toast");
   let toastTimer;
-  function toast(message, link) {
+  // Toasts queue, so several pieces of good news at once (quest, level up, evolution) each get seen.
+  const toastQueue = [];
+  function showToast({ message, link }, duration) {
     toastEl.replaceChildren(document.createTextNode(message));
     if (link) {
       const a = document.createElement("a");
@@ -222,10 +224,26 @@ const TerraScreens = (() => {
     toastEl.hidden = false;
     toastEl.classList.remove("leaving");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { toastEl.classList.add("leaving"); toastTimer = setTimeout(() => { toastEl.hidden = true; }, 250); }, 5000);
+    toastTimer = setTimeout(() => {
+      if (toastQueue.length) { showToast(toastQueue.shift(), toastQueue.length ? 3500 : 5000); return; }
+      toastEl.classList.add("leaving"); toastTimer = setTimeout(() => { toastEl.hidden = true; }, 250);
+    }, duration);
+  }
+  // `urgent`: the direct answer to what you just did (e.g. "Saved"): shown now; the rest wait their turn.
+  function toast(message, link, { urgent = false } = {}) {
+    const showing = !toastEl.hidden && !toastEl.classList.contains("leaving");
+    if (urgent && showing) {
+      const current = { message: toastEl.firstChild?.textContent ?? "", link: toastEl.querySelector("a") ? { href: toastEl.querySelector("a").getAttribute("href"), label: toastEl.querySelector("a").textContent } : null };
+      if (current.message && current.message !== message) toastQueue.unshift(current);
+      showToast({ message, link }, 5000);
+      return;
+    }
+    if (showing && (toastEl.firstChild?.textContent === message || toastQueue.some(t => t.message === message))) return;
+    if (showing) { toastQueue.push({ message, link }); if (toastQueue.length > 4) toastQueue.splice(0, toastQueue.length - 4); return; }
+    showToast({ message, link }, 5000);
   }
   document.addEventListener("terra:observation-saved", event => {
-    toast(`Saved “${event.detail.name}” to your journal.`, current === "journal" ? null : { href: "#journal", label: "View journal" });
+    toast(`Saved “${event.detail.name}” to your journal.`, current === "journal" ? null : { href: "#journal", label: "View journal" }, { urgent: true });
   });
 
   trail.push(location.hash || "#home");

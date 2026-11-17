@@ -339,10 +339,12 @@ const TerraTerrarium = (() => {
   const night = () => env.phase === "night";
 
   // Pond appears when something in the jar needs water.
-  const pond = () => world.residents.some(r => ["swim", "hop"].includes(TerraLife.KINDS[r.kind].move) && (r.kind === "frog" || TerraLife.KINDS[r.kind].move === "swim")) ? { x1: 0.04, x2: 0.24 } : null;
-  function residentX(id, kind) {
+  // Residents' current evolution form decides how they move and look.
+  const isStatic = r => r.f.move === "static" || r.f.move === "static-icon";
+  const pond = () => world.residents.some(r => r.f.move === "swim" || r.kind === "frog") ? { x1: 0.04, x2: 0.24 } : null;
+  function residentX(id, f) {
     let x = 0.06 + (hashText(id) % 880) / 1000;
-    const p = pond(), move = TerraLife.KINDS[kind].move;
+    const p = pond(), move = f.move === "static-icon" ? "static" : f.move;
     if (move === "swim" && p) return lerp(p.x1 + 0.03, p.x2 - 0.03, (hashText(id) % 100) / 100);
     if (p && x > p.x1 - 0.02 && x < p.x2 + 0.02 && move === "static") x = p.x2 + 0.04 + (x - p.x1) * 0.5;
     if (world.tree && Math.abs(x - world.tree.x) < 0.05 && move === "static") x += 0.08;
@@ -353,16 +355,18 @@ const TerraTerrarium = (() => {
     const rewardKinds = { streak3: "caterpillar", streak5: "bee", streak14: "owl", streak30: "hedgehog" };
     const wanted = [
       ...Object.entries(rewardKinds).filter(([id]) => has(id)).map(([id, kind]) => ({ id, kind, name: items.get(id).achievement.item, reward: true })),
-      ...findList.map(f => ({ id: `r:${f.id}`, kind: f.kind, name: f.name, date: f.date }))
+      ...findList.map(f => ({ id: f.id, kind: f.kind, name: f.name, date: f.last, species: f }))
     ];
     const old = new Map(world.residents.map(r => [r.id, r]));
     world.residents = [];
     for (const w of wanted) {
       const r = old.get(w.id) ?? { ...w, x: 0.5, dir: hashText(w.id) % 2 ? 1 : -1, t: Math.random() * 10, timer: rand(1, 4), state: "idle", climb: 0 };
-      Object.assign(r, { name: w.name, date: w.date, reward: w.reward });
+      const evolved = old.has(w.id) && w.species && old.get(w.id).species && w.species.stage > old.get(w.id).species.stage;
+      Object.assign(r, { name: w.name, date: w.date, reward: w.reward, species: w.species, f: TerraLife.form(w.kind, w.species ? w.species.stage : 1) });
+      if (evolved) { r.evolving = 2.5; r.hopT = undefined; r.fx = undefined; r.tx = undefined; }
       world.residents.push(r);
     }
-    for (const r of world.residents) if (!old.has(r.id)) r.x = residentX(r.id, r.kind);
+    for (const r of world.residents) if (!old.has(r.id) || r.evolving) r.x = r.evolving && old.has(r.id) && !["swim", "perch", "dangle"].includes(r.f.move) ? r.x : residentX(r.id, r.f);
     // Rare variants for today (fixed for the day, so they don't flicker between visits).
     for (const r of world.residents) {
       if (r.kind === "beetle" && r.golden === undefined) r.golden = (hashText(r.id + today) % 1000) / 1000 < rareOdds("golden-beetle");
@@ -371,9 +375,10 @@ const TerraTerrarium = (() => {
     if (world.snail && world.snail.albino === undefined) world.snail.albino = (hashText("snail" + today) % 1000) / 1000 < rareOdds("albino-snail");
     if (world.snail?.albino) logRare("albino-snail");
     world.garden = gardenList.map((g, i) => ({ id: `g:${g.token}`, ...g, x: 0.07 + ((i * 0.137) % 0.86), row: i % 2 }));
-    for (const id of [...world.decor.keys()]) if (id.startsWith("q:") && !questDecorList.some(d => `q:${d.token}` === id)) world.decor.delete(id);
+    const extraId = d => d.uid ?? `q:${d.token}`;
+    for (const id of [...world.decor.keys()]) if ((id.startsWith("q:") || id.startsWith("d:")) && !questDecorList.some(d => extraId(d) === id)) world.decor.delete(id);
     questDecorList.forEach((d, i) => {
-      const id = `q:${d.token}`;
+      const id = extraId(d);
       const existing = world.decor.get(id);
       const x = d.x ?? [0.36, 0.6, 0.18, 0.74, 0.5, 0.28][i % 6], y = d.y ?? 0.55;
       if (existing && !(dragging && dragging.id === id)) { existing.x = x; existing.y = y; }
@@ -451,7 +456,7 @@ const TerraTerrarium = (() => {
     }
     // Scattered seed gets eaten by whoever reaches it.
     for (const s of life.seeds) s.life -= dt;
-    const eaters = [...world.residents.filter(r => ["scurry", "hop"].includes(TerraLife.KINDS[r.kind].move)).map(r => X(r.x)), ...(world.bird && world.bird.state === "ground" ? [world.bird.x] : [])];
+    const eaters = [...world.residents.filter(r => ["scurry", "hop"].includes(r.f.move)).map(r => X(r.x)), ...(world.bird && world.bird.state === "ground" ? [world.bird.x] : [])];
     life.seeds = life.seeds.filter(s => s.life > 0 && !eaters.some(x => Math.abs(x - X(s.x)) < 6));
   }
 
@@ -460,8 +465,9 @@ const TerraTerrarium = (() => {
   function updateResidents(dt) {
     const p = pond(), dark = night();
     for (const r of world.residents) {
-      const k = TerraLife.KINDS[r.kind];
+      const k = r.f;
       r.t += dt; r.timer -= dt;
+      if (r.evolving > 0) { r.evolving -= dt; if (Math.random() < dt * 8) world.sparkles.push({ x: X(r.x) + rand(-12, 12), y: ground - rand(4, 30), life: 0.8 }); }
       const nocturnal = ["owl", "hedgehog", "mouse"].includes(r.kind), diurnal = ["bee", "butterfly", "sparrow", "lizard"].includes(r.kind);
       const sleepy = (dark && diurnal) || (!dark && r.kind === "owl");
       switch (k.move) {
@@ -602,13 +608,14 @@ const TerraTerrarium = (() => {
   }
   function drawStatic(r) {
     const x = X(r.x), y = ground + 3, sway = Math.sin(time * 1.5 + hashText(r.id)) * 0.08 * (weather.mist > 0 ? 2 : 1);
-    switch (r.kind) {
+    switch (r.f?.draw ?? r.kind) {
       case "fern": drawFern(x, y, env.season === "winter" ? 0.7 : 1, sway); break;
       case "herb": ctx.strokeStyle = "#4f8a3c"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sway * 20, y - 18); ctx.stroke();
         ctx.fillStyle = "#6fae4f"; for (const [dy, s] of [[6, -1], [10, 1], [14, -1], [18, 1]]) { ctx.beginPath(); ctx.ellipse(x + sway * dy + s * 4, y - dy, 4, 2, s * 0.5, 0, 7); ctx.fill(); } break;
       case "flower": { const c = ["#e85d75", "#f2b134", "#8e6cd8", "#4aa3df", "#f08a5d"][hashText(r.id) % 5];
         ctx.strokeStyle = "#4f8a3c"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x, y - 12, x + sway * 25, y - 22); ctx.stroke();
-        if (env.season !== "winter") { ctx.fillStyle = c; for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.arc(x + sway * 25 + Math.cos(k * 1.05) * 3.4, y - 22 + Math.sin(k * 1.05) * 3.4, 2.6, 0, 7); ctx.fill(); } ctx.fillStyle = "#fff3b0"; ctx.beginPath(); ctx.arc(x + sway * 25, y - 22, 1.8, 0, 7); ctx.fill(); } break; }
+        if (r.f?.bud) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x + sway * 25, y - 22, 2, 3, 0, 0, 7); ctx.fill(); }
+        else if (env.season !== "winter") { ctx.fillStyle = c; for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.arc(x + sway * 25 + Math.cos(k * 1.05) * 3.4, y - 22 + Math.sin(k * 1.05) * 3.4, 2.6, 0, 7); ctx.fill(); } ctx.fillStyle = "#fff3b0"; ctx.beginPath(); ctx.arc(x + sway * 25, y - 22, 1.8, 0, 7); ctx.fill(); } break; }
       case "sapling": ctx.strokeStyle = "#6b4a2f"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 26); ctx.stroke();
         if (env.season !== "winter") for (let k = 0; k < 7; k++) oakLeaf(x - 4 + Math.cos(k) * 6, y - 26 + Math.sin(k * 1.7) * 6, 9, k * 0.9 + sway, CANOPY[env.season][k % 6]); break;
       case "moss": ctx.fillStyle = env.season === "winter" ? "#7d9a74" : "#5f9a46"; for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.arc(x - 8 + k * 4, y - 2, 4 + (k % 2), Math.PI, 0); ctx.fill(); } break;
@@ -618,10 +625,19 @@ const TerraTerrarium = (() => {
       case "lichen": ctx.fillStyle = "#8d8f88"; ctx.beginPath(); ctx.ellipse(x, y - 4, 10, 6, 0, Math.PI, 0); ctx.fill();
         for (let k = 0; k < 6; k++) { ctx.fillStyle = k % 2 ? "#c7d68a" : "#e1a23a"; ctx.beginPath(); ctx.arc(x - 6 + k * 2.4, y - 6 + (k % 3), 1.4, 0, 7); ctx.fill(); } break;
       case "cactus": emoji("🌵", x, y + 1, 26, { rotate: sway * 0.3 }); break;
+      case "seed": ctx.fillStyle = "#8a6440"; ctx.beginPath(); ctx.ellipse(x, y - 2, 3.5, 2.4, 0.3, 0, 7); ctx.fill(); ctx.strokeStyle = "#6fae4f"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 1, y - 4); ctx.quadraticCurveTo(x + 2, y - 8, x + 4 + sway * 10, y - 9); ctx.stroke(); break;
+      case "fiddlehead": ctx.strokeStyle = "#5f9a46"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 1, y - 10, x + 2, y - 14); ctx.arc(x + 4.5, y - 14, 2.5, Math.PI, Math.PI * 2.8); ctx.stroke(); break;
+      case "seastar": { ctx.fillStyle = ["#e0703a", "#c94f7c", "#e8a33a"][hashText(r.id) % 3]; ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? 3.5 : 9; ctx.lineTo(x + Math.cos(a) * rr, y - 5 + Math.sin(a) * rr * 0.6); } ctx.closePath(); ctx.fill(); break; }
+      case "anemone": ctx.fillStyle = "#7fb7a6"; ctx.beginPath(); ctx.ellipse(x, y - 3, 6, 4, 0, 0, 7); ctx.fill(); ctx.strokeStyle = "#e07a9a"; ctx.lineWidth = 1.6;
+        for (let i = 0; i < 9; i++) { const a = -Math.PI + i * Math.PI / 8; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * 4, y - 5); ctx.quadraticCurveTo(x + Math.cos(a) * 7, y - 10, x + Math.cos(a) * 8 + Math.sin(time * 2 + i) * 2, y - 14 + Math.abs(Math.cos(a)) * 4); ctx.stroke(); } break;
+      case "orchid": ctx.strokeStyle = "#4f8a3c"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 6, y - 14, x + 2 + sway * 20, y - 22); ctx.stroke();
+        ctx.fillStyle = "#3f7a3a"; ctx.beginPath(); ctx.ellipse(x - 4, y - 3, 6, 2.4, -0.3, 0, 7); ctx.fill();
+        if (!r.f?.bud) { for (const [dx, c] of [[-4, "#d77ad2"], [0, "#f2c6ec"], [4, "#d77ad2"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x + 2 + sway * 20 + dx, y - 22, 3, 4, dx * 0.1, 0, 7); ctx.fill(); } ctx.fillStyle = "#f6e27a"; ctx.beginPath(); ctx.arc(x + 2 + sway * 20, y - 21, 1.4, 0, 7); ctx.fill(); }
+        else { ctx.fillStyle = "#d77ad2"; ctx.beginPath(); ctx.ellipse(x + 2 + sway * 20, y - 22, 2, 3, 0, 0, 7); ctx.fill(); } break;
     }
   }
   function residentPos(r) {
-    const k = TerraLife.KINDS[r.kind], x = X(r.x);
+    const k = r.f, x = X(r.x);
     switch (k.move) {
       case "fly": return { x: r.fx ?? x, y: (r.fy ?? ground - 60) + 8 };
       case "hop": return { x, y: ground + 3 - (r.hopT !== undefined ? Math.sin(Math.min(1, r.hopT) * Math.PI) * 16 : 0) };
@@ -633,18 +649,50 @@ const TerraTerrarium = (() => {
     }
   }
   function drawResident(r) {
-    const k = TerraLife.KINDS[r.kind];
-    if (k.move === "static" && k.draw) { drawStatic(r); return; }
-    const pos = residentPos(r), size = k.size ?? 18;
+    const k = r.f, scale = k.scale ?? 1;
+    if (isStatic(r)) {
+      const x = X(r.x), y = ground + 3;
+      ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); ctx.translate(-x, -y);
+      if (k.move === "static-icon" || (!k.draw && k.icon)) emoji(k.icon, x, y + 1, 20, { rotate: Math.sin(time + hashText(r.id)) * 0.05 });
+      else drawStatic(r);
+      ctx.restore();
+      if (k.crown) drawCrown(x, y - 30 * scale);
+      return;
+    }
+    const pos = residentPos(r), size = (r.kind === "owl" ? 22 : TerraLife.KINDS[r.kind].size ?? 18) * scale;
     if (k.move === "dangle") { ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(pos.x, pos.anchor); ctx.lineTo(pos.x, pos.y - 10); ctx.stroke(); }
-    if (k.move === "burrow") { emoji(k.icon, pos.x, pos.y, 16, { rotate: Math.sin(r.t * 2) * 0.3 }); return; }
-    if (k.move === "swim" && r.kind === "fish") { emoji(k.icon, pos.x, pos.y, 13, { flip: Math.cos(r.t * 0.7) > 0, alpha: 0.85 }); return; }
-    const sleeping = (night() && ["bee", "butterfly", "sparrow", "lizard"].includes(r.kind)) || (!night() && r.kind === "owl");
+    if (k.draw === "chrysalis") { drawChrysalis(pos.x, pos.y - 6, scale); return; }
+    if (k.draw === "tadpole") { drawTadpole(pos.x, pos.y, r.t, Math.cos(r.t * 0.7) > 0); return; }
+    if (k.move === "burrow") { emoji(k.icon, pos.x, pos.y, 16 * scale, { rotate: Math.sin(r.t * 2) * 0.3 }); return; }
+    if (k.move === "swim" && r.kind === "fish") { emoji(k.icon, pos.x, pos.y, 13 * scale, { flip: Math.cos(r.t * 0.7) > 0, alpha: 0.85 }); if (k.crown) drawCrown(pos.x, pos.y - 14 * scale); return; }
+    const sleeping = (night() && ["bee", "butterfly", "sparrow", "lizard", "parrot"].includes(r.kind)) || (!night() && r.kind === "owl" && r.f.stage === 2);
     const filter = r.golden ? "sepia(1) saturate(5) hue-rotate(5deg) brightness(1.25)" : "none";
     const wing = k.move === "fly" && !sleeping && !(r.rest > 0) ? 0.6 + 0.4 * Math.abs(Math.sin(r.t * (r.kind === "bee" ? 30 : 16))) : 1;
-    emoji(k.icon, pos.x, pos.y, r.kind === "owl" ? 22 : size, { flip: (r.dir ?? 1) > 0 && k.move !== "fly" ? true : (r.tx ?? 0) > (r.fx ?? 0), scaleY: wing, filter, alpha: sleeping && r.kind === "owl" ? 0.85 : 1 });
+    const pop = r.evolving > 0 ? 1 + 0.25 * Math.abs(Math.sin(r.evolving * 6)) : 1;
+    emoji(k.icon, pos.x, pos.y, size * pop, { flip: (r.dir ?? 1) > 0 && k.move !== "fly" ? true : (r.tx ?? 0) > (r.fx ?? 0), scaleY: wing, filter, alpha: sleeping && r.kind === "owl" ? 0.85 : 1 });
+    if (k.crown) drawCrown(pos.x, pos.y - size - 2);
     if (sleeping && r.kind !== "bee") { ctx.fillStyle = night() ? "#dfe8ff" : "#4a5a6a"; ctx.font = "italic 10px system-ui"; ctx.textAlign = "left"; ctx.fillText("z", pos.x + 8, pos.y - 16 - Math.sin(time * 2) * 2); }
     if (r.golden) { ctx.fillStyle = `rgba(255,220,90,${0.35 + 0.25 * Math.sin(time * 3)})`; ctx.beginPath(); ctx.arc(pos.x, pos.y - size / 2, size * 0.8, 0, 7); ctx.fill(); }
+  }
+  // Final-stage residents wear a tiny gold star: fully evolved.
+  function drawCrown(x, y) {
+    ctx.save(); ctx.translate(x, y); ctx.fillStyle = "#e8b62f"; ctx.strokeStyle = "rgba(120,80,0,.5)"; ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? 1.8 : 4; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  }
+  function drawChrysalis(x, y, scale = 1) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+    const g = ctx.createLinearGradient(0, -9, 0, 9); g.addColorStop(0, "#9cc56a"); g.addColorStop(1, "#5f8f3c");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, 4.5, 9, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#e8c447"; for (const dy of [-3, 1]) { ctx.beginPath(); ctx.arc(-1.5, dy, 0.8, 0, 7); ctx.arc(1.5, dy, 0.8, 0, 7); ctx.fill(); }
+    ctx.restore();
+  }
+  function drawTadpole(x, y, t, flip) {
+    ctx.save(); ctx.translate(x, y); if (flip) ctx.scale(-1, 1);
+    ctx.fillStyle = "#3b3a2e"; ctx.beginPath(); ctx.ellipse(0, 0, 4, 3, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#3b3a2e"; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(3, 0); ctx.quadraticCurveTo(7, Math.sin(t * 12) * 3, 11, Math.sin(t * 12 + 1) * 2); ctx.stroke();
+    ctx.restore();
   }
   function drawGarden() {
     for (const g of world.garden) {
@@ -829,7 +877,7 @@ const TerraTerrarium = (() => {
     ctx.fillStyle = "#5b3b22"; for (const lx of [-17, 14]) ctx.fillRect(x + lx, y - 14, 3, 14); ctx.fillRect(x - 18, y - 22, 2, 8); ctx.fillRect(x + 16, y - 22, 2, 8);
   }
   function drawDecor(d) {
-    if (d.id.startsWith("q:")) { drawQuestDecor(d); return; }
+    if (d.id.startsWith("q:") || d.id.startsWith("d:")) { drawQuestDecor(d); return; }
     const x = X(d.x), y = decorY(d), size = decorSize(d);
     if (d.id === "verified1") { const glow = ctx.createRadialGradient(x, y - size / 2, 2, x, y - size / 2, size); glow.addColorStop(0, `rgba(190,230,255,${0.45 + Math.sin(time * 2) * 0.2})`); glow.addColorStop(1, "rgba(190,230,255,0)"); ctx.fillStyle = glow; ctx.fillRect(x - size, y - size * 1.5, size * 2, size * 2); }
     if (d.id === "days30") drawBench(x, y); else emoji(d.icon, x, y, size);
@@ -868,9 +916,8 @@ const TerraTerrarium = (() => {
   function locate(id) {
     const r = resident(id);
     if (r) {
-      const k = TerraLife.KINDS[r.kind];
-      if (k.move === "static") return { x: X(r.x), y: ground - 12, r: 20 };
-      const pos = residentPos(r), size = r.kind === "owl" ? 22 : k.size ?? 18;
+      if (isStatic(r)) return { x: X(r.x), y: ground - 12 * (r.f.scale ?? 1), r: Math.max(14, 20 * (r.f.scale ?? 1)) };
+      const pos = residentPos(r), size = (r.kind === "owl" ? 22 : TerraLife.KINDS[r.kind].size ?? 18) * (r.f.scale ?? 1);
       return { x: pos.x, y: pos.y - size / 2, r: Math.max(14, size * 0.8) };
     }
     if (id?.startsWith("g:")) { const g = world.garden.find(g => g.id === id); return g && { x: X(g.x), y: ground - 12, r: 14 }; }
@@ -890,13 +937,16 @@ const TerraTerrarium = (() => {
   // Field-guide card data for anything in the jar.
   function thing(id) {
     const r = resident(id);
-    if (r && id.startsWith("r:")) {
-      const k = TerraLife.KINDS[r.kind];
-      if (r.golden) { const rare = TerraLife.RARES.find(x => x.id === "golden-beetle"); return { name: rare.name, tier: rare.tier, icon: rare.icon, sub: `From your find “${r.name}” (${r.date}).`, fact: rare.fact }; }
-      return { name: r.name || k.name, icon: k.icon ?? "🌿", sub: `Your find from ${r.date}, living here as a ${k.name.toLowerCase()}.`, fact: k.fact };
+    if (r && r.species) {
+      const k = TerraLife.KINDS[r.kind], sp = r.species;
+      if (r.golden) { const rare = TerraLife.RARES.find(x => x.id === "golden-beetle"); return { name: rare.name, tier: rare.tier, icon: rare.icon, sub: `From your find “${r.name}”.`, fact: rare.fact }; }
+      const growth = sp.next ? `${sp.next - sp.count} more sighting${sp.next - sp.count === 1 ? "" : "s"} to evolve.` : "Fully evolved ★";
+      return { name: r.name || k.name, icon: TerraLife.iconFor(r.kind, sp.stage), tier: `Stage ${sp.stage + 1}: ${r.f.name}`,
+        sub: `${sp.scientific ? `${sp.scientific}. ` : ""}Seen ${sp.count} time${sp.count === 1 ? "" : "s"} (first ${sp.first}). ${growth}`, fact: k.fact };
     }
     if (id?.startsWith("g:")) { const g = world.garden.find(g => g.id === id); return g && { name: g.item, icon: g.icon, sub: `Seed packet from a field quest on ${g.planted}.`, fact: "Flowers in your garden came from daily field quests. A new seed sprouts the day you earn it and blooms the next day." }; }
     if (id?.startsWith("q:")) { const d = world.decor.get(id); return d && { name: d.item, icon: d.icon, sub: "Weekly field-quest reward. Drag it to move it.", fact: d.note }; }
+    if (id?.startsWith("d:")) { const d = world.decor.get(id); return d && { name: d.item, icon: d.icon, tier: "Set reward", sub: "Field-guide set reward. Drag it to move it.", fact: d.note }; }
     const entry = items.get(id);
     if (!entry) return null;
     const a = entry.achievement;
@@ -922,13 +972,13 @@ const TerraTerrarium = (() => {
   function describe(id) {
     const r = resident(id);
     if (r) {
-      const k = TerraLife.KINDS[r.kind], name = r.name || k.name;
+      const k = r.f, name = r.name || TerraLife.KINDS[r.kind].name;
       const sleeping = (night() && ["bee", "butterfly", "sparrow", "lizard"].includes(r.kind)) || (!night() && r.kind === "owl");
       if (sleeping) return `${name}: sleeping until ${night() ? "morning" : "night"}.`;
       if (r.hunting) return `${name}: climbing the sprout to hunt aphids.`;
-      return `${name}: ${({ hop: "hopping about", crawl: "crawling along", fly: "flying from flower to flower", swim: "swimming in the pond", burrow: "tunneling through the soil", dangle: "hanging from a silk thread", bask: "basking", perch: "perched in the oak", scurry: "scurrying around", static: "growing here" })[k.move]}.`;
+      return `${name}: ${({ hop: "hopping about", crawl: "crawling along", fly: "flying from flower to flower", swim: "swimming in the pond", burrow: "tunneling through the soil", dangle: "hanging quietly", bask: "basking", perch: "perched up high", scurry: "scurrying around", static: "growing here", "static-icon": "waiting to hatch" })[k.move]}.${r.species && r.f.stage < 2 ? ` (${r.f.name})` : ""}`;
     }
-    if (id?.startsWith("g:") || id?.startsWith("q:")) { const t = thing(id); return t && `${t.name}: ${id.startsWith("q:") ? "drag it, or use the arrow keys, to move it." : "growing in your quest garden."}`; }
+    if (id?.startsWith("g:") || id?.startsWith("q:") || id?.startsWith("d:")) { const t = thing(id); return t && `${t.name}: ${id.startsWith("g:") ? "growing in your garden." : "drag it, or use the arrow keys, to move it."}`; }
     const name = items.get(id)?.achievement.item ?? "";
     if (id === "obs5") { const f = world.fungus, n = f.fruits.filter(x => x.phase !== "decaying").length; return n ? `${name}: ${n} mushroom${n === 1 ? "" : "s"} fruiting from the mycelium below.` : `${name}: resting as mycelium underground (shown in X-ray). It will pin again near a tree or plant.`; }
     if (id === "first") return `${name}: growth stage ${1 + Math.round(plantGrowth() * 5)} of 6. It grows with every achievement you unlock.${life.aphids.length ? ` ${life.aphids.length} aphid${life.aphids.length === 1 ? "" : "s"} on it.` : ""}`;
@@ -950,9 +1000,9 @@ const TerraTerrarium = (() => {
     if (world.flowers) layered.push({ y: ground + 2, draw: drawFlowers });
     if (world.fungus) for (const fr of world.fungus.fruits) layered.push({ y: ground + 3, draw: () => drawMushroom(fr) });
     if (world.garden.length) layered.push({ y: ground + 5, draw: drawGarden });
-    for (const r of world.residents) if (TerraLife.KINDS[r.kind].move === "static") layered.push({ y: ground + 2 + (hashText(r.id) % 4), draw: () => drawResident(r) });
+    for (const r of world.residents) if (isStatic(r)) layered.push({ y: ground + 2 + (hashText(r.id) % 4), draw: () => drawResident(r) });
     for (const l of layered.sort((a, b) => a.y - b.y)) l.draw();
-    for (const r of world.residents) if (TerraLife.KINDS[r.kind].move !== "static") drawResident(r);
+    for (const r of world.residents) if (!isStatic(r)) drawResident(r);
     drawCreatures();
     drawWeatherAndNight();
     for (const sp of world.sparkles) { ctx.globalAlpha = clamp(sp.life, 0, 1); emoji("✨", sp.x, sp.y - (1.5 - sp.life) * 20, 18); ctx.globalAlpha = 1; }
@@ -998,8 +1048,8 @@ const TerraTerrarium = (() => {
   // ---------- interaction ----------
   function hit(px, py) {
     for (const d of [...world.decor.values()].reverse()) { const at = locate(d.id); if (Math.hypot(px - at.x, py - at.y) < at.r) return d.id; }
-    const ids = [...[...world.residents].reverse().filter(r => TerraLife.KINDS[r.kind].move !== "static").map(r => r.id), "followers10", "groups3", "week", "names10",
-      ...world.residents.filter(r => TerraLife.KINDS[r.kind].move === "static").map(r => r.id), ...world.garden.map(g => g.id), "obs5", "first", "obs25", "obs50", "obs10"];
+    const ids = [...[...world.residents].reverse().filter(r => !isStatic(r)).map(r => r.id), "followers10", "groups3", "week", "names10",
+      ...world.residents.filter(isStatic).map(r => r.id), ...world.garden.map(g => g.id), "obs5", "first", "obs25", "obs50", "obs10"];
     for (const id of ids) { const at = locate(id); if (at && Math.hypot(px - at.x, py - at.y) < at.r) return id; }
     return null;
   }

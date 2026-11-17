@@ -40,7 +40,9 @@ const assert = require('node:assert/strict');
     await set('terra.streak.v1', { version: 1, used: [], level: 1 });
     await page.goto(origin + '/#home');
     // Tuesday the 12th was missed: the leaf covers it, so the 7-day streak is still alive today.
-    assert.match(await page.locator('#toast').textContent(), /A rest leaf covered yesterday/);
+    const seen = [await page.locator('#toast').textContent()];
+    for (let i = 0; i < 4 && !seen.some(t => /rest leaf/.test(t)); i++) { await page.clock.runFor(5600); seen.push(await page.locator('#toast').textContent()); }
+    assert.ok(seen.some(t => /A rest leaf covered yesterday/.test(t)), seen.join(' | ')); // Toasts queue; the leaf message comes in turn.
     assert.deepEqual((await get('terra.streak.v1')).used, ['2024-03-12']);
     assert.match(await page.locator('#home-streak').textContent(), /7-day streak.*Record a find today/);
     assert.equal(await page.locator('.streak-day.leaf[data-date="2024-03-12"]').count(), 1);

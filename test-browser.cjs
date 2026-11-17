@@ -203,7 +203,8 @@ async function testRestore(page, key, exported) {
 async function testIdentification(page, key) {
   const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
   const photo = (name = 'view.png', buffer = image, mimeType = 'image/png') => ({ name, buffer, mimeType });
-  const snapshot = () => page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  // The living jar logs chance rare sightings on its own; that ambient log isn't user data.
+  const snapshot = () => page.evaluate(() => { const local = { ...localStorage }; delete local['terra.terrarium.v1']; return JSON.stringify({ local, session: { ...sessionStorage } }); });
   const before = await snapshot();
   const requests = [];
   // Map images and the bundled outline map load whenever a map is on screen; anything else is unexpected.
@@ -381,7 +382,8 @@ async function testIdentification(page, key) {
 async function testDiscoveryHandoff(page, key) {
   const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
   const photo = name => ({ name, mimeType: 'image/png', buffer: image });
-  const snapshot = () => page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  // The living jar logs chance rare sightings on its own; that ambient log isn't user data.
+  const snapshot = () => page.evaluate(() => { const local = { ...localStorage }; delete local['terra.terrarium.v1']; return JSON.stringify({ local, session: { ...sessionStorage } }); });
   const before = await snapshot();
   const raw = await page.evaluate(k => localStorage.getItem(k), key);
   const requests = [];
@@ -603,6 +605,8 @@ async function testDiscoveryHandoff(page, key) {
   const grants = s => JSON.parse(s.local['terra.rewards.v1'] ?? '{"grants":[]}').grants;
   assert.deepEqual(grants(after).slice(0, grants(start).length), grants(start));
   delete after.local['terra.rewards.v1']; delete start.local['terra.rewards.v1'];
+  // The field guide remembers species it has celebrated, also by design.
+  delete after.local['terra.dex.v1']; delete start.local['terra.dex.v1'];
   assert.deepEqual(after, start);
   console.log('PASS: manual administrative precision/privacy, all-ranked accessible disclosure, selection guards, cancel/confirmed candidate and custom handoff, date/context/images review, independent URL ownership/replacement/error/removal/pagehide, unchanged save/export schema, failed-save retry, no GPS/network, responsive draft.');
 }
