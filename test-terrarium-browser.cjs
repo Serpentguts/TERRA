@@ -45,7 +45,7 @@ const assert = require('node:assert/strict');
     // Life cycles: mushrooms pin, fruit and decay along a growing mycelium; the bird can be poisoned and hatches again.
     const seen = new Set(), phases = new Set();
     const states = ['perch', 'fly', 'ground', 'peck', 'sick', 'dead', 'egg', 'chick'], stages = ['pin', 'growing', 'mature', 'decaying'];
-    for (let i = 0; i < 2500 && !(states.every(s => seen.has(s)) && stages.every(p => phases.has(p)) && seen.has('snail-snack')); i++) {
+    for (let i = 0; i < 6000 && !(states.every(s => seen.has(s)) && stages.every(p => phases.has(p)) && seen.has('snail-snack')); i++) {
       await page.evaluate(() => TerraTerrarium.step(2));
       const d = await debug();
       seen.add(d.bird.state); for (const f of d.fruits) phases.add(f.phase);

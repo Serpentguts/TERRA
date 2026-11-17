@@ -94,6 +94,31 @@ const texts = xml => [...xml.matchAll(/<t xml:space="preserve">([^<]*)<\/t>/g)].
     assert.ok(texts(obs).includes('decimalLatitude') && texts(obs).includes('HumanObservation'));
     assert.match(obs, /<v>37.77654<\/v>/, 'exact point included when asked');
     assert.match(await page.locator('#sheet-status').textContent(), /with exact locations\. Keep this file private\./);
+    assert.equal(await page.locator('#dwca-options').isVisible(), false, 'archive details only for the archive');
+
+    // Darwin Core Archive: details appear, zip has the three files, exact still opt-in.
+    await page.uncheck('#sheet-exact');
+    await page.check('input[name="sheet-style"][value="dwca"]');
+    assert.equal(await page.locator('#dwca-options').isVisible(), true);
+    assert.equal(await page.locator('#sheet-download').textContent(), 'Download .zip');
+    assert.equal(await page.locator('#sheet-google-help').isVisible(), false);
+    assert.deepEqual(await page.locator('#dwca-license option').evaluateAll(o => o.map(x => x.value)), ['CC-BY-4.0', 'CC0-1.0', 'CC-BY-NC-4.0']);
+    await page.fill('#dwca-title', 'Spring survey 2024');
+    await page.fill('#dwca-recorded-by', 'Test Observer');
+    await page.selectOption('#dwca-license', 'CC0-1.0');
+    out = await download();
+    assert.match(out.name, /^terra-dwca-\d{4}-\d{2}-\d{2}\.zip$/);
+    assert.deepEqual(Object.keys(out.files).sort(), ['eml.xml', 'meta.xml', 'occurrence.txt']);
+    const occ = out.files['occurrence.txt'].trimEnd().split('\n');
+    assert.equal(occ.length, 4, 'header + 3 active observations');
+    assert.ok(occ.every(l => l.split('\t').length === occ[0].split('\t').length));
+    assert.doesNotMatch(out.files['occurrence.txt'], /37\.77654/, 'exact point generalized');
+    assert.match(out.files['occurrence.txt'], /\tTest Observer\t/);
+    assert.match(out.files['occurrence.txt'], /publicdomain\/zero/);
+    assert.match(out.files['eml.xml'], /<title xml:lang="en">Spring survey 2024<\/title>/);
+    assert.match(await page.locator('#sheet-status').textContent(), /Darwin Core Archive with 3 occurrences \(2 with coordinates\)\./);
+    await page.check('input[name="sheet-style"][value="terra"]');
+    assert.equal(await page.locator('#sheet-download').textContent(), 'Download .xlsx');
     await page.keyboard.press('Escape');
 
     // Same dialog from Projects.
@@ -115,6 +140,6 @@ const texts = xml => [...xml.matchAll(/<t xml:space="preserve">([^<]*)<\/t>/g)].
     assert.deepEqual(outbound, []);
     assert.deepEqual(errors, [], errors.join(' | '));
     await context.close();
-    console.log('PASS: spreadsheet export from Journal and Projects, empty-journal message, plain-language and Darwin Core workbooks, exact locations opt-in only, Trash excluded, formula text kept as text, project members, focus return, phone width, no network.');
+    console.log('PASS: Darwin Core Archive (zip read back, details, licence, exact opt-in), spreadsheet export from Journal and Projects, empty-journal message, plain-language and Darwin Core workbooks, exact locations opt-in only, Trash excluded, formula text kept as text, project members, focus return, phone width, no network.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

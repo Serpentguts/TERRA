@@ -111,3 +111,58 @@ test('Darwin Core columns use standard terms and withhold what the observer with
   assert.equal(E.filename('dwc', '2024-03-13'), 'terra-darwin-core-2024-03-13.xlsx');
   assert.equal(E.filename('terra', '2024-03-13'), 'terra-journal-2024-03-13.xlsx');
 });
+
+test('Darwin Core Archive: occurrence.txt, meta.xml and eml.xml agree and respect privacy', () => {
+  const records = [
+    rec('o1', { type: 'insect', name: 'Seven-spotted ladybug', notes: 'On a rose.\tTab\nand a new line', date: '2024-03-13', privacy: 'exact', location: exactPoint }),
+    rec('o2', { type: 'fungus', name: 'Turkey tail', date: '2024-03-14', privacy: 'approximate', location: area }),
+    rec('o3', { type: 'bird', name: 'Unknown', date: '2024-03-15' }),
+    rec('gone', { deletedAt: '2024-03-16T00:00:00Z' })
+  ];
+  const a = E.archive(records, { geo: D.GEO, cell: D.GEO_CELL, now: new Date('2024-03-20T00:00:00Z') });
+  const files = Object.fromEntries(a.files);
+  assert.deepEqual(Object.keys(files), ['occurrence.txt', 'meta.xml', 'eml.xml']);
+  assert.deepEqual([a.count, a.located], [3, 2]);
+  const lines = files['occurrence.txt'].trimEnd().split('\n'), header = lines[0].split('\t');
+  assert.equal(lines.length, 4, 'header + 3 rows; Trash excluded');
+  for (const line of lines) assert.equal(line.split('\t').length, header.length, 'no stray tabs or line breaks');
+  const fields = [...files['meta.xml'].matchAll(/<field index="(\d+)" term="([^"]+)"\/>/g)];
+  assert.equal(fields.length, header.length);
+  fields.forEach(([, i, term]) => assert.ok(term.endsWith('/' + header[Number(i)]), `${i} ${term}`));
+  assert.match(files['meta.xml'], /rowType="http:\/\/rs\.tdwg\.org\/dwc\/terms\/Occurrence"/);
+  assert.match(files['meta.xml'], /fieldsTerminatedBy="\\t" linesTerminatedBy="\\n" fieldsEnclosedBy="" ignoreHeaderLines="1"/);
+  assert.match(files['meta.xml'], /<id index="0"\/>/); assert.match(files['meta.xml'], /metadata="eml\.xml"/);
+  const row = id => Object.fromEntries(header.map((h, i) => [h, lines.find(l => l.startsWith(id + '\t')).split('\t')[i]]));
+  assert.equal(row('o1').occurrenceRemarks, 'On a rose. Tab and a new line');
+  assert.equal(row('o1').decimalLatitude, '37.75', 'exact point generalized by default');
+  assert.match(row('o1').license, /creativecommons\.org\/licenses\/by\/4\.0/);
+  assert.equal(row('o1').recordedBy, '', 'no name unless the observer gives one');
+  assert.deepEqual([row('o3').decimalLatitude, row('o3').verbatimIdentification, row('o3').class], ['', '', 'Aves']);
+  assert.match(row('o3').informationWithheld, /withheld/);
+  // EML: required GBIF fields, licence, coverage; balanced tags.
+  const eml = files['eml.xml'];
+  for (const tag of ['title', 'creator', 'pubDate', 'abstract', 'intellectualRights', 'contact', 'geographicCoverage', 'temporalCoverage']) assert.match(eml, new RegExp(`<${tag}[ >]`), tag);
+  assert.match(eml, /<organizationName>TERRA user<\/organizationName>/);
+  assert.match(eml, /<beginDate><calendarDate>2024-03-13<\/calendarDate><\/beginDate><endDate><calendarDate>2024-03-15</);
+  assert.match(eml, /<westBoundingCoordinate>-122.45<\/westBoundingCoordinate><eastBoundingCoordinate>-122.4</);
+  const opens = [...eml.matchAll(/<([a-zA-Z:]+)[ >]/g)].map(m => m[1]).filter(t => t !== '?xml');
+  const closes = [...eml.matchAll(/<\/([a-zA-Z:]+)>/g)].map(m => m[1]);
+  assert.deepEqual(opens.sort(), closes.sort(), 'every EML tag is closed');
+
+  // Options: exact opt-in, licence, credit and title (escaped).
+  const b = E.archive(records, { geo: D.GEO, cell: D.GEO_CELL, exact: true, license: 'CC0-1.0', recordedBy: 'Ana & Lee <field team>', title: 'Spring "bioblitz"' });
+  const f = Object.fromEntries(b.files), occ = f['occurrence.txt'];
+  assert.match(occ, /\t37\.77654\t-122\.41234\t/);
+  assert.match(occ, /publicdomain\/zero\/1\.0/);
+  assert.match(occ, /\tAna & Lee <field team>\t/);
+  assert.match(f['eml.xml'], /<title xml:lang="en">Spring &quot;bioblitz&quot;<\/title>/);
+  assert.match(f['eml.xml'], /<surName>Ana &amp; Lee &lt;field team&gt;<\/surName>/);
+  assert.match(f['eml.xml'], /Public Domain \(CC0 1\.0\)/);
+  assert.equal(E.archive([], {}).count, 0);
+  assert.doesNotMatch(E.archive([], {}).files[2][1], /<coverage>/);
+  // Zipped, it reads back.
+  const zipped = unzip(X.zipText(b.files));
+  assert.equal(zipped['occurrence.txt'], occ);
+  assert.equal(E.filename('dwca', '2024-03-13'), 'terra-dwca-2024-03-13.zip');
+  assert.deepEqual(E.LICENSES.map(l => l.id), ['CC-BY-4.0', 'CC0-1.0', 'CC-BY-NC-4.0']);
+});

@@ -98,10 +98,31 @@ These Windows steps are provided for local review; automated tests here run on L
 7. Confirm **🗑 Delete** to move an entry to Trash. Restore within 3 days (72 hours). After expiry recovery is disabled; permanent cleanup happens on the next successful journal write, not in the background. Cancel leaves it unchanged.
 8. Select **Export JSON** to download all saved entries, plus an export timestamp and format version. Check your browser's downloads and keep the file somewhere safe.
 9. To bring back an exported backup, use **Restore a JSON backup** as described below. Nothing is imported just by selecting a file.
-10. Select **Export spreadsheet** (in the Journal, or **Export all to a spreadsheet** in Projects) for an `.xlsx` workbook that opens in Excel and imports into Google Sheets (File → Import → Upload, or drop it into Google Drive). It has four sheets: Observations (or Occurrences), Projects, Project members, and About.
+10. Select **Export data** (in the Journal, or **Export all data** in Projects) for an `.xlsx` workbook that opens in Excel and imports into Google Sheets (File → Import → Upload, or drop it into Google Drive). It has four sheets: Observations (or Occurrences), Projects, Project members, and About.
     - **Columns:** plain-language, or **Darwin Core** (`occurrenceID`, `eventDate`, `decimalLatitude`, `coordinateUncertaintyInMeters` and so on), the standard GBIF, agencies and museums use.
     - **Locations follow privacy:** Hidden has no location; Approximate gives only its saved area; Exact is generalized to a 0.1° area (about 11 km) unless you tick **Include exact locations**. Old schematic-map locations are labelled, with no coordinates.
+    - **Darwin Core Archive (.zip):** `occurrence.txt` (tab-separated Darwin Core), `meta.xml` and `eml.xml` dataset metadata (title, credit, licence, date range and bounding box). It's ready for GBIF's IPT or agency portals. Pick a licence GBIF accepts (CC BY 4.0, CC0 or CC BY-NC 4.0); your name is included only if you type it. The same location rules apply.
     - Text is stored as plain text, so notes can never run as formulas. Deleted (Trash) observations and the photos themselves are left out (there's a photo count). It's built in the browser (`xlsx-writer.js`, `export-sheet.js`) with no upload. It's a report, not a backup: use Export JSON to restore.
+
+## TERRA agent — photo ID and species info
+
+On **Record**, add a photo and press **Identify this photo** (or turn on **Auto-identify new photos**). The agent:
+
+1. prepares the photo: it's resized and re-encoded, which removes location (EXIF/GPS) data;
+2. asks **Pl@ntNet** for plant suggestions, with a confidence for each;
+3. when you pick one, gathers species info from **GBIF**, **iNaturalist** and **Wikipedia** (family, order, observation count, conservation status, a summary and links);
+4. fills in the name and group. When you save, the scientific name is kept with the observation and shows up in the Journal, the identification provenance and exports (Darwin Core `scientificName`).
+
+**Species info** next to the name field looks up any typed name, for any group. Pl@ntNet identifies plants only; iNaturalist photo ID for animals and fungi needs iNaturalist's approval and isn't wired in yet. Suggestions are not verified identifications. Changing the name after picking drops the suggestion.
+
+Setup: identification needs internet and a free Pl@ntNet API key (my.plantnet.org). Set it before starting the server:
+
+```bash
+export PLANTNET_API_KEY=your-key   # Windows PowerShell: $env:PLANTNET_API_KEY="your-key"
+python3 server.py
+```
+
+The key stays on the server (`agent_api.py`); the browser only talks to `/api/identify` and `/api/species`. Only the photo is sent, never the location, notes or ids. The server also refuses to serve dotfiles (`.env`), Python files and caches.
 
 ## Explore a photo — local-first MOCK prototype
 

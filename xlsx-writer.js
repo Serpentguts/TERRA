@@ -115,6 +115,8 @@ const TerraXlsx = (() => {
   }
   const MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   function build(sheets, meta) { return zip(files(sheets, meta)); }
-  return Object.freeze({ build, MIME, colName, serial });
+  // Zip plain text files, e.g. a Darwin Core Archive: [[path, text], ...].
+  const zipText = (entries, when) => zip(entries.map(([name, text]) => [name, enc.encode(text)]), when);
+  return Object.freeze({ build, zipText, MIME, colName, serial });
 })();
 if (typeof module !== "undefined") module.exports = TerraXlsx;
