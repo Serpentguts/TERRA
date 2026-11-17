@@ -53,6 +53,14 @@ A living planning document. It collects the ideas from earlier conversations (Oc
 - How do we stop miners from simply calling the iNat or Pl@ntNet APIs and passing off the answers as their own work?
 - What is the smallest real buyer for the first task (a land trust, consultancy or researcher)?
 
+### Validators and the subnet (built locally Nov 17)
+
+TERRA's review tiers are designed to map onto Bittensor later:
+- **In the app now:** XP levels unlock tiers; a 22-card practice set with known answers builds each reviewer's track record; vote weight comes from reliability (Wilson lower bound), capped; community agreement needs 2+ validators, total weight 2+, a two-thirds share, and no voter above 40%.
+- **With accounts:** practice continues as onboarding, then real reviews of others' observations. Reliability is re-scored continuously against **gold records** (expert-confirmed or long-standing community-agreed observations) mixed into each reviewer's queue without being flagged, so it can't be gamed by only reviewing easy records. Weights decay if a reviewer goes quiet.
+- **On a subnet:** TERRA validators score miners (identification models and human-review pools) on the same gold records; a reviewer's reliability becomes their validator trust input. Stake should never buy identification authority on its own, only accuracy does.
+- **Anti-farming:** daily XP caps, no weight from volume, gold-record checks, rate limits per reviewer, and collusion checks (pairs who always agree with each other but not with gold records).
+
 ## 5. Storage and training setup
 
 **Hippius (Bittensor Subnet 75)**: decentralized, S3-compatible storage. Good for **datasets, labels, provenance records and model checkpoints**. It is storage, not GPUs.
@@ -173,6 +181,8 @@ Keep all of these participation-based and free of monetary value unless the toke
 | 2026-11-11 | Locations moved to real-world coordinates with the same Exact / Approximate / Hidden rules. |
 | 2026-11-13 | Genetics stays a "Sequencing" section on each observation plus a list in the Journal, not its own bottom tab, until there's enough sequencing activity to justify one. The tab bar stays focused on the five everyday screens. |
 | 2026-11-13 | Streaks use observation dates (backfilled days count) and reset gently: the best streak is kept and nothing earned is lost. Field quests are checked only against the journal; colour quests need the colour in the name or notes. |
+| 2026-11-17 | Validator influence: **participation unlocks, accuracy weighs.** XP levels unlock review tiers; vote weight = tier base × (0.5 + Wilson lower bound of review accuracy), capped at 2×, and no voter counts for more than 40% of one record. Raw activity is easy to farm, so it never adds weight on its own. |
+| 2026-11-17 | Rest leaves (streak protection) are earned by weekly quests, cover at most two missed days at a time, keep the streak alive without adding to it, and never count toward streak achievements. |
 | 2026-11-13 | Spreadsheet export is a single `.xlsx` that works in both Excel and Google Sheets, written in the browser with no dependency. Exact points are generalized unless the user opts in. Direct "send to Google Sheets" waits for accounts and OAuth. |
 | 2026-11-13 | Extra jars and visiting friends are deferred: jars need per-habitat art; friends needs accounts and a server. |
 | 2026-11-11 | Observation photos are saved locally (IndexedDB, resized, metadata stripped) when "Save photos" is checked; still never uploaded or in backups. |

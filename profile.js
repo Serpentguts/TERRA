@@ -252,6 +252,7 @@
   // Sample finds for the sandbox, so you can see how journal entries come to life.
   const SAMPLE_FINDS = ["frog", "fern", "bee", "fish", "spider", "worm", "shelf", "flower", "moss", "lichen", "rabbit", "beetle"]
     .map((kind, i) => ({ id: `sample-${kind}`, kind, name: TerraLife.KINDS[kind].name, date: "Sample", type: "other", i }));
+  document.addEventListener("terra:participation-changed", () => refresh());
   if (TerraTerrarium.paused) {
     for (const other of document.querySelectorAll(".terrarium-speed button")) other.setAttribute("aria-pressed", String(other.dataset.speed === "0"));
     $("terrarium-caption").textContent = "Paused because your device prefers reduced motion. Choose a speed to play.";
@@ -317,9 +318,50 @@
       $("rewards-status").textContent = "Rewards unavailable or could not be saved: local storage blocked/damaged or unlock could not be saved. Existing rewards untouched. Journal is unaffected. Do not clear site data.";
     }
   }
-  function renderStreak(records) {
+  // XP, level, streak with rest leaves, and review record: everything participation-related, computed once.
+  function participation(records) {
+    const today = localToday(), dateOK = TerraData.observationDate;
+    const active = TerraData.active(records).filter(r => dateOK(r.date));
+    const quests = questCache.state ? TerraQuests.stats(questCache.state) : { quests: 0, decor: 0 };
+    const rares = TerraTerrarium.rares().filter(r => r.seen).length;
+    let validator;
+    try { validator = TerraValidators.parse(localStorage.getItem(TerraValidators.KEY)); } catch { validator = { version: 1, answers: {} }; }
+    const review = TerraValidators.record(validator);
+    const real = TerraRewards.streak(records, dateOK, today);
+    const xp = TerraXP.compute(active, { quests: quests.quests, rares, reviews: review.reviews, correct: review.correct, longestStreak: real.longest });
+    let saved = null, leaves = { available: Math.max(0, quests.decor), spent: [] }, bridge = new Set();
+    try { saved = TerraRewards.parseStreak(localStorage.getItem(TerraRewards.STREAK_KEY)); } catch { /* Damaged: no rest leaves applied, nothing overwritten. */ }
+    if (saved) {
+      const p = TerraRewards.protect(records, dateOK, today, saved, quests.decor);
+      let next = p.state;
+      if (xp.level > next.level) {
+        if (next.level > 0) TerraScreens.toast(`Level up! ${xp.icon} You're now a ${xp.name} (level ${xp.level}).`, { href: "#profile", label: "See profile" });
+        next = { ...next, level: xp.level };
+      }
+      if (p.spent.length) TerraScreens.toast(`🍃 A rest leaf covered ${p.spent.length === 1 ? "yesterday" : `${p.spent.length} missed days`}, so your streak is safe. Record today to keep it going.`);
+      if (next !== saved) { try { localStorage.setItem(TerraRewards.STREAK_KEY, JSON.stringify(next)); } catch { /* Shown again next time. */ } }
+      leaves = { available: p.available, spent: p.spent };
+      bridge = new Set(next.used);
+    }
+    const streak = TerraRewards.streak(records, dateOK, today, bridge);
+    return { today, active, xp, streak, leaves, bridge, review, validator, standing: TerraValidators.standing(xp.level, review) };
+  }
+  function renderLevel(p) {
+    const card = $("home-level");
+    if (!p.active.length) { card.hidden = true; return; }
+    const { xp } = p;
+    const icon = textNode("span", "level-icon", xp.icon); icon.setAttribute("aria-hidden", "true");
+    const text = document.createElement("span"); text.className = "level-text";
+    text.append(textNode("strong", "", `Level ${xp.level} · ${xp.name}`), textNode("small", "", xp.next ? `${xp.xp} XP · ${xp.toNext} XP to ${xp.next.name}` : `${xp.xp} XP · top level reached`));
+    const bar = document.createElement("progress"); bar.max = 1; bar.value = xp.progress; bar.className = "level-bar"; bar.setAttribute("aria-hidden", "true");
+    text.append(bar);
+    card.replaceChildren(icon, text);
+    card.setAttribute("aria-label", `Level ${xp.level}, ${xp.name}. ${xp.xp} XP.${xp.next ? ` ${xp.toNext} XP to ${xp.next.name}.` : ""} Open your dashboard.`);
+    card.hidden = false;
+  }
+  function renderStreak(p) {
     const card = $("home-streak");
-    const s = TerraRewards.streak(records, TerraData.observationDate, localToday());
+    const s = p.streak;
     if (!s.longest) { card.hidden = true; return; }
     const flame = textNode("span", `streak-flame${s.recordedToday ? " lit" : ""}`, s.current ? "🔥" : "🌱"); flame.setAttribute("aria-hidden", "true");
     const text = document.createElement("span");
@@ -329,6 +371,17 @@
     else { title = "Start a new streak today"; line = `Your best streak: ${s.longest} day${s.longest === 1 ? "" : "s"}. Every day is a fresh start.`; }
     text.append(textNode("strong", "", title), textNode("small", "", line));
     if (s.next) text.append(textNode("small", "streak-next", `Next: ${s.next.icon} ${s.next.item} at ${s.next.target} days in a row`));
+    // This week, Monday to Sunday: recorded days, rest-leaf days, today.
+    const week = document.createElement("span"); week.className = "streak-week"; week.setAttribute("aria-hidden", "true");
+    const days = new Set(p.active.map(r => r.date)), monday = TerraQuests.weekStart(p.today);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(Date.parse(`${monday}T12:00:00Z`) + i * 86400000).toISOString().slice(0, 10);
+      const dot = textNode("span", `streak-day${days.has(d) ? " done" : p.bridge.has(d) ? " leaf" : ""}${d === p.today ? " today" : ""}${d > p.today ? " future" : ""}`, days.has(d) ? "✓" : p.bridge.has(d) ? "🍃" : "");
+      dot.dataset.day = "MTWTFSS"[i]; dot.dataset.date = d;
+      week.append(dot);
+    }
+    text.append(week);
+    text.append(textNode("small", "streak-leaves", p.leaves.available ? `🍃 ${p.leaves.available} rest lea${p.leaves.available === 1 ? "f" : "ves"}: cover${p.leaves.available === 1 ? "s" : ""} a missed day automatically` : "Finish a weekly quest to earn a rest leaf that covers a missed day"));
     card.replaceChildren(flame, text);
     card.classList.toggle("at-risk", s.atRisk);
     card.setAttribute("aria-label", `${title}. ${line}${s.next ? ` Next reward: ${s.next.item} at ${s.next.target} days.` : ""}`);
@@ -378,7 +431,10 @@
       li.append(icon, text); recent.append(li);
     }
     $("home-empty").hidden = active.length > 0;
-    renderStreak(records);
+    const p = participation(records);
+    renderStreak(p);
+    renderLevel(p);
+    if (typeof TerraValidateUI !== "undefined") TerraValidateUI.render(p);
     renderQuests();
     const next = $("home-next");
     next.hidden = true;
@@ -478,7 +534,7 @@
   for (const event of ["terra:journal-rendered", "terra:projects-rendered"]) document.addEventListener(event, refresh);
   window.addEventListener("storage", event => {
     if (event.key === PROFILE_KEY || event.key === null) loadProfile();
-    if ([STORAGE_KEY, FieldSummary.KEY, TerraRewards.KEY, TerraQuests.KEY, null].includes(event.key)) refresh();
+    if ([STORAGE_KEY, FieldSummary.KEY, TerraRewards.KEY, TerraQuests.KEY, TerraValidators.KEY, TerraRewards.STREAK_KEY, null].includes(event.key)) refresh();
   });
   // The terrarium lays itself out to the jar's width, which is 0 while Profile is hidden.
   document.addEventListener("terra:screen-shown", event => { if (event.detail.screen === "profile" || event.detail.screen === "home") refresh(); });

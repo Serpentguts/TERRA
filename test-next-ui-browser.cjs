@@ -116,6 +116,8 @@ const { chromium } = require('playwright');
     await page.locator('#posts-tab').focus(); await page.keyboard.press('ArrowRight');
     assert.equal(await page.locator('#projects-tab').getAttribute('aria-selected'), 'true');
     await page.keyboard.press('End');
+    assert.equal(await page.locator('#validate-tab').getAttribute('aria-selected'), 'true');
+    await page.keyboard.press('ArrowLeft');
     assert.equal(await page.locator('#awards-tab').getAttribute('aria-selected'), 'true');
     assert.equal(await page.locator('#profile-posts').isVisible(), false);
     assert.match(await page.locator('#profile-awards').textContent(), /no genuine verification evidence/);

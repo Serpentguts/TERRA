@@ -66,19 +66,43 @@ const TerraRewards = (() => {
       verified: null
     };
   }
+  const shift = (date, n) => new Date(Date.parse(`${date}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
   // Daily streak, Duolingo-style, from observation dates. `today` is a YYYY-MM-DD string.
   // current counts consecutive days ending today, or ending yesterday while today is still open.
-  function streak(records, dateOK, today) {
+  // `bridge`: days covered by a rest leaf. They keep the streak going but don't add to it.
+  function streak(records, dateOK, today, bridge = new Set()) {
     const days = new Set(records.filter(r => !r.deletedAt && dateOK(r.date)).map(r => r.date));
-    const shift = (date, n) => new Date(Date.parse(`${date}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
     const recordedToday = days.has(today);
     let current = 0, cursor = recordedToday ? today : shift(today, -1);
-    while (days.has(cursor)) { current++; cursor = shift(cursor, -1); }
+    while (days.has(cursor) || bridge.has(cursor)) { if (days.has(cursor)) current++; cursor = shift(cursor, -1); }
     const sorted = [...days].sort();
     let longest = 0, run = 0, previous = null;
     for (const date of sorted) { run = previous && shift(previous, 1) === date ? run + 1 : 1; longest = Math.max(longest, run); previous = date; }
     const next = CATALOG.filter(a => a.metric === "streak" && a.target > current).sort((a, b) => a.target - b.target)[0] ?? null;
     return { current, longest, recordedToday, atRisk: current > 0 && !recordedToday, next: next && { item: next.item, icon: next.icon, target: next.target } };
+  }
+  // Rest leaves: each weekly field quest you finish earns one. If you miss a day or two, leaves
+  // cover them automatically so the streak carries on. Spent leaves are remembered by date.
+  const STREAK_KEY = "terra.streak.v1";
+  function parseStreak(raw) {
+    if (raw === null) return { version: 1, used: [], level: 0 };
+    const s = JSON.parse(raw);
+    if (!s || s.version !== 1 || !Array.isArray(s.used) || s.used.length > 1000 || !s.used.every(d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) ||
+        !Number.isInteger(s.level) || s.level < 0 || s.level > 100) throw Error("Unsupported or damaged streak data");
+    return { version: 1, used: [...new Set(s.used)].sort(), level: s.level };
+  }
+  function protect(records, dateOK, today, state, earned) {
+    const days = new Set(records.filter(r => !r.deletedAt && dateOK(r.date)).map(r => r.date));
+    const used = new Set(state.used), available = Math.max(0, earned - used.size);
+    const yesterday = shift(today, -1);
+    const result = (next, spent) => ({ state: next, spent, available: Math.max(0, earned - next.used.length) });
+    if (days.has(today) || days.has(yesterday) || used.has(yesterday) || !available) return result(state, []);
+    const last = [...days].filter(d => d < today).sort().pop();
+    if (!last) return result(state, []);
+    const gap = [];
+    for (let d = shift(last, 1); d < today; d = shift(d, 1)) if (!used.has(d)) gap.push(d);
+    if (!gap.length || gap.length > 2 || gap.length > available) return result(state, []);
+    return result({ ...state, used: [...used, ...gap].sort() }, gap);
   }
   function eligible(records, projects, dateOK, matches) {
     const counts = progress(records, projects, dateOK, matches);
@@ -122,6 +146,6 @@ const TerraRewards = (() => {
     const grants = state.grants.map(g => g.badge === badge ? { ...g, x: Math.round(Math.min(1, Math.max(0, x)) * 1000) / 1000, y: Math.round(Math.min(1, Math.max(0, y)) * 1000) / 1000 } : { ...g });
     return { version: 1, grants };
   }
-  return Object.freeze({ KEY, CATALOG, labels, parse, progress, streak, eligible, award, decoration, layout, move });
+  return Object.freeze({ KEY, STREAK_KEY, CATALOG, labels, parse, progress, streak, parseStreak, protect, eligible, award, decoration, layout, move });
 })();
 if (typeof module !== "undefined") module.exports = TerraRewards;
