@@ -4,7 +4,7 @@
 // and deletion timestamps are preserved in storage/backups. Photos are never saved.
 const STORAGE_KEY = "terra.observations.v1";
 // Keep legacy fungus/other keys readable in existing version-1 journals and backups.
-const categories = { plant: "Plant", fungus: "Mushroom", insect: "Insect", mammal: "Mammal", bird: "Bird", fish: "Fish", reptile: "Reptile", other: "Other" };
+const categories = { plant: "Plant", fungus: "Mushroom", reptile: "Reptile", insect: "Insect", fish: "Fish", microorganism: "Microorganism", mammal: "Mammal", bird: "Bird", other: "Other" };
 const privacyLabels = { hidden: "Hidden", approximate: "Approximate", exact: "Exact" };
 const form = document.querySelector("#observation-form");
 const organismChoice = document.querySelector("#organism-choice");
@@ -46,6 +46,7 @@ let activeChoice = -1;
 let observations = [];
 let storageReady = false;
 let previewUrl = null;
+let previewFile = null;
 // Retry identity is in memory only; never persist workflow bookkeeping.
 let pendingDiscovery = null;
 const projectObservation = document.querySelector("#project-observation");
@@ -125,7 +126,7 @@ document.addEventListener("terra:prefill-discovery", event => {
     const card = element("li", "identify-photo");
     const img = element("img");
     const url = URL.createObjectURL(file);
-    const image = { img, url };
+    const image = { img, url, file };
     img.alt = `Temporary discovery preview: ${file.name}`;
     img.onerror = () => {
       img.onerror = null;
@@ -142,7 +143,7 @@ document.addEventListener("terra:prefill-discovery", event => {
     img.src = url;
   }
   discoveryImageWrap.hidden = false;
-  transferStatus.textContent = "Draft prefilled only. Review name, date, group, temporary images/location, notes and privacy, then Save separately. Images and location detail are not saved or exported. Nothing sent to iNaturalist.";
+  transferStatus.textContent = "Draft prefilled only. Review name, date, group, temporary images/location, notes and privacy, then Save separately. Transferred photos are saved with the observation only if “Save photos” stays checked; location detail is not saved or exported. Nothing sent to iNaturalist.";
   nameInput.focus();
 });
 
@@ -295,6 +296,9 @@ function load() {
 function persist(next, errorElement = formError) {
   try {
     const retained = TerraData.retain(next);
+    // Records that just expired from Trash take their photos with them.
+    const expired = next.filter(r => !retained.includes(r)).map(r => r.id);
+    if (expired.length && typeof TerraPhotos !== "undefined") TerraPhotos.remove(expired).catch(() => {});
     localStorage.setItem(STORAGE_KEY, JSON.stringify(retained));
     observations = retained;
     showError(errorElement, "");
@@ -330,11 +334,14 @@ function render() {
     meta.append(element("span", "category", categories[observation.type]), date);
     card.append(meta, element("h3", "", observation.name));
     card.append(element("p", "card-notes", observation.notes || "No field notes added."));
-    // Version-1 records contain no identification evidence. A manual name or
-    // fixed photo-demo selection must never imply AI, community or expert review.
+    if (observation.taxon) card.append(element("p", "card-taxon", observation.taxon.scientificName));
+    // A manual name or an agent suggestion must never imply community or expert review.
     const provenance = element("details", "identification-history");
     provenance.append(element("summary", "", "Identification provenance"));
-    provenance.append(element("p", "", "No identification history yet"));
+    const t = observation.taxon, sources = { plantnet: "Pl@ntNet photo ID", inat: "iNaturalist photo ID", gbif: "a GBIF name match", manual: "you" };
+    provenance.append(element("p", "", t
+      ? `Suggested by ${sources[t.source]}${typeof t.score === "number" ? ` (${Math.round(t.score * 100)}% confidence)` : ""} and chosen by you${t.gbifKey ? `; matched to GBIF species ${t.gbifKey}` : ""}. Not yet reviewed by the community or experts.`
+      : "No identification history yet"));
     card.append(provenance);
     const share = element("a", "text-button", "Share / prepare · local demo");
     share.href = "#feed-post-title";
@@ -395,10 +402,12 @@ function clearPreview() {
   clearDiscoveryImages();
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = null;
+  previewFile = null;
   preview.removeAttribute("src");
   previewWrap.hidden = true;
   photoInput.value = "";
   showError(photoError, "");
+  document.dispatchEvent(new CustomEvent("terra:photo-cleared"));
 }
 
 photoInput.addEventListener("change", () => {
@@ -410,8 +419,10 @@ photoInput.addEventListener("change", () => {
     return;
   }
   previewUrl = URL.createObjectURL(file);
+  previewFile = file; // Kept for saving: the file input itself is cleared above.
   preview.src = previewUrl;
   previewWrap.hidden = false;
+  document.dispatchEvent(new CustomEvent("terra:photo-previewed", { detail: { file } }));
 });
 preview.addEventListener("error", () => {
   clearPreview();
@@ -431,6 +442,9 @@ function saveDiscovery(withProject = false) {
     date: data.get("date"),
     privacy: data.get("privacy")
   };
+  // Keep the agent's identification only if the name is still the one it filled in.
+  const taxon = typeof TerraAgent !== "undefined" ? TerraAgent.taxonFor(observation.name) : null;
+  if (taxon) observation.taxon = taxon;
   const location = TerraMaps.observation.read();
   if (location) observation.location = location;
   if (!validObservation(observation) || !TerraData.observationDate(observation.date) || !location) {
@@ -462,6 +476,10 @@ function saveDiscovery(withProject = false) {
     }
   }
   pendingDiscovery = null;
+  // Photos to keep with this observation: the picked photo plus any transferred from Explore a photo.
+  const photoFiles = document.querySelector("#save-photos").checked
+    ? [...(previewUrl && previewFile ? [previewFile] : []), ...discoveryImages.map(image => image.file).filter(Boolean)]
+    : [];
   const targetProject = discoveryProject.value;
   form.reset();
   TerraLocation.sync("discovery");
@@ -472,10 +490,18 @@ function saveDiscovery(withProject = false) {
   closeSuggestions();
   nameStatus.textContent = "";
   clearPreview();
+  if (typeof TerraAgent !== "undefined") TerraAgent.reset();
   transferStatus.textContent = "";
   render();
   projectObservation.value = observation.id;
-  status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist. Image previews are not saved.`;
+  status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist.${photoFiles.length ? " Saving photo…" : " No photo saved."}`;
+  document.dispatchEvent(new CustomEvent("terra:observation-saved", { detail: { name: observation.name } }));
+  if (photoFiles.length) {
+    const savedName = observation.name;
+    TerraPhotos.save(observation.id, photoFiles)
+      .then(count => { status.textContent = `Saved “${savedName}” with ${count} photo${count === 1 ? "" : "s"} in this browser. Nothing was uploaded or published.`; })
+      .catch(() => { status.textContent = `Saved “${savedName}”, but its photo couldn't be stored in this browser (storage blocked or full). The observation itself is safe.`; });
+  }
   document.querySelector("#name").focus();
 }
 form.addEventListener("submit", event => { event.preventDefault(); saveDiscovery(); });

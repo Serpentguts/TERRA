@@ -1,6 +1,7 @@
 // Flask on :8080; isolated Chromium profile; all application network APIs forbidden.
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
@@ -117,7 +118,8 @@ const { chromium } = require('playwright');
     }
     await page.fill('#genetic-sequence', 'ACGTRYSWKMBDHVN'); await page.click('#genbank-preview');
     assert.equal(await raw(J), journalBeforeDNA); assert.equal(await raw(K), projectsBeforeDNA);
-    assert.deepEqual(await page.evaluate(() => Object.keys(localStorage).sort()), [J, K, 'terra.rewards.v1'].sort());
+    // Field-quest rewards depend on today's date, so that key may or may not exist.
+    assert.deepEqual(await page.evaluate(() => Object.keys(localStorage).filter(k => k !== 'terra.quests.v1').sort()), [J, K, 'terra.dex.v1', 'terra.rewards.v1', 'terra.streak.v1', 'terra.terrarium.v1'].sort());
     const download = page.waitForEvent('download'); await page.click('#export-button');
     const exported = JSON.parse(await fs.readFile(await (await download).path(), 'utf8'));
     assert.equal(exported.version, 1);
@@ -174,7 +176,8 @@ const { chromium } = require('playwright');
       await page.locator('#identify-remaining button').last().click();
       const selectedName = await page.locator('#identify-remaining h4').last().textContent();
       const beforeTransfer = await raw(J);
-      await page.getByRole('button', { name: 'Close Record a discovery view', exact: true }).click();
+      // Leave the Record screen; a confirmed handoff must bring the draft back into view.
+      await page.evaluate(() => TerraScreens.show('map'));
       await transfer();
       assert.equal(await page.locator('#name').isVisible(), true, 'Confirmed handoff reopens a closed draft');
       assert.equal(await raw(J), beforeTransfer, 'Photo confirmation must not save');

@@ -1,6 +1,7 @@
 // Optional development check: npm install --no-save --package-lock=false playwright
 // Start python3 server.py, then run node test-browser.cjs.
 const assert = require('node:assert/strict');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 const fs = require('node:fs/promises');
 async function saveObservation(page) {
@@ -202,10 +203,12 @@ async function testRestore(page, key, exported) {
 async function testIdentification(page, key) {
   const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
   const photo = (name = 'view.png', buffer = image, mimeType = 'image/png') => ({ name, buffer, mimeType });
-  const snapshot = () => page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  // The living jar logs chance rare sightings on its own; that ambient log isn't user data.
+  const snapshot = () => page.evaluate(() => { const local = { ...localStorage }; delete local['terra.terrarium.v1']; return JSON.stringify({ local, session: { ...sessionStorage } }); });
   const before = await snapshot();
   const requests = [];
-  const capture = request => requests.push(request.url());
+  // Map images and the bundled outline map load whenever a map is on screen; anything else is unexpected.
+  const capture = request => { const url = request.url(); if (!/^https:\/\/([abc]\.)?tile\.(openstreetmap|opentopomap)\.org\//.test(url) && !url.endsWith('/data/world-outline.js')) requests.push(url); };
   page.on('request', capture);
   // Count URLs as well as DOM images to verify reset/removal/decode-failure cleanup.
   await page.evaluate(() => {
@@ -379,11 +382,13 @@ async function testIdentification(page, key) {
 async function testDiscoveryHandoff(page, key) {
   const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
   const photo = name => ({ name, mimeType: 'image/png', buffer: image });
-  const snapshot = () => page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  // The living jar logs chance rare sightings on its own; that ambient log isn't user data.
+  const snapshot = () => page.evaluate(() => { const local = { ...localStorage }; delete local['terra.terrarium.v1']; return JSON.stringify({ local, session: { ...sessionStorage } }); });
   const before = await snapshot();
   const raw = await page.evaluate(k => localStorage.getItem(k), key);
   const requests = [];
-  const capture = request => requests.push(request.url());
+  // Map images and the bundled outline map load whenever a map is on screen; anything else is unexpected.
+  const capture = request => { const url = request.url(); if (!/^https:\/\/([abc]\.)?tile\.(openstreetmap|opentopomap)\.org\//.test(url) && !url.endsWith('/data/world-outline.js')) requests.push(url); };
   page.on('request', capture);
   await page.evaluate(() => {
     window.handoffUrls = { created: [], revoked: [] };
@@ -584,7 +589,9 @@ async function testDiscoveryHandoff(page, key) {
   await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
   await page.waitForTimeout(1100); // Delayed JSON export URL revocation.
   urls = await page.evaluate(() => window.handoffUrls);
-  assert.deepEqual([...urls.created].sort(), [...urls.revoked].sort());
+  const unrevoked = urls.created.filter(u => !urls.revoked.includes(u)), extra = urls.revoked.filter(u => !urls.created.includes(u));
+  // Nothing created during the handoff leaks. (Thumbnails made earlier, before tracking began, are also released here.)
+  assert.deepEqual(unrevoked, [], JSON.stringify({ created: urls.created.length, revoked: urls.revoked.length, extra: extra.length }));
   assert.equal(new Set(urls.revoked).size, urls.revoked.length);
   assert.equal(requests.every(url => url.startsWith('blob:')), true, `Unexpected handoff network: ${requests}`);
   page.off('request', capture);
@@ -598,6 +605,8 @@ async function testDiscoveryHandoff(page, key) {
   const grants = s => JSON.parse(s.local['terra.rewards.v1'] ?? '{"grants":[]}').grants;
   assert.deepEqual(grants(after).slice(0, grants(start).length), grants(start));
   delete after.local['terra.rewards.v1']; delete start.local['terra.rewards.v1'];
+  // The field guide remembers species it has celebrated, also by design.
+  delete after.local['terra.dex.v1']; delete start.local['terra.dex.v1'];
   assert.deepEqual(after, start);
   console.log('PASS: manual administrative precision/privacy, all-ranked accessible disclosure, selection guards, cancel/confirmed candidate and custom handoff, date/context/images review, independent URL ownership/replacement/error/removal/pagehide, unchanged save/export schema, failed-save retry, no GPS/network, responsive draft.');
 }
@@ -918,7 +927,7 @@ async function testDiscoveryHandoff(page, key) {
     assert.deepEqual(externalRequests, []);
     assert.deepEqual(networkAttempts, []);
     assert.deepEqual(errors, []);
-    assert.equal(requests.every(url => url.startsWith('http://127.0.0.1:8080/') || url.startsWith('blob:')), true);
+    assert.equal(requests.every(url => url.startsWith('http://127.0.0.1:8080/') || url.startsWith('blob:') || /^https:\/\/([abc]\.)?tile\.(openstreetmap|opentopomap)\.org\//.test(url)), true, 'Only the app, local previews and map images load');
     await context.close();
     console.log('PASS: integrated date bar, native keyboard activation, manual/calendar sync, strict/leap dates, substring autocomplete, custom names; save/reload, safe text, previews, privacy, export/restore round-trip, preview/cancel/confirm, duplicate IDs, invalid files/schema/records, storage-write preservation and retry, corrupt/blocked storage, changed-journal reconfirmation, cross-tab updates, labels, mobile widths, no external requests.');
 
