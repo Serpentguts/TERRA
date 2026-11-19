@@ -1,7 +1,17 @@
 // Run with Flask on :8080. Fresh isolated storage; no external/network APIs permitted.
 const assert = require('node:assert/strict');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 const fs = require('node:fs/promises');
+async function deleteObservation(page, name) {
+  const del = page.locator('#observation-list').getByRole('button', { name: `Delete observation: ${name}`, exact: true }).first();
+  if (!await del.isVisible()) await page.locator('#observation-list').getByRole('button', { name: `Options for ${name}`, exact: true }).first().click();
+  await del.click();
+  await page.click('#delete-confirm-yes');
+  await page.waitForFunction(() => !document.querySelector('#delete-confirm').open);
+  await page.waitForTimeout(50);
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
   try {
@@ -38,7 +48,7 @@ const fs = require('node:fs/promises');
     const records = [
       { id: 'a', type: 'plant', name: 'Oak', date: '2024-02-29', notes: 'A', privacy: 'hidden' },
       { id: 'b', type: 'plant', name: 'Oak', date: '2024-02-29', notes: 'B', privacy: 'hidden' },
-      { id: 'c', type: 'other', name: 'Unknown', date: '2025-01-01', notes: '=CMD()', privacy: 'exact', location: { version: 1, space: 'terra-local-grid-v1', kind: 'point', x: 50, y: 50 } },
+      { id: 'c', type: 'other', name: 'Unknown', date: '2025-01-01', notes: '=CMD()', privacy: 'exact', location: { version: 1, space: 'terra-geo-v1', kind: 'point', x: 50, y: 50 } },
       { id: 'd', type: 'fungus', name: '<img src=x onerror="window.injected=1">', date: '2025-01-01', notes: '<script>bad()</script>', privacy: 'approximate' }
     ];
     const journalBytes = JSON.stringify(records);
@@ -94,13 +104,13 @@ const fs = require('node:fs/promises');
     await page.selectOption('#project-select', ''); await page.fill('#project-title', 'Site collection'); await page.selectOption('#project-type', 'site'); await save();
     assert.equal(await page.locator('#project-error').isVisible(), true);
     await page.fill('#project-site', 'North garden');
-    await page.evaluate(() => TerraMaps.project.select(0, 0, 100, 100));
+    await page.evaluate(() => TerraMaps.project.select(0, 0, 80, 80));
     await choose('c'); await save();
     const site = (await projects()).at(-1); assert.match(await report(), /North garden/); assert.match(await report(), /1 included observations · 0 unique taxa labels/);
     assert.equal(await raw(J), journalBytes);
     // Completed projects remain live: deleted records become retained missing IDs, then reconnect on restore.
     await page.selectOption('#project-select', species.id); await page.click('#project-toggle');
-    page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete observation: Oak', exact: true }).first().click();
+    await deleteObservation(page, 'Oak');
     assert.match(await report(), /0 included observations/); assert.match(await report(), /Missing record IDs: a/);
     assert.deepEqual((await projects()).find(p => p.id === species.id).observationIds, ['a']);
     await page.locator('#trash-list').getByRole('button', { name: 'Restore observation' }).click();
