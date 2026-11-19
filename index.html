@@ -31,6 +31,8 @@
   <script src="avatars.js" defer></script>
   <script src="profile.js" defer></script>
   <script src="agent.js" defer></script>
+  <script src="exif.js" defer></script>
+  <script src="field.js" defer></script>
   <script src="xlsx-writer.js" defer></script>
   <script src="export-sheet.js" defer></script>
   <script src="export-ui.js" defer></script>
@@ -78,6 +80,7 @@
         <li><a href="#journal"><strong id="home-days">0</strong><span>days in the field</span></a></li>
         <li><a href="#terrarium"><strong id="home-items">0</strong><span>terrarium items</span></a></li>
       </ul>
+      <a id="home-drafts" class="home-drafts" href="#record" hidden></a>
       <a id="home-streak" class="home-streak" href="#record" hidden></a>
       <a id="home-level" class="home-level" href="#profile" hidden></a>
       <a id="home-quality" class="home-quality" href="#profile" hidden></a>
@@ -355,6 +358,39 @@
     <div class="journal-layout">
       <section class="panel" data-screen="record" aria-labelledby="form-title">
         <div class="section-heading"><div><h2 id="form-title">Record a discovery</h2><p>You don’t need to know its name to notice it.</p></div></div>
+        <section id="field-session" class="field-session" aria-labelledby="field-title">
+          <div class="field-head"><span class="agent-badge" aria-hidden="true">✦</span><h3 id="field-title">Field session</h3></div>
+          <div id="field-idle">
+            <p>Heading out? Start a session, then add photos as you take them. The TERRA agent guesses what each one is, gathers species info and what's seen near where you took it, and drafts a write-up. Nothing reaches your journal until you approve it.</p>
+            <div class="field-options">
+              <label>Mostly photographing <select id="field-group"><option value="plant">Plant</option><option value="fungus">Mushroom</option><option value="reptile">Reptile</option><option value="insect">Insect</option><option value="fish">Fish</option><option value="microorganism">Microorganism</option><option value="mammal">Mammal</option><option value="bird">Bird</option><option value="other">Other</option></select></label>
+              <label>Location privacy <select id="field-privacy"><option value="approximate">Approximate</option><option value="exact">Exact</option><option value="hidden">Hidden</option></select></label>
+              <label class="check-field"><input id="field-device" type="checkbox" checked> Use my device location when a photo has no GPS</label>
+            </div>
+            <button id="field-start" class="primary-button" type="button">Start a field session</button>
+          </div>
+          <div id="field-active" hidden>
+            <p id="field-meta" class="field-meta"></p>
+            <div class="field-options">
+              <label class="primary-button field-capture"><span aria-hidden="true">📷</span> Take or add photos<input id="field-photos" type="file" accept="image/*" capture="environment" multiple></label>
+              <label>Now photographing <select id="field-group-active"><option value="plant">Plant</option><option value="fungus">Mushroom</option><option value="reptile">Reptile</option><option value="insect">Insect</option><option value="fish">Fish</option><option value="microorganism">Microorganism</option><option value="mammal">Mammal</option><option value="bird">Bird</option><option value="other">Other</option></select></label>
+              <button id="field-end" class="secondary-button" type="button">End session</button>
+            </div>
+            <ul id="field-strip" class="field-strip" aria-label="Photos in this session"></ul>
+          </div>
+          <p id="field-status" class="field-status" role="status" aria-live="polite"></p>
+        </section>
+        <section id="field-inbox" class="field-inbox" aria-labelledby="inbox-title">
+          <div class="field-head"><h3 id="inbox-title">Agent inbox</h3><span id="inbox-count" class="inbox-count"></span><button id="inbox-approve-all" class="secondary-button" type="button" hidden>Approve all ready</button></div>
+          <div id="inbox-list" class="inbox-list" aria-live="polite"></div>
+          <details class="inat-connect">
+            <summary>iNaturalist</summary>
+            <p id="inat-state"></p>
+            <p>To post approved observations to your iNaturalist account, sign in at iNaturalist, open <a href="https://www.inaturalist.org/users/api_token" target="_blank" rel="noopener noreferrer">inaturalist.org/users/api_token</a>, and paste the token here. It's stored only in this browser and lasts 24 hours.</p>
+            <div class="inat-row"><input id="inat-token" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your iNaturalist API token" aria-label="iNaturalist API token"><button id="inat-save" class="secondary-button" type="button">Save</button><button id="inat-forget" class="text-button" type="button" hidden>Forget token</button></div>
+            <p class="inat-rules"><small>Only what you approve is posted: your chosen name, date, photos, location (your privacy becomes iNaturalist's geoprivacy: Exact → open, Approximate → obscured, Hidden → private) and <strong>your own notes</strong>. iNaturalist doesn't allow machine-generated text, so the agent's write-up stays in TERRA.</small></p>
+          </details>
+        </section>
         <p class="photo-hint"><a href="#photo">Have a photo? Explore it first <span aria-hidden="true">→</span></a></p>
         <noscript><p class="error">JavaScript is needed to save observations. Enable it in your browser to use this journal.</p></noscript>
         <form id="observation-form">

@@ -335,6 +335,11 @@ function render() {
     card.append(meta, element("h3", "", observation.name));
     card.append(element("p", "card-notes", observation.notes || "No field notes added."));
     if (observation.taxon) card.append(element("p", "card-taxon", observation.taxon.scientificName));
+    if (observation.agent) {
+      const write = element("details", "card-agent");
+      write.append(element("summary", "", "Agent write-up"), element("p", "", observation.agent.summary));
+      card.append(write);
+    }
     // A manual name or an agent suggestion must never imply community or expert review.
     const provenance = element("details", "identification-history");
     provenance.append(element("summary", "", "Identification provenance"));
@@ -366,6 +371,19 @@ function render() {
     });
     bottom.append(element("small", "", `Privacy: ${privacyLabels[observation.privacy]} · ${observation.location ? (observation.privacy === "hidden" ? "Location withheld" : observation.privacy === "approximate" ? "Coarse local region only" : "Local schematic pin") : "Legacy record: no location saved"}`), remove);
     card.append(bottom);
+    // iNaturalist: a link once posted, or a button to post (after the card's other controls).
+    if (!observation.deletedAt) {
+      if (observation.inat) {
+        const link = element("a", "card-inat", "On iNaturalist ↗");
+        link.href = observation.inat.url; link.target = "_blank"; link.rel = "noopener noreferrer";
+        card.append(link);
+      } else if (typeof TerraField !== "undefined") {
+        const post = element("button", "text-button card-inat-post", "Post to iNaturalist");
+        post.type = "button";
+        post.addEventListener("click", async () => { post.disabled = true; post.textContent = "Posting…"; if (!(await TerraField.postToInat(observation))) { post.disabled = false; post.textContent = "Post to iNaturalist"; } });
+        card.append(post);
+      }
+    }
     list.append(card);
   }
   refreshProjectAction();
@@ -505,6 +523,27 @@ function saveDiscovery(withProject = false) {
   document.querySelector("#name").focus();
 }
 form.addEventListener("submit", event => { event.preventDefault(); saveDiscovery(); });
+// For other parts of TERRA (field sessions, iNaturalist posting): add or update a journal record
+// through the same validation and storage as the form.
+const TerraJournal = Object.freeze({
+  add(record) {
+    load();
+    if (!storageReady || !validObservation(record) || observations.some(r => r.id === record.id)) return false;
+    if (!persist([record, ...observations], storageError)) return false;
+    render();
+    return true;
+  },
+  update(id, fields) {
+    load();
+    const current = observations.find(r => r.id === id);
+    if (!storageReady || !current) return false;
+    const next = { ...current, ...fields };
+    if (!validObservation(next)) return false;
+    if (!persist(observations.map(r => r.id === id ? next : r), storageError)) return false;
+    render();
+    return true;
+  }
+});
 addProjectButton.addEventListener("click", () => {
   showError(formError, "");
   if (!projectObservation.value) {

@@ -115,6 +115,21 @@ These Windows steps are provided for local review; automated tests here run on L
     - **Darwin Core Archive (.zip):** `occurrence.txt` (tab-separated Darwin Core), `meta.xml` and `eml.xml` dataset metadata (title, credit, licence, date range and bounding box). It's ready for GBIF's IPT or agency portals. Pick a licence GBIF accepts (CC BY 4.0, CC0 or CC BY-NC 4.0); your name is included only if you type it. The same location rules apply.
     - Text is stored as plain text, so notes can never run as formulas. Deleted (Trash) observations and the photos themselves are left out (there's a photo count). It's built in the browser (`xlsx-writer.js`, `export-sheet.js`) with no upload. It's a report, not a backup: use Export JSON to restore.
 
+## Field sessions and the agent inbox
+
+On **Record**, press **Start a field session** before you head out, then **Take or add photos** as you go (it opens the phone camera). For each photo the TERRA agent works in the background:
+
+1. reads the photo's GPS and time (EXIF), or uses your device location if the photo has none (optional);
+2. for plants, asks Pl@ntNet for guesses; for other groups, looks up what's commonly seen near that spot;
+3. gathers species info (GBIF, iNaturalist, Wikipedia) and **what's seen near here**: how many iNaturalist observations within 10 km and in which months (location rounded to about 11 km before it leaves the server);
+4. writes a draft with the best guess, alternatives, taxonomy, local records and a summary, clearly marked as the agent's.
+
+Drafts wait in the **Agent inbox**. For each one you can switch guesses or pick a common local species, edit the name and group, choose location privacy, add **your own notes**, then **Approve** (adds it to your journal with the photo, scientific name and the agent's write-up), **Edit in full form**, or **Delete**. **Approve all ready** handles a batch. Photos and drafts stay in the browser and survive going offline; the agent continues when you're back online.
+
+**Posting to iNaturalist:** paste your personal API token (from inaturalist.org/users/api_token while signed in; it lasts 24 hours and is kept only in this browser) under **Agent inbox → iNaturalist**. Then use **Approve & post to iNaturalist** on a draft, or **Post to iNaturalist** on any journal record. Only your chosen name, date, photos, location (Exact → open, Approximate → obscured, Hidden → private) and **your own notes** are sent; iNaturalist's guidelines don't allow machine-generated content, so the agent's write-up stays in TERRA. The scientific name is attached as iNaturalist's taxon only on an exact match. Before offering posting to other people, register TERRA as an iNaturalist OAuth application.
+
+**On your phone:** set `TERRA_HOST=0.0.0.0` (in `.env`) and open `http://<your computer's IP>:8080` on the same Wi-Fi to try it. Phones only share location with HTTPS sites, so out in the field (away from your Wi-Fi, with device location) TERRA needs to be hosted with HTTPS.
+
 ## TERRA agent — photo ID and species info
 
 On **Record**, add a photo and press **Identify this photo** (or turn on **Auto-identify new photos**). The agent:

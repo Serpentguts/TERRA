@@ -23,9 +23,10 @@ load_env_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 import agent_api  # noqa: E402  (after .env so keys are visible)
 import weather_api  # noqa: E402
+import inat_api  # noqa: E402
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 9 * 1024 * 1024  # One photo for identification, plus form overhead.
+app.config["MAX_CONTENT_LENGTH"] = 34 * 1024 * 1024  # Up to 4 photos to post to iNaturalist (each route checks its own limit).
 PORT = int(os.environ.get("PORT", 8080))
 
 # --- Serve frontend ---
@@ -81,6 +82,31 @@ def weather():
         return agent_error(error)
 
 
+@app.route("/api/nearby")
+def nearby():
+    try:
+        return jsonify(inat_api.nearby(request.args.get("lat"), request.args.get("lon"), request.args.get("name") or None, request.args.get("group") or None))
+    except agent_api.AgentError as error:
+        return agent_error(error)
+
+
+@app.route("/api/inat/observations", methods=["POST"])
+def inat_post():
+    # The browser sends the user's own token per request; it is never stored on this server.
+    import json as _json
+    try:
+        fields = _json.loads(request.form.get("observation") or "{}")
+        if not isinstance(fields, dict):
+            raise ValueError
+    except ValueError:
+        return jsonify({"error": "bad_request", "message": "Malformed observation."}), 400
+    photos = [f.read() for f in request.files.getlist("photos")][:5]
+    try:
+        return jsonify(inat_api.post_observation(request.headers.get("X-iNat-Token", ""), fields, photos))
+    except agent_api.AgentError as error:
+        return agent_error(error)
+
+
 @app.route("/api/species")
 def species():
     try:
@@ -89,4 +115,6 @@ def species():
         return agent_error(error)
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=PORT)
+    # TERRA_HOST=0.0.0.0 lets a phone on the same Wi-Fi reach this computer (for trying field
+    # sessions). Phones only share location over HTTPS, so real field use needs a hosted HTTPS copy.
+    app.run(host=os.environ.get("TERRA_HOST", "127.0.0.1"), port=PORT)

@@ -60,14 +60,21 @@ const TerraData = (() => {
       Object.keys(t).every(k => ["scientificName", "source", "gbifKey", "score", "rank", "family", "kingdom", "class"].includes(k)));
   }
   const pickTaxon = t => Object.fromEntries(["scientificName", "source", "gbifKey", "score", "rank", "family", "kingdom", "class"].filter(k => t[k] !== undefined).map(k => [k, t[k]]));
+  // The TERRA agent's compiled write-up (kept in TERRA; never posted to iNaturalist).
+  const agentNote = a => Boolean(a && typeof a === "object" && !Array.isArray(a) && typeof a.summary === "string" && a.summary.length <= 4000 &&
+    Array.isArray(a.sources) && a.sources.length <= 8 && a.sources.every(x => typeof x === "string" && x.length <= 40) && Object.keys(a).every(k => ["summary", "sources"].includes(k)));
+  // Where this record was posted on iNaturalist.
+  const inatLink = i => Boolean(i && typeof i === "object" && Number.isInteger(i.id) && i.id > 0 && i.url === `https://www.inaturalist.org/observations/${i.id}` && date(i.posted) && Object.keys(i).every(k => ["id", "url", "posted"].includes(k)));
   function optional(r) {
     return (!Object.hasOwn(r, "location") || location(r.location, r.privacy)) &&
       (!Object.hasOwn(r, "deletedAt") || timestamp(r.deletedAt)) &&
-      (!Object.hasOwn(r, "taxon") || taxon(r.taxon));
+      (!Object.hasOwn(r, "taxon") || taxon(r.taxon)) &&
+      (!Object.hasOwn(r, "agent") || agentNote(r.agent)) &&
+      (!Object.hasOwn(r, "inat") || inatLink(r.inat));
   }
   function pick(r) {
     const { id, type, name, notes, date, privacy } = r;
-    return { id, type, name, notes, date, privacy, ...(r.location ? { location: { ...r.location } } : {}), ...(r.taxon ? { taxon: pickTaxon(r.taxon) } : {}), ...(r.deletedAt ? { deletedAt: r.deletedAt } : {}) };
+    return { id, type, name, notes, date, privacy, ...(r.location ? { location: { ...r.location } } : {}), ...(r.taxon ? { taxon: pickTaxon(r.taxon) } : {}), ...(r.agent ? { agent: { summary: r.agent.summary, sources: [...r.agent.sources] } } : {}), ...(r.inat ? { inat: { id: r.inat.id, url: r.inat.url, posted: r.inat.posted } } : {}), ...(r.deletedAt ? { deletedAt: r.deletedAt } : {}) };
   }
   return { SPACE, GEO, GEO_CELL, RETENTION, today, date, observationDate, boundary, location, inside, timestamp, expired, active, retain, optional, pick, taxon };
 })();
