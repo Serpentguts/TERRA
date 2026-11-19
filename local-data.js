@@ -1,7 +1,14 @@
 "use strict";
-// Shared pure rules. Grid units are NOT latitude/longitude or geographic accuracy.
+// Shared pure rules for journal records and project sites.
+// Two location spaces:
+// - "terra-geo-v1": real places. x = longitude, y = latitude (WGS84 degrees). New records use this.
+// - "terra-local-grid-v1": the earlier imaginary 0–100 grid. Still valid for older records and projects.
+// Privacy is the same in both: Exact keeps a point; Approximate keeps only a region snapped outward
+// to coarse cells (0.1° geo / 10 grid units, at least 2 cells each way); Hidden keeps nothing.
 const TerraData = (() => {
   const SPACE = "terra-local-grid-v1";
+  const GEO = "terra-geo-v1";
+  const GEO_CELL = 0.1, GEO_EXACT_DECIMALS = 5;
   const RETENTION = 3 * 24 * 60 * 60 * 1000;
   function today(now = new Date()) {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -13,17 +20,26 @@ const TerraData = (() => {
   const observationDate = value => date(value) && value <= today();
   const unit = n => Number.isInteger(n) && n >= 0 && n <= 100;
   const rect = r => r && [r.x1, r.y1, r.x2, r.y2].every(unit) && r.x1 < r.x2 && r.y1 < r.y2;
-  const boundary = b => b && b.version === 1 && b.space === SPACE && rect(b);
+  const places = (n, d) => Math.abs(n * 10 ** d - Math.round(n * 10 ** d)) < 1e-6;
+  const lng = n => typeof n === "number" && Number.isFinite(n) && n >= -180 && n <= 180 && places(n, GEO_EXACT_DECIMALS);
+  const lat = n => typeof n === "number" && Number.isFinite(n) && n >= -90 && n <= 90 && places(n, GEO_EXACT_DECIMALS);
+  const geoRect = r => r && lng(r.x1) && lng(r.x2) && lat(r.y1) && lat(r.y2) && r.x1 < r.x2 && r.y1 < r.y2;
+  const boundary = b => b && b.version === 1 && ((b.space === SPACE && rect(b)) || (b.space === GEO && geoRect(b)));
   function location(l, privacy) {
-    if (!l || l.version !== 1 || l.space !== SPACE) return false;
+    if (!l || l.version !== 1 || (l.space !== SPACE && l.space !== GEO)) return false;
     const keys = Object.keys(l).sort().join(",");
     if (privacy === "hidden") return l.kind === "withheld" && keys === "kind,space,version";
+    if (l.space === GEO) {
+      if (privacy === "exact") return l.kind === "point" && lng(l.x) && lat(l.y) && keys === "kind,space,version,x,y";
+      return privacy === "approximate" && l.kind === "region" && geoRect(l) && [l.x1, l.y1, l.x2, l.y2].every(n => places(n, 1)) &&
+        l.x2 - l.x1 >= 2 * GEO_CELL - 1e-9 && l.y2 - l.y1 >= 2 * GEO_CELL - 1e-9 && keys === "kind,space,version,x1,x2,y1,y2";
+    }
     if (privacy === "exact") return l.kind === "point" && unit(l.x) && unit(l.y) && keys === "kind,space,version,x,y";
     return privacy === "approximate" && l.kind === "region" && rect(l) &&
       [l.x1, l.y1, l.x2, l.y2].every(n => n % 10 === 0) && l.x2 - l.x1 >= 20 && l.y2 - l.y1 >= 20 && keys === "kind,space,version,x1,x2,y1,y2";
   }
   function inside(b, l) {
-    if (!boundary(b) || !l || l.space !== SPACE) return false;
+    if (!boundary(b) || !l || l.space !== b.space) return false;
     if (l.kind === "point") return location(l, "exact") && l.x >= b.x1 && l.x <= b.x2 && l.y >= b.y1 && l.y <= b.y2;
     return location(l, "approximate") && l.x1 >= b.x1 && l.x2 <= b.x2 && l.y1 >= b.y1 && l.y2 <= b.y2;
   }
@@ -31,14 +47,35 @@ const TerraData = (() => {
   const expired = (r, now = Date.now()) => Boolean(r.deletedAt && now >= Date.parse(r.deletedAt) + RETENTION);
   const active = records => records.filter(r => !r.deletedAt);
   const retain = (records, now = Date.now()) => records.filter(r => !expired(r, now));
+  // Optional identification details from the TERRA agent: a suggestion the observer chose, never a verification.
+  const TAXON_SOURCES = ["plantnet", "inat", "gbif", "manual"];
+  const text = (v, max) => v === undefined || (typeof v === "string" && v.length <= max);
+  function taxon(t) {
+    return Boolean(t && typeof t === "object" && !Array.isArray(t) &&
+      typeof t.scientificName === "string" && t.scientificName.trim().length > 1 && t.scientificName.length <= 200 &&
+      TAXON_SOURCES.includes(t.source) &&
+      (t.gbifKey === undefined || (Number.isInteger(t.gbifKey) && t.gbifKey > 0)) &&
+      (t.score === undefined || (typeof t.score === "number" && t.score >= 0 && t.score <= 1)) &&
+      text(t.rank, 30) && text(t.family, 60) && text(t.kingdom, 60) && text(t.class, 60) &&
+      Object.keys(t).every(k => ["scientificName", "source", "gbifKey", "score", "rank", "family", "kingdom", "class"].includes(k)));
+  }
+  const pickTaxon = t => Object.fromEntries(["scientificName", "source", "gbifKey", "score", "rank", "family", "kingdom", "class"].filter(k => t[k] !== undefined).map(k => [k, t[k]]));
+  // The TERRA agent's compiled write-up (kept in TERRA; never posted to iNaturalist).
+  const agentNote = a => Boolean(a && typeof a === "object" && !Array.isArray(a) && typeof a.summary === "string" && a.summary.length <= 4000 &&
+    Array.isArray(a.sources) && a.sources.length <= 8 && a.sources.every(x => typeof x === "string" && x.length <= 40) && Object.keys(a).every(k => ["summary", "sources"].includes(k)));
+  // Where this record was posted on iNaturalist.
+  const inatLink = i => Boolean(i && typeof i === "object" && Number.isInteger(i.id) && i.id > 0 && i.url === `https://www.inaturalist.org/observations/${i.id}` && date(i.posted) && Object.keys(i).every(k => ["id", "url", "posted"].includes(k)));
   function optional(r) {
     return (!Object.hasOwn(r, "location") || location(r.location, r.privacy)) &&
-      (!Object.hasOwn(r, "deletedAt") || timestamp(r.deletedAt));
+      (!Object.hasOwn(r, "deletedAt") || timestamp(r.deletedAt)) &&
+      (!Object.hasOwn(r, "taxon") || taxon(r.taxon)) &&
+      (!Object.hasOwn(r, "agent") || agentNote(r.agent)) &&
+      (!Object.hasOwn(r, "inat") || inatLink(r.inat));
   }
   function pick(r) {
     const { id, type, name, notes, date, privacy } = r;
-    return { id, type, name, notes, date, privacy, ...(r.location ? { location: { ...r.location } } : {}), ...(r.deletedAt ? { deletedAt: r.deletedAt } : {}) };
+    return { id, type, name, notes, date, privacy, ...(r.location ? { location: { ...r.location } } : {}), ...(r.taxon ? { taxon: pickTaxon(r.taxon) } : {}), ...(r.agent ? { agent: { summary: r.agent.summary, sources: [...r.agent.sources] } } : {}), ...(r.inat ? { inat: { id: r.inat.id, url: r.inat.url, posted: r.inat.posted } } : {}), ...(r.deletedAt ? { deletedAt: r.deletedAt } : {}) };
   }
-  return { SPACE, RETENTION, today, date, observationDate, boundary, location, inside, timestamp, expired, active, retain, optional, pick };
+  return { SPACE, GEO, GEO_CELL, RETENTION, today, date, observationDate, boundary, location, inside, timestamp, expired, active, retain, optional, pick, taxon };
 })();
 if (typeof module !== "undefined") module.exports = TerraData;
