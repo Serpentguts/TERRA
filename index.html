@@ -40,6 +40,13 @@
   <script src="feed.js" defer></script>
 </head>
 <body>
+  <dialog id="inat-preview" class="inat-preview" aria-labelledby="inat-preview-title">
+    <h3 id="inat-preview-title">Post to iNaturalist <span class="soon-badge">Coming soon</span></h3>
+    <p class="inat-preview-lede">Posting turns on when TERRA ships as an app. Here's exactly what this observation would send:</p>
+    <dl id="inat-preview-fields" class="inat-preview-fields"></dl>
+    <p class="inat-rules"><small>Only your own words are posted. The agent's write-up stays in TERRA, because iNaturalist doesn't allow machine-generated text.</small></p>
+    <form method="dialog"><button class="primary-button" value="close">Got it</button></form>
+  </dialog>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <a class="brand" href="./" aria-label="TERRA home"><span class="brand-mark" aria-hidden="true">❧</span> TERRA</a>
@@ -383,7 +390,7 @@
         <section id="field-inbox" class="field-inbox" aria-labelledby="inbox-title">
           <div class="field-head"><h3 id="inbox-title">Agent inbox</h3><span id="inbox-count" class="inbox-count"></span><button id="inbox-approve-all" class="secondary-button" type="button" hidden>Approve all ready</button></div>
           <div id="inbox-list" class="inbox-list" aria-live="polite"></div>
-          <details class="inat-connect">
+          <details class="inat-connect" hidden>
             <summary>iNaturalist</summary>
             <p id="inat-state"></p>
             <p>To post approved observations to your iNaturalist account, sign in at iNaturalist, open <a href="https://www.inaturalist.org/users/api_token" target="_blank" rel="noopener noreferrer">inaturalist.org/users/api_token</a>, and paste the token here. It's stored only in this browser and lasts 24 hours.</p>

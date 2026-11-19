@@ -805,3 +805,30 @@ body[data-workspace="professional"] #home-quests, body[data-workspace="professio
   .draft-actions .primary-button, .draft-actions .draft-post { flex: 1 1 100%; }
   .field-capture { flex: 1 1 100%; }
 }
+/* Note prompts: the agent asks, you write */
+.note-prompts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.note-prompts-label { color: var(--muted); width: 100%; }
+.note-prompt { min-height: 36px; padding: 6px 12px; border: 1px dashed var(--green); border-radius: 18px; background: #fff; color: var(--green); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.note-prompt:hover { background: #edf0e6; }
+.note-prompt.used { border-style: solid; background: #edf0e6; }
+.note-prompt.used::before { content: "✓ "; }
+.note-row { display: flex; gap: 8px; align-items: stretch; }
+.note-row .draft-notes { flex: 1; min-height: 96px; }
+.note-mic { flex: none; display: grid; place-items: center; width: 48px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--green); cursor: pointer; }
+.note-mic.on { color: #b3261e; }
+.note-mic.on { border-color: #b3261e; background: #fdecea; animation: mic-pulse 1.2s ease-in-out infinite; }
+@keyframes mic-pulse { 50% { box-shadow: 0 0 0 4px #b3261e33; } }
+@media (prefers-reduced-motion: reduce) { .note-mic.on { animation: none; } }
+.note-hint { margin: 0; color: var(--muted); font-size: 13px; }
+/* iNaturalist preview (placeholder until TERRA is a registered iNat app) */
+.inat-preview { width: min(520px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 12px; padding: 20px; color: var(--ink); background: #fff; }
+.inat-preview::backdrop { background: #243c3166; }
+.inat-preview h3 { margin: 0 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.soon-badge { font-size: 12px; font-weight: 650; padding: 2px 8px; border-radius: 10px; background: #fff4d6; color: #6b4e00; }
+.inat-preview-lede { margin: 0 0 10px; color: var(--muted); }
+.inat-preview-fields { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0 0 10px; }
+.inat-preview-fields dt { font-weight: 650; color: var(--muted); }
+.inat-preview-fields dd { margin: 0; overflow-wrap: anywhere; }
+.inat-preview-notes { white-space: pre-line; }
+.inat-preview form { display: flex; justify-content: flex-end; }
+@media (max-width: 560px) { .inat-preview-fields { grid-template-columns: 1fr; } .inat-preview-fields dd { margin-bottom: 6px; } }

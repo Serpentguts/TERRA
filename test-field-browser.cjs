@@ -126,7 +126,52 @@ const SPECIES = { 'Polystichum munitum': { gbif: { key: 5274864, canonicalName: 
     await page.evaluate(() => window.dispatchEvent(new Event('online')));
     await ready(1);
 
-    // iNaturalist: token, then Approve & post. Only your notes go; the write-up doesn't.
+    // Note prompts: the agent asks, you answer; only your words become notes.
+    card = page.locator('.draft-card').first();
+    const asks = await card.locator('.note-prompt').allTextContents();
+    assert.ok(asks.length >= 3 && asks.length <= 5, asks.join(' | '));
+    assert.ok(asks.includes('Flowering or fruiting?'), 'plant questions');
+    assert.equal(await card.locator('.draft-notes').inputValue(), '', 'notes start empty: nothing pre-written');
+    await card.locator('.note-prompt', { hasText: 'How many?' }).click();
+    await page.keyboard.type('About 12');
+    await card.locator('.note-prompt', { hasText: 'Growing where?' }).click();
+    await page.keyboard.type('Shady bank under redwoods');
+    assert.equal(await card.locator('.draft-notes').inputValue(), 'Count: About 12\nHabitat: Shady bank under redwoods');
+    await card.locator('.note-prompt', { hasText: 'How many?' }).click();
+    assert.equal(await card.locator('.draft-notes').inputValue(), 'Count: About 12\nHabitat: Shady bank under redwoods', 'asking again moves to the line, no duplicate');
+    assert.equal(await card.locator('.note-prompt.used').count(), 2);
+    // Notes survive a re-render (another photo finishing) and a reload.
+    await page.reload();
+    await ready(1);
+    card = page.locator('.draft-card').first();
+    assert.equal(await card.locator('.draft-notes').inputValue(), 'Count: About 12\nHabitat: Shady bank under redwoods');
+
+    // iNaturalist is a preview for now: the button shows what would be sent, nothing is posted.
+    assert.equal(await page.locator('.inat-connect').isVisible(), false, 'no token panel until TERRA is a registered iNat app');
+    await card.locator('.draft-post').click();
+    await page.locator('#inat-preview[open]').waitFor();
+    const preview = await page.locator('#inat-preview').textContent();
+    assert.match(preview, /Coming soon/);
+    assert.match(preview, /Western Sword Fern/);
+    assert.match(preview, /Count: About 12/);
+    assert.doesNotMatch(await page.locator('#inat-preview-fields').textContent(), /Best guess|TERRA agent/);
+    assert.equal(inatBody, null, 'nothing sent to iNaturalist');
+    await page.click('#inat-preview button[value="close"]');
+    await page.waitForFunction(() => !document.querySelector('#inat-preview').open);
+    rec = (await journal()).find(r => r.notes === 'Count: About 12\nHabitat: Shady bank under redwoods');
+    assert.ok(rec && !rec.inat, 'approved to the journal, not posted');
+    await page.goto(origin + '/#journal');
+    await page.locator('.card-inat-post').first().click();
+    await page.locator('#inat-preview[open]').waitFor();
+    assert.equal(inatBody, null);
+    await page.keyboard.press('Escape');
+
+    // With posting switched on (after app registration): token, then Approve & post. Only your notes go.
+    await page.addInitScript(() => { window.TERRA_INAT_LIVE = true; });
+    await page.goto(origin + '/#record');
+    await page.reload();
+    await page.setInputFiles('#field-photos', { name: 'fern3.jpg', mimeType: 'image/jpeg', buffer: SF });
+    await ready(1);
     await page.locator('.inat-connect summary').click();
     await page.fill('#inat-token', 'not-a-token');
     await page.click('#inat-save');
@@ -160,6 +205,6 @@ const SPECIES = { 'Polystichum munitum': { gbif: { key: 5274864, canonicalName: 
     assert.deepEqual(outbound, []);
     assert.deepEqual(errors.filter(e => !/Failed to load resource/.test(e)), [], errors.join(' | '));
     await context.close();
-    console.log('PASS: field session — photos with EXIF GPS or device location, agent drafts (guesses, species info, rounded nearby lookup, write-up), switch guess, approve with privacy-respecting location, edit in full form, delete, approve all, offline wait and resume, iNaturalist token check and post with only your notes, journal links and write-ups, phone width.');
+    console.log('PASS: field session — photos with EXIF GPS or device location, agent drafts (guesses, species info, rounded nearby lookup, write-up), switch guess, approve with privacy-respecting location, edit in full form, delete, approve all, offline wait and resume, note prompts (your words only, saved as you type), iNaturalist preview placeholder, live posting behind the switch with only your notes, journal links and write-ups, phone width.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -72,3 +72,27 @@ test('iNaturalist gets your name, date, place and notes, never the write-up', ()
   assert.equal(F.tokenFresh({ token: 'a.b.c', saved: 0 }, 25 * 3600e3), false, 'tokens last 24 hours');
   assert.equal(F.tokenFresh(null), false);
 });
+
+test('note prompts: questions for your own notes, shaped by what the agent noticed', () => {
+  const asks = d => F.notePrompts(d, new Date('2024-03-13')).map(p => p.label);
+  assert.deepEqual(asks({ group: 'plant', location: { lat: 1, lon: 1 } }), ['Flowers/fruit', 'Habitat', 'Count']);
+  assert.deepEqual(asks({ group: 'fungus', location: { lat: 1, lon: 1 } }).slice(0, 2), ['Substrate', 'Features']);
+  assert.equal(asks({ group: 'microorganism', location: {} })[0], 'Sample');
+  const close = F.notePrompts({ group: 'plant', location: {}, chosen: 0, guesses: [{ commonName: 'Sword fern', score: 0.5 }, { commonName: 'Deer fern', score: 0.4 }] });
+  assert.match(close[0].ask, /Close call between Sword fern and Deer fern/);
+  assert.equal(asks({ group: 'plant', location: {}, nearby: { species: { nearby: 0, months: Array(12).fill(0) } } })[0], 'ID notes', 'rare here');
+  const spring = [0, 0, 10, 20, 15, 1, 0, 0, 0, 0, 0, 0];
+  assert.equal(asks({ group: 'plant', location: {}, capturedAt: '2024-11-02T10:00', nearby: { species: { nearby: 40, months: spring } } })[0], 'Timing', 'out of season');
+  assert.notEqual(asks({ group: 'plant', location: {}, capturedAt: '2024-04-02T10:00', nearby: { species: { nearby: 40, months: spring } } })[0], 'Timing');
+  assert.equal(asks({ group: 'bird' })[0], 'Place', 'no GPS: ask where');
+  assert.ok(F.notePrompts({ group: 'plant', guesses: [{ score: .5, commonName: 'a' }, { score: .45, commonName: 'b' }], nearby: { species: { nearby: 0 } } }).length <= 5);
+  for (const group of Object.keys(F.GROUP_LABEL)) assert.ok(F.notePrompts({ group, location: {} }).length >= 3, group);
+});
+
+test('prompt lines: add a label to finish, never duplicate', () => {
+  assert.deepEqual(F.addPromptLine('', 'Count'), { text: 'Count: ', cursor: 7 });
+  assert.deepEqual(F.addPromptLine('Saw it near the creek.  ', 'Count'), { text: 'Saw it near the creek.\nCount: ', cursor: 30 });
+  const t = 'Count: 3\nHabitat: bank';
+  assert.deepEqual(F.addPromptLine(t, 'Count'), { text: t, cursor: 8 });
+  assert.equal(F.INAT_LIVE, false, 'posting is a preview until TERRA is a registered iNat app');
+});

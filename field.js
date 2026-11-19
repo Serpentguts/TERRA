@@ -4,12 +4,18 @@
 // TERRA agent works through them in the background: plant ID with Pl@ntNet, species info from GBIF,
 // iNaturalist and Wikipedia, and what's seen near where you took the photo. Each photo becomes a
 // DRAFT in the agent inbox. Nothing reaches your journal until you approve it; you can edit or
-// delete any draft. From the journal you can post to iNaturalist (your own notes only: iNaturalist
-// doesn't allow machine-written text, so the agent's write-up stays in TERRA).
+// delete any draft. The agent also asks questions to help you write your OWN notes. Posting to
+// iNaturalist sends only your words (machine-written text isn't allowed there); for now it's a
+// preview until TERRA is registered as an iNaturalist app (see INAT_LIVE).
 // Drafts and photos live in this browser (IndexedDB) and survive going offline; the agent picks
 // up again when you're back online.
 const TerraField = (() => {
   const DB = "terra-field", INAT_KEY = "terra.inat.v1", TOKEN_LIFE = 24 * 3600 * 1000;
+  // Real posting needs TERRA registered as an iNaturalist app (planned for the app release). Until
+  // then the post buttons open a preview of exactly what would be sent. Flip to true to post for real
+  // with a personal API token (the server route and token panel are already built).
+  // (Tests and local experiments can set window.TERRA_INAT_LIVE = true before this script loads.)
+  const INAT_LIVE = typeof window !== "undefined" && window.TERRA_INAT_LIVE === true;
   const GROUP_LABEL = { plant: "Plant", fungus: "Mushroom", reptile: "Reptile", insect: "Insect", fish: "Fish", microorganism: "Microorganism", mammal: "Mammal", bird: "Bird", other: "Other" };
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const pct = n => `${Math.round(n * 100)}%`;
@@ -95,9 +101,47 @@ const TerraField = (() => {
     }
     return f;
   }
+  // Questions that help YOU write your notes. The agent asks; you answer in your own words, and only
+  // your answers become notes. Each prompt adds a short label line ("Count: ") for you to finish.
+  // Questions come from the group, plus anything the agent noticed (rare here, out of season, a close
+  // call between two guesses). At most five.
+  const GROUP_PROMPTS = {
+    plant: [["Flowering or fruiting?", "Flowers/fruit"], ["Growing where?", "Habitat"], ["How many?", "Count"]],
+    fungus: [["Growing on what?", "Substrate"], ["Cap and gill details?", "Features"], ["Smell, bruising or spore print?", "Tests"], ["How many?", "Count"]],
+    insect: [["What was it doing?", "Behaviour"], ["On what plant or surface?", "Found on"], ["Alive or dead?", "Condition"]],
+    reptile: [["What was it doing?", "Behaviour"], ["Rough size?", "Size"], ["Alive or dead?", "Condition"]],
+    fish: [["Where in the water?", "Habitat"], ["Rough size?", "Size"], ["How many?", "Count"]],
+    bird: [["What was it doing?", "Behaviour"], ["Heard it? What did it sound like?", "Call"], ["How many?", "Count"]],
+    mammal: [["What was it doing?", "Behaviour"], ["Seen, or signs (tracks, scat)?", "Evidence"], ["How many?", "Count"]],
+    microorganism: [["Where did the sample come from?", "Sample"], ["Magnification and stain?", "Microscope"], ["Moving? How?", "Motility"]],
+    other: [["What made you stop?", "Notes"], ["Growing where?", "Habitat"], ["How many?", "Count"]],
+  };
+  function notePrompts(d, now = new Date()) {
+    const out = [], near = d.nearby?.species, g = d.guesses ?? [];
+    const top = g[d.chosen ?? 0], next = g.find((_, i) => i !== (d.chosen ?? 0));
+    const label = x => x?.commonName || x?.scientificName;
+    if (top && next && typeof top.score === "number" && typeof next.score === "number" && Math.abs(top.score - next.score) < 0.15)
+      out.push({ ask: `Close call between ${label(top)} and ${label(next)}. What tells them apart here?`, label: "ID features" });
+    if (near && near.nearby === 0) out.push({ ask: "No records within 10 km. What makes you confident in the ID?", label: "ID notes" });
+    else if (near) {
+      const when = season(near.months), m = (d.capturedAt ? new Date(d.capturedAt) : now).getMonth();
+      const total = (near.months ?? []).reduce((a, b) => a + b, 0);
+      if (when && total >= 5 && near.months[m] / total < 0.03) out.push({ ask: `Usually seen ${when} near here. Anything unusual about this one?`, label: "Timing" });
+    }
+    if (!d.location) out.push({ ask: "No GPS on this photo. Where were you?", label: "Place" });
+    for (const [ask, lbl] of GROUP_PROMPTS[d.group] ?? GROUP_PROMPTS.other) out.push({ ask, label: lbl });
+    return out.slice(0, 5);
+  }
+  // Add a "Label: " line to the notes (or move to it if it's there), leaving the cursor after it.
+  function addPromptLine(text, lbl) {
+    const lines = text.split("\n"), at = lines.findIndex(l => l.startsWith(`${lbl}: `) || l === `${lbl}:`);
+    if (at >= 0) { const before = lines.slice(0, at + 1).join("\n"); return { text, cursor: before.length }; }
+    const base = text.replace(/\s+$/, ""), next = `${base ? `${base}\n` : ""}${lbl}: `;
+    return { text: next, cursor: next.length };
+  }
   const tokenFresh = (t, now = Date.now()) => Boolean(t && typeof t.token === "string" && t.token && Number.isFinite(t.saved) && now - t.saved < TOKEN_LIFE);
 
-  if (typeof document === "undefined") return Object.freeze({ season, compose, toRecord, inatFields, tokenFresh, GROUP_LABEL });
+  if (typeof document === "undefined") return Object.freeze({ season, compose, toRecord, inatFields, tokenFresh, notePrompts, addPromptLine, GROUP_LABEL, INAT_LIVE });
 
   // ---------- storage (IndexedDB) ----------
   let dbPromise = null;
@@ -220,7 +264,7 @@ const TerraField = (() => {
   // Choosing another guess (or a nearby species) re-gathers info for it.
   async function choose(d, i, name) {
     if (name) d.guesses = [...d.guesses, { scientificName: name, commonName: "", source: "gbif" }], i = d.guesses.length - 1;
-    d.chosen = i;
+    d.chosen = i; delete d.typedName;
     const pick = d.guesses[i];
     d.status = "working"; render();
     try {
@@ -275,7 +319,20 @@ const TerraField = (() => {
 
   // ---------- iNaturalist ----------
   const readToken = () => { try { const t = JSON.parse(localStorage.getItem(INAT_KEY)); return tokenFresh(t) ? t : null; } catch { return null; } };
+  async function previewInat(record) {
+    const f = inatFields(record), dl = $("inat-preview-fields"), dialog = $("inat-preview");
+    let photos = 0;
+    try { photos = Math.min(4, (await TerraPhotos.forObservation(record.id)).length); } catch { /* No photos stored. */ }
+    const where = { exact: "Exact (public)", approximate: "Obscured (shown as an area, not a point)", hidden: "Private" }[f.privacy] ?? f.privacy;
+    const rows = [["Name", f.name], ["Scientific name", f.scientificName || "None (stays a name guess)"], ["Date observed", f.date],
+      ["Location", f.lat != null ? `${where} · ${f.lat.toFixed(3)}, ${f.lon.toFixed(3)} ±${f.accuracy.toLocaleString("en")} m` : `${where} · no coordinates`],
+      ["Photos", `${photos}`], ["Your notes", f.notes || "(none yet: add some in your journal before posting)"]];
+    dl.replaceChildren(...rows.flatMap(([k, v]) => [el("dt", "", k), el("dd", k === "Your notes" ? "inat-preview-notes" : "", v)]));
+    if (typeof dialog.showModal === "function") { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute("open", "");
+    return null;
+  }
   async function postToInat(record) {
+    if (!INAT_LIVE) return previewInat(record);
     const t = readToken();
     if (!t) { TerraScreens.toast("Add a fresh iNaturalist token first (Record → Agent inbox → iNaturalist).", { href: "#record", label: "Add token" }); return null; }
     const form = new FormData();
@@ -304,12 +361,45 @@ const TerraField = (() => {
     const ready = drafts.filter(d => d.status === "ready"), pending = drafts.filter(d => d.status !== "ready");
     $("inbox-count").textContent = drafts.length ? `${ready.length} ready${pending.length ? ` · ${pending.length} in progress` : ""}` : "";
     $("inbox-approve-all").hidden = ready.length < 2;
+    // Keep your place if a re-render lands while you're typing (another photo finished, say).
+    const a = document.activeElement, keep = a?.closest?.(".draft-card") ? { id: a.closest(".draft-card").dataset.draft, cls: a.className.split(" ")[0], start: a.selectionStart, end: a.selectionEnd, value: a.value } : null;
     const list = $("inbox-list"); list.replaceChildren();
     if (!drafts.length) list.append(el("p", "inbox-empty", "No drafts yet. Start a field session and add photos; the agent's drafts land here for you to approve, edit or delete."));
     for (const d of drafts) list.append(card(d));
+    if (keep?.cls) {
+      const t = list.querySelector(`.draft-card[data-draft="${CSS.escape(keep.id)}"] .${CSS.escape(keep.cls)}`);
+      if (t) { if (typeof keep.value === "string" && "value" in t && t.tagName !== "SELECT") t.value = keep.value; t.focus(); try { if (keep.start != null) t.setSelectionRange(keep.start, keep.end); } catch { /* Not a text field. */ } }
+    }
     const home = $("home-drafts");
     if (home) { home.hidden = !ready.length; home.textContent = `✦ ${ready.length} agent draft${ready.length === 1 ? "" : "s"} to review`; }
     renderToken();
+  }
+  // Dictation with the browser's speech recognition, where available (Chrome, Safari; needs HTTPS on
+  // phones). Your phone keyboard's mic works everywhere too. Words are appended as you speak them.
+  const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let listening = null;
+  function dictateButton(notes) {
+    if (!Speech) return null;
+    const b = el("button", "note-mic");
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'; b.type = "button"; b.setAttribute("aria-label", "Dictate notes"); b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => {
+      if (listening) { listening.stop(); return; }
+      let rec;
+      try { rec = new Speech(); } catch { b.hidden = true; return; }
+      rec.lang = navigator.language || "en-US"; rec.interimResults = false; rec.continuous = true;
+      rec.onresult = e => {
+        for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) {
+          const said = e.results[i][0].transcript.trim(); if (!said) continue;
+          const v = notes.value; notes.value = `${v}${v && !/\s$/.test(v) ? " " : ""}${said}`.slice(0, 2000);
+          notes.dispatchEvent(new Event("input"));
+        }
+      };
+      const done = () => { listening = null; b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); };
+      rec.onend = done;
+      rec.onerror = e => { done(); if (e.error === "not-allowed" || e.error === "service-not-allowed") TerraScreens.toast("Microphone not available here. Use your keyboard's mic instead."); };
+      try { rec.start(); listening = rec; b.classList.add("on"); b.setAttribute("aria-pressed", "true"); } catch { done(); }
+    });
+    return b;
   }
   function card(d) {
     const c = el("article", `draft-card ${d.status}`); c.dataset.draft = d.id;
@@ -334,7 +424,7 @@ const TerraField = (() => {
       body.append(g);
     }
     const row = el("div", "draft-fields");
-    const name = el("input", "draft-name"); name.value = d.nameFromAgent ?? ""; name.placeholder = "Name (or leave blank for Unknown)"; name.maxLength = 120; name.setAttribute("aria-label", "Name");
+    const name = el("input", "draft-name"); name.value = d.typedName ?? d.nameFromAgent ?? ""; name.addEventListener("input", () => { d.typedName = name.value; put("drafts", d).catch(() => {}); }); name.placeholder = "Name (or leave blank for Unknown)"; name.maxLength = 120; name.setAttribute("aria-label", "Name");
     const group = el("select", "draft-group"); group.setAttribute("aria-label", "Group");
     for (const [v, label] of Object.entries(GROUP_LABEL)) group.append(new Option(label, v, false, v === d.group));
     group.addEventListener("change", async () => { d.group = group.value; d.status = "queued"; d.species = null; d.nearby = null; await put("drafts", d); render(); run(); });
@@ -346,13 +436,32 @@ const TerraField = (() => {
     const write = el("details", "draft-writeup"); write.open = true;
     write.append(el("summary", "", "Agent write-up (stays in TERRA)"), el("p", "", d.writeUp?.summary ?? ""));
     body.append(write);
-    const notes = el("textarea", "draft-notes"); notes.rows = 2; notes.maxLength = 2000; notes.placeholder = "Your notes: habitat, behaviour, how many… (these are what get posted to iNaturalist)"; notes.setAttribute("aria-label", "Your notes");
-    body.append(notes);
+    // Your notes: the agent asks, you answer. Tap a question to add its line, then type or dictate.
+    const notes = el("textarea", "draft-notes"); notes.rows = 3; notes.maxLength = 2000; notes.placeholder = "Your field notes, in your own words. Tap a question above to start."; notes.setAttribute("aria-label", "Your notes");
+    notes.value = d.notes ?? "";
+    const grow = () => { notes.style.height = "auto"; notes.style.height = `${Math.min(notes.scrollHeight + 2, 320)}px`; };
+    notes.addEventListener("input", () => { d.notes = notes.value; grow(); put("drafts", d).catch(() => {}); });
+    requestAnimationFrame(grow);
+    const asks = el("div", "note-prompts"); asks.setAttribute("role", "group"); asks.setAttribute("aria-label", "Questions for your notes");
+    asks.append(el("small", "note-prompts-label", "The agent asks:"));
+    for (const p of notePrompts(d)) {
+      const b = el("button", "note-prompt", p.ask); b.type = "button"; b.dataset.label = p.label;
+      b.addEventListener("click", () => {
+        const r = addPromptLine(notes.value, p.label);
+        notes.value = r.text; notes.dispatchEvent(new Event("input")); notes.focus(); notes.setSelectionRange(r.cursor, r.cursor);
+        b.classList.add("used");
+      });
+      if (notes.value.split("\n").some(l => l.startsWith(`${p.label}:`))) b.classList.add("used");
+      asks.append(b);
+    }
+    const noteRow = el("div", "note-row"); noteRow.append(notes);
+    const mic = dictateButton(notes); if (mic) noteRow.append(mic);
+    body.append(asks, noteRow, el("p", "note-hint", "Only your words become notes. The write-up above stays in TERRA."));
     const actions = el("div", "draft-actions");
     const btn = (text, cls, fn) => { const b = el("button", cls, text); b.type = "button"; b.addEventListener("click", fn); actions.append(b); return b; };
     btn("Approve", "primary-button draft-approve", () => approve(d, c));
     const postBtn = btn("Approve & post to iNaturalist", "secondary-button draft-post", () => approve(d, c, { post: true }));
-    postBtn.hidden = !readToken();
+    postBtn.hidden = INAT_LIVE && !readToken();
     btn("Edit in full form", "secondary-button draft-edit", () => editInForm(d, c));
     btn("Delete", "text-button draft-delete", () => remove(d));
     body.append(actions, el("p", "draft-status", ""));
@@ -361,6 +470,7 @@ const TerraField = (() => {
     return c;
   }
   function renderToken() {
+    const panel = document.querySelector(".inat-connect"); if (panel) panel.hidden = !INAT_LIVE;
     const t = readToken();
     $("inat-state").textContent = t ? `Connected (token saved ${new Date(t.saved).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}; it expires after 24 hours).` : "Not connected. Posting to iNaturalist needs your personal API token.";
     $("inat-forget").hidden = !t;
@@ -394,6 +504,6 @@ const TerraField = (() => {
   $("inat-forget").addEventListener("click", () => { try { localStorage.removeItem(INAT_KEY); } catch { /* Nothing saved. */ } render(); });
   window.addEventListener("online", run);
   reload().then(run);
-  return Object.freeze({ season, compose, toRecord, inatFields, tokenFresh, postToInat, readToken, GROUP_LABEL, reload, run });
+  return Object.freeze({ season, compose, toRecord, inatFields, tokenFresh, notePrompts, addPromptLine, postToInat, readToken, GROUP_LABEL, INAT_LIVE, reload, run });
 })();
 if (typeof module !== "undefined") module.exports = TerraField;
