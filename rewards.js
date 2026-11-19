@@ -13,25 +13,35 @@ const TerraRewards = (() => {
     { id: "obs10", group: "Field notes", label: "Ten observations", goal: "Record 10 observations", metric: "observations", target: 10, item: "Fallen leaves", icon: "🍂" },
     { id: "obs25", group: "Field notes", label: "Twenty-five observations", goal: "Record 25 observations", metric: "observations", target: 25, item: "Wildflower", icon: "🌸" },
     { id: "obs50", group: "Field notes", label: "Fifty observations", goal: "Record 50 observations", metric: "observations", target: 50, item: "Little oak", icon: "🌳" },
-    { id: "week", group: "Habits", label: "Seven-day fieldbook", goal: "Observations dated on 7 days in a row", metric: "streak", target: 7, item: "Snail", icon: "🐌" },
+    { id: "streak3", group: "Streaks", label: "Three-day streak", goal: "Observe 3 days in a row", metric: "streak", target: 3, item: "Caterpillar", icon: "🐛" },
+    { id: "streak5", group: "Streaks", label: "Five-day streak", goal: "Observe 5 days in a row", metric: "streak", target: 5, item: "Honeybee", icon: "🐝" },
+    { id: "week", group: "Streaks", label: "Seven-day fieldbook", goal: "Observations dated on 7 days in a row", metric: "streak", target: 7, item: "Snail", icon: "🐌" },
+    { id: "streak14", group: "Streaks", label: "Two-week streak", goal: "Observe 14 days in a row", metric: "streak", target: 14, item: "Owl", icon: "🦉" },
+    { id: "streak30", group: "Streaks", label: "Thirty-day streak", goal: "Observe 30 days in a row", metric: "streak", target: 30, item: "Hedgehog", icon: "🦔" },
     { id: "groups3", group: "Variety", label: "Branching out", goal: "Observe 3 different organism groups", metric: "groups", target: 3, item: "Butterfly", icon: "🦋", layer: "air" },
     { id: "names10", group: "Variety", label: "Ten different names", goal: "Record 10 different named organisms", metric: "names", target: 10, item: "Ladybug", icon: "🐞" },
-    { id: "project", group: "Projects", label: "Project completion", goal: "Complete a project with an observation in it", metric: "projects", target: 1, item: "Spiral shell", icon: "🐚" },
+    { id: "project", group: "Projects", label: "Project completion", goal: "Complete a project with an observation in it", metric: "projects", target: 1, item: "Spiral shell", icon: "🐚", kind: "decoration" },
+    { id: "projects3", group: "Projects", label: "Three projects", goal: "Complete 3 projects with observations in them", metric: "projects", target: 3, item: "Stone statue", icon: "🗿", kind: "decoration" },
+    { id: "days30", group: "Habits", label: "Thirty field days", goal: "Observe on 30 different days", metric: "days", target: 30, item: "Garden bench", icon: "🪑", kind: "decoration" },
+    { id: "groups5", group: "Variety", label: "Five groups", goal: "Observe 5 different organism groups", metric: "groups", target: 5, item: "Mossy rock", icon: "🪨", kind: "decoration" },
     { id: "followers10", group: "Community", label: "Ten followers", goal: "Reach 10 followers", metric: "followers", target: 10, item: "Songbird", icon: "🐦", layer: "air", source: "unavailable", lockedReason: "Coming with real accounts" },
-    { id: "verified1", group: "Community", label: "First verified observation", goal: "Get 1 observation verified", metric: "verified", target: 1, item: "Quartz crystal", icon: "💎", source: "unavailable", lockedReason: "Coming with identification review" }
-  ].map(Object.freeze));
+    { id: "verified1", group: "Community", label: "First verified observation", goal: "Get 1 observation verified", metric: "verified", target: 1, item: "Quartz crystal", icon: "💎", kind: "decoration", source: "unavailable", lockedReason: "Coming with identification review" }
+  ].map(a => Object.freeze({ kind: "living", ...a })));
   const byId = Object.fromEntries(CATALOG.map(a => [a.id, a]));
   const labels = Object.freeze(Object.fromEntries(CATALOG.map(a => [a.id, a.label])));
   const isUnknown = name => typeof name !== "string" || !name.trim() || name.trim().toLowerCase() === "unknown";
 
+  // Optional saved spot for an item you've moved in the terrarium: fractions of the jar (0–1).
+  const fraction = n => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1;
+  const spot = g => (g.x === undefined && g.y === undefined) || (fraction(g.x) && fraction(g.y));
   function parse(raw) {
     if (raw === null) return { version: 1, grants: [] };
     const state = JSON.parse(raw);
     if (!state || state.version !== 1 || !Array.isArray(state.grants) || state.grants.length > CATALOG.length ||
         state.grants.some(g => !g || !Object.hasOwn(byId, g.badge) || byId[g.badge].source === "unavailable" ||
-          !/^[a-f0-9]{32}$/.test(g.token) || typeof g.placed !== "boolean") ||
+          !/^[a-f0-9]{32}$/.test(g.token) || typeof g.placed !== "boolean" || !spot(g)) ||
         new Set(state.grants.map(g => g.badge)).size !== state.grants.length || new Set(state.grants.map(g => g.token)).size !== state.grants.length) throw Error("Unsupported or damaged rewards data");
-    return { version: 1, grants: state.grants.map(({ badge, token, placed }) => ({ badge, token, placed })) };
+    return { version: 1, grants: state.grants.map(({ badge, token, placed, x, y }) => ({ badge, token, placed, ...(x === undefined ? {} : { x, y }) })) };
   }
   // Counts only from active, valid, non-future journal records. Self-reported fields such as
   // `verified` or `followers` on records are ignored: they are not evidence.
@@ -47,6 +57,7 @@ const TerraRewards = (() => {
     }
     return {
       observations: active.length,
+      days: days.length,
       streak,
       groups: new Set(active.map(r => r.type).filter(t => t && t !== "other")).size,
       names: new Set(active.filter(r => !isUnknown(r.name)).map(r => r.name.trim())).size,
@@ -54,6 +65,44 @@ const TerraRewards = (() => {
       followers: null,
       verified: null
     };
+  }
+  const shift = (date, n) => new Date(Date.parse(`${date}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+  // Daily streak, Duolingo-style, from observation dates. `today` is a YYYY-MM-DD string.
+  // current counts consecutive days ending today, or ending yesterday while today is still open.
+  // `bridge`: days covered by a rest leaf. They keep the streak going but don't add to it.
+  function streak(records, dateOK, today, bridge = new Set()) {
+    const days = new Set(records.filter(r => !r.deletedAt && dateOK(r.date)).map(r => r.date));
+    const recordedToday = days.has(today);
+    let current = 0, cursor = recordedToday ? today : shift(today, -1);
+    while (days.has(cursor) || bridge.has(cursor)) { if (days.has(cursor)) current++; cursor = shift(cursor, -1); }
+    const sorted = [...days].sort();
+    let longest = 0, run = 0, previous = null;
+    for (const date of sorted) { run = previous && shift(previous, 1) === date ? run + 1 : 1; longest = Math.max(longest, run); previous = date; }
+    const next = CATALOG.filter(a => a.metric === "streak" && a.target > current).sort((a, b) => a.target - b.target)[0] ?? null;
+    return { current, longest, recordedToday, atRisk: current > 0 && !recordedToday, next: next && { item: next.item, icon: next.icon, target: next.target } };
+  }
+  // Rest leaves: each weekly field quest you finish earns one. If you miss a day or two, leaves
+  // cover them automatically so the streak carries on. Spent leaves are remembered by date.
+  const STREAK_KEY = "terra.streak.v1";
+  function parseStreak(raw) {
+    if (raw === null) return { version: 1, used: [], level: 0 };
+    const s = JSON.parse(raw);
+    if (!s || s.version !== 1 || !Array.isArray(s.used) || s.used.length > 1000 || !s.used.every(d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) ||
+        !Number.isInteger(s.level) || s.level < 0 || s.level > 100) throw Error("Unsupported or damaged streak data");
+    return { version: 1, used: [...new Set(s.used)].sort(), level: s.level };
+  }
+  function protect(records, dateOK, today, state, earned) {
+    const days = new Set(records.filter(r => !r.deletedAt && dateOK(r.date)).map(r => r.date));
+    const used = new Set(state.used), available = Math.max(0, earned - used.size);
+    const yesterday = shift(today, -1);
+    const result = (next, spent) => ({ state: next, spent, available: Math.max(0, earned - next.used.length) });
+    if (days.has(today) || days.has(yesterday) || used.has(yesterday) || !available) return result(state, []);
+    const last = [...days].filter(d => d < today).sort().pop();
+    if (!last) return result(state, []);
+    const gap = [];
+    for (let d = shift(last, 1); d < today; d = shift(d, 1)) if (!used.has(d)) gap.push(d);
+    if (!gap.length || gap.length > 2 || gap.length > available) return result(state, []);
+    return result({ ...state, used: [...used, ...gap].sort() }, gap);
   }
   function eligible(records, projects, dateOK, matches) {
     const counts = progress(records, projects, dateOK, matches);
@@ -92,6 +141,11 @@ const TerraRewards = (() => {
       return { grant, ...d, x };
     });
   }
-  return Object.freeze({ KEY, CATALOG, labels, parse, progress, eligible, award, decoration, layout });
+  // Store where an item was moved to (rounded so the file stays small).
+  function move(state, badge, x, y) {
+    const grants = state.grants.map(g => g.badge === badge ? { ...g, x: Math.round(Math.min(1, Math.max(0, x)) * 1000) / 1000, y: Math.round(Math.min(1, Math.max(0, y)) * 1000) / 1000 } : { ...g });
+    return { version: 1, grants };
+  }
+  return Object.freeze({ KEY, STREAK_KEY, CATALOG, labels, parse, progress, streak, parseStreak, protect, eligible, award, decoration, layout, move });
 })();
 if (typeof module !== "undefined") module.exports = TerraRewards;
