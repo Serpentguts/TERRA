@@ -834,6 +834,8 @@ async function testDiscoveryHandoff(page, key) {
     const exported = JSON.parse(await fs.readFile(await download.path(), 'utf8'));
     assert.deepEqual(exported.observations, stored);
     assert.equal(exported.version, 1);
+    assert.match(exported.notice, /real GPS coordinates/, 'the file warns it can hold exact locations');
+    assert.match(exported.notice, /Keep this file private/);
     // Delete is behind the card's options (gear) and asks "are you sure?" first.
     const firstCard = page.locator('#observation-list .observation-card').first();
     assert.equal(await firstCard.getByRole('button', { name: /^Delete observation/ }).isVisible(), false, 'delete hidden until options opened');

@@ -589,7 +589,7 @@ exportButton.addEventListener("click", () => {
   try {
     const exported = {
       format: "terra-observations", version: 1, exportedAt: new Date().toISOString(),
-      notice: "Browser-only journal. May include versioned local schematic locations and 3-day Trash timestamps. No photos or real geographic coordinates. Keep private; do not downgrade to older builds that discard optional fields.",
+      notice: "TERRA journal backup. Restore it with Journal → Restore. May include real GPS coordinates (observations saved with Exact location), coarse location areas, notes, agent write-ups, iNaturalist links and 3-day Trash timestamps. Photos are not included. Keep this file private; do not downgrade to older builds that discard optional fields.",
       observations: TerraData.retain(observations)
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" }));
