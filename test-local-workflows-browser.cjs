@@ -1,6 +1,15 @@
 const assert = require('node:assert/strict');
 require('./test-screens.cjs');
 const { chromium } = require('playwright');
+async function deleteObservation(page, name) {
+  const del = page.locator('#observation-list').getByRole('button', { name: `Delete observation: ${name}`, exact: true }).first();
+  if (!await del.isVisible()) await page.locator('#observation-list').getByRole('button', { name: `Options for ${name}`, exact: true }).first().click();
+  await del.click();
+  await page.click('#delete-confirm-yes');
+  await page.waitForFunction(() => !document.querySelector('#delete-confirm').open);
+  await page.waitForTimeout(50);
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
   try {
@@ -127,10 +136,10 @@ const { chromium } = require('playwright');
     const oak = (await records()).find(r => r.name === 'Oak');
     const beforeDelete = JSON.stringify(await records());
     await page.evaluate(J => { window.originalSetItem = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === J) throw Error('Quota'); return window.originalSetItem.call(this, k, v); }; }, J);
-    page.once('dialog', d => d.accept()); await page.getByRole('button', { name: 'Delete observation: Oak', exact: true }).click();
+    await deleteObservation(page, 'Oak');
     assert.equal(JSON.stringify(await records()), beforeDelete, 'Failed Trash write cannot erase record');
     await page.evaluate(() => { Storage.prototype.setItem = window.originalSetItem; });
-    page.once('dialog', d => d.accept()); await page.getByRole('button', { name: 'Delete observation: Oak', exact: true }).click();
+    await deleteObservation(page, 'Oak');
     assert.ok((await records()).find(r => r.id === oak.id).deletedAt);
     assert.equal(await page.locator('#observation-list .observation-card').count(), 3);
     assert.match(await page.locator('#project-report').textContent(), /0 included observations/);

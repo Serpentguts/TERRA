@@ -834,12 +834,24 @@ async function testDiscoveryHandoff(page, key) {
     const exported = JSON.parse(await fs.readFile(await download.path(), 'utf8'));
     assert.deepEqual(exported.observations, stored);
     assert.equal(exported.version, 1);
-    page.once('dialog', dialog => dialog.dismiss());
-    await page.locator('.observation-card button').first().click();
+    // Delete is behind the card's options (gear) and asks "are you sure?" first.
+    const firstCard = page.locator('#observation-list .observation-card').first();
+    assert.equal(await firstCard.getByRole('button', { name: /^Delete observation/ }).isVisible(), false, 'delete hidden until options opened');
+    await firstCard.locator('.card-options').click();
+    await firstCard.getByRole('button', { name: /^Delete observation/ }).click();
+    await page.locator('#delete-confirm[open]').waitFor();
+    assert.match(await page.locator('#delete-confirm').textContent(), /Are you sure\?/);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'delete-confirm-no', 'Cancel is the default');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => !document.querySelector('#delete-confirm').open);
     assert.equal(await page.locator('.observation-card').count(), 3);
-    page.once('dialog', dialog => dialog.accept());
-    await page.locator('.observation-card button').first().click();
-    assert.equal(await page.locator('#observation-list .observation-card').count(), 2);
+    await firstCard.getByRole('button', { name: /^Delete observation/ }).click();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#delete-confirm').open);
+    assert.equal(await page.locator('.observation-card').count(), 3, 'Escape cancels');
+    await firstCard.getByRole('button', { name: /^Delete observation/ }).click();
+    await page.click('#delete-confirm-yes');
+    await page.waitForFunction(() => document.querySelectorAll('#observation-list .observation-card').length === 2);
     assert.equal(await page.locator('#trash-list .observation-card').count(), 1);
     // Separate isolated restore-merge fixture: omit trashed record to test adding a missing ID.
     await page.evaluate(k => localStorage.setItem(k, JSON.stringify(JSON.parse(localStorage.getItem(k)).filter(r => !r.deletedAt))), key);

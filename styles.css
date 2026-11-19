@@ -832,3 +832,16 @@ body[data-workspace="professional"] #home-quests, body[data-workspace="professio
 .inat-preview-notes { white-space: pre-line; }
 .inat-preview form { display: flex; justify-content: flex-end; }
 @media (max-width: 560px) { .inat-preview-fields { grid-template-columns: 1fr; } .inat-preview-fields dd { margin-bottom: 6px; } }
+/* Journal card options (gear) and delete confirmation */
+.card-options { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.card-options:hover, .card-options[aria-expanded="true"] { border-color: var(--line); background: #f3f5ee; color: var(--green); }
+.card-menu { display: flex; justify-content: flex-end; padding-top: 8px; }
+.card-menu .danger-text { color: #8c1d18; }
+.confirm-dialog { width: min(420px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 12px; padding: 20px; color: var(--ink); background: #fff; }
+.confirm-dialog::backdrop { background: #243c3166; }
+.confirm-dialog h3 { margin: 0 0 8px; overflow-wrap: anywhere; }
+.confirm-dialog p { margin: 0 0 16px; color: var(--muted); }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.confirm-actions button { min-height: 44px; padding: 8px 18px; font-size: 15px; font-weight: 600; border-radius: 8px; cursor: pointer; }
+.danger-button { border: 1px solid #8c1d18; background: #8c1d18; color: #fff; }
+.danger-button:hover { background: #6f1612; }

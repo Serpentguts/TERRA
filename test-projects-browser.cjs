@@ -3,6 +3,15 @@ const assert = require('node:assert/strict');
 require('./test-screens.cjs');
 const { chromium } = require('playwright');
 const fs = require('node:fs/promises');
+async function deleteObservation(page, name) {
+  const del = page.locator('#observation-list').getByRole('button', { name: `Delete observation: ${name}`, exact: true }).first();
+  if (!await del.isVisible()) await page.locator('#observation-list').getByRole('button', { name: `Options for ${name}`, exact: true }).first().click();
+  await del.click();
+  await page.click('#delete-confirm-yes');
+  await page.waitForFunction(() => !document.querySelector('#delete-confirm').open);
+  await page.waitForTimeout(50);
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
   try {
@@ -101,7 +110,7 @@ const fs = require('node:fs/promises');
     assert.equal(await raw(J), journalBytes);
     // Completed projects remain live: deleted records become retained missing IDs, then reconnect on restore.
     await page.selectOption('#project-select', species.id); await page.click('#project-toggle');
-    page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete observation: Oak', exact: true }).first().click();
+    await deleteObservation(page, 'Oak');
     assert.match(await report(), /0 included observations/); assert.match(await report(), /Missing record IDs: a/);
     assert.deepEqual((await projects()).find(p => p.id === species.id).observationIds, ['a']);
     await page.locator('#trash-list').getByRole('button', { name: 'Restore observation' }).click();

@@ -40,6 +40,14 @@
   <script src="feed.js" defer></script>
 </head>
 <body>
+  <dialog id="delete-confirm" class="confirm-dialog" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-body">
+    <h3 id="delete-confirm-title">Delete <span id="delete-confirm-name"></span>?</h3>
+    <p id="delete-confirm-body">Are you sure? It moves to Trash, where you can restore it for 3 days. After that it's gone for good.</p>
+    <form method="dialog" class="confirm-actions">
+      <button id="delete-confirm-no" class="secondary-button" value="cancel">Cancel</button>
+      <button id="delete-confirm-yes" class="danger-button" value="delete">Delete</button>
+    </form>
+  </dialog>
   <dialog id="inat-preview" class="inat-preview" aria-labelledby="inat-preview-title">
     <h3 id="inat-preview-title">Post to iNaturalist <span class="soon-badge">Coming soon</span></h3>
     <p class="inat-preview-lede">Posting turns on when TERRA ships as an app. Here's exactly what this observation would send:</p>

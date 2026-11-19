@@ -316,6 +316,17 @@ function element(tag, className, text) {
   return node;
 }
 
+// "Are you sure?" for deleting, as an in-app dialog (Cancel is the default). Resolves true to delete.
+function confirmDelete(name) {
+  const dialog = document.querySelector("#delete-confirm");
+  if (!dialog || typeof dialog.showModal !== "function") return Promise.resolve(window.confirm(`Delete “${name}”? It moves to Trash for 3 days, then it's gone for good.`));
+  dialog.querySelector("#delete-confirm-name").textContent = `“${name}”`;
+  dialog.returnValue = "";
+  dialog.showModal();
+  dialog.querySelector("#delete-confirm-no").focus();
+  return new Promise(resolve => dialog.addEventListener("close", () => resolve(dialog.returnValue === "delete"), { once: true }));
+}
+
 function render() {
   document.dispatchEvent(new Event("terra:journal-rendered"));
   list.replaceChildren();
@@ -354,12 +365,22 @@ function render() {
     share.setAttribute("aria-label", `Share or prepare saved observation: ${observation.name} (local demo)`);
     card.append(share);
     const bottom = element("div", "card-bottom");
-    const remove = element("button", "text-button", "🗑 Delete");
+    // Delete sits behind the card's options (gear) button and then asks to confirm, so it's hard to
+    // hit by accident. It moves the record to Trash (restorable for 3 days), never straight out.
+    const gear = element("button", "card-options");
+    gear.type = "button";
+    gear.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+    gear.setAttribute("aria-label", `Options for ${observation.name}`);
+    gear.setAttribute("aria-expanded", "false");
+    const menu = element("div", "card-menu");
+    menu.hidden = true;
+    gear.addEventListener("click", () => { menu.hidden = !menu.hidden; gear.setAttribute("aria-expanded", String(!menu.hidden)); });
+    const remove = element("button", "text-button danger-text", "🗑 Delete observation…");
     remove.type = "button";
     remove.disabled = !storageReady;
     remove.setAttribute("aria-label", `Delete observation: ${observation.name}`);
-    remove.addEventListener("click", () => {
-      if (!window.confirm(`Move “${observation.name}” to Trash? Restore it within 3 days. After that it is permanently removed on the next successful journal change.`)) return;
+    remove.addEventListener("click", async () => {
+      if (!await confirmDelete(observation.name)) { gear.focus(); return; }
       // Read again so another tab's latest entries are not overwritten.
       load();
       if (!storageReady) return;
@@ -369,8 +390,9 @@ function render() {
         exportButton.disabled ? document.querySelector("#name").focus() : exportButton.focus();
       }
     });
-    bottom.append(element("small", "", `Privacy: ${privacyLabels[observation.privacy]} · ${observation.location ? (observation.privacy === "hidden" ? "Location withheld" : observation.privacy === "approximate" ? "Coarse local region only" : "Local schematic pin") : "Legacy record: no location saved"}`), remove);
-    card.append(bottom);
+    menu.append(remove);
+    bottom.append(element("small", "", `Privacy: ${privacyLabels[observation.privacy]} · ${observation.location ? (observation.privacy === "hidden" ? "Location withheld" : observation.privacy === "approximate" ? "Coarse local region only" : "Local schematic pin") : "Legacy record: no location saved"}`), gear);
+    card.append(bottom, menu);
     // iNaturalist: a link once posted, or a button to post (after the card's other controls).
     if (!observation.deletedAt) {
       if (observation.inat) {
