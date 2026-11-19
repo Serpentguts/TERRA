@@ -5,7 +5,7 @@
 // says plainly what is self-reported and what isn't verified.
 const TerraResume = (() => {
   const unknown = n => typeof n !== "string" || !n.trim() || n.trim().toLowerCase() === "unknown";
-  const GROUPS = { plant: "plants", fungus: "fungi", insect: "insects", mammal: "mammals", bird: "birds", fish: "fish", reptile: "reptiles & amphibians", other: "other organisms" };
+  const GROUPS = { plant: "plants", fungus: "fungi", insect: "insects", mammal: "mammals", bird: "birds", fish: "fish", reptile: "reptiles & amphibians", microorganism: "microorganisms", other: "other organisms" };
 
   // Pure: the résumé's content. profile: { name, bio, credentials }.
   function build({ profile, records, projects, p, achievements = [], rares = [], matches = () => true, today }) {

@@ -4,7 +4,7 @@
 // and deletion timestamps are preserved in storage/backups. Photos are never saved.
 const STORAGE_KEY = "terra.observations.v1";
 // Keep legacy fungus/other keys readable in existing version-1 journals and backups.
-const categories = { plant: "Plant", fungus: "Mushroom", insect: "Insect", mammal: "Mammal", bird: "Bird", fish: "Fish", reptile: "Reptile", other: "Other" };
+const categories = { plant: "Plant", fungus: "Mushroom", reptile: "Reptile", insect: "Insect", fish: "Fish", microorganism: "Microorganism", mammal: "Mammal", bird: "Bird", other: "Other" };
 const privacyLabels = { hidden: "Hidden", approximate: "Approximate", exact: "Exact" };
 const form = document.querySelector("#observation-form");
 const organismChoice = document.querySelector("#organism-choice");

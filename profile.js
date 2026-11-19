@@ -745,7 +745,7 @@
     $("quest-days").textContent = stats.questDays ? `${stats.questDays} quest day${stats.questDays === 1 ? "" : "s"}` : "";
     box.hidden = false;
   }
-  const groupIcons = { plant: "🌿", fungus: "🍄", insect: "🐞", mammal: "🐁", bird: "🐦", fish: "🐟", reptile: "🦎", other: "❧" };
+  const groupIcons = { plant: "🌿", fungus: "🍄", insect: "🐞", mammal: "🐁", bird: "🐦", fish: "🐟", reptile: "🦎", microorganism: "🦠", other: "❧" };
   function renderHome(records, projects) {
     const active = TerraData.active(records).filter(r => TerraData.observationDate(r.date));
     $("home-count").textContent = active.length;

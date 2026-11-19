@@ -58,6 +58,7 @@ const TerraAgent = (() => {
 
   // GBIF taxonomy wins; iNaturalist's "iconic taxon" is only a fallback.
   const fromClass = (k, c) => {
+    if (["bacteria", "archaea", "protozoa", "chromista", "viruses"].includes(k)) return "Microorganism";
     if (k === "plantae") return "Plant";
     if (k === "fungi") return "Mushroom";
     if (c === "insecta") return "Insect";

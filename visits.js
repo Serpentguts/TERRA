@@ -55,7 +55,7 @@ const TerraVisits = (() => {
       species: species.filter(s => !s.unknown).slice(0, 24).map(s => ({ k: s.kind, s: s.stage, n: clean(s.name, 40) })),
       garden: garden.slice(0, 20).map(g => g.id),
       decor: decor.slice(0, 12).map(d => ({ d: d.id, ...(frac(d.x) && frac(d.y) ? { x: d.x, y: d.y } : {}) })),
-      sets: sets.slice(0, 8)
+      sets: sets.slice(0, 16)
     };
   }
   function validJar(s, lib) {
@@ -65,7 +65,7 @@ const TerraVisits = (() => {
       Array.isArray(s.species) && s.species.length <= 24 && s.species.every(x => x && Object.hasOwn(lib.kinds, x.k) && Number.isInteger(x.s) && x.s >= 0 && x.s <= 2 && typeof x.n === "string" && x.n.length <= 40) &&
       Array.isArray(s.garden) && s.garden.length <= 20 && s.garden.every(g => lib.seeds.some(x => x.id === g)) &&
       Array.isArray(s.decor) && s.decor.length <= 12 && s.decor.every(d => d && lib.decor.some(x => x.id === d.d) && (d.x === undefined || (frac(d.x) && frac(d.y)))) &&
-      Array.isArray(s.sets) && s.sets.length <= 8 && s.sets.every(id => lib.sets.some(x => x.id === id));
+      Array.isArray(s.sets) && s.sets.length <= lib.sets.length && s.sets.every(id => lib.sets.some(x => x.id === id));
     if (!ok) throw Error("bad_jar");
     return { ...s, name: clean(s.name, 40) || "A TERRA explorer", levelName: clean(s.levelName, 30), species: s.species.map(x => ({ ...x, n: clean(x.n, 40) })) };
   }

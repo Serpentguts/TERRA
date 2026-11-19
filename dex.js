@@ -11,6 +11,7 @@ const TerraDex = (() => {
     { id: "pollinators", name: "Pollinators", kinds: ["bee", "butterfly", "flower"], reward: { item: "Honey pot", icon: "🍯" } },
     { id: "decomposers", name: "Decomposers", kinds: ["lbm", "shelf", "worm", "snail", "beetle"], reward: { item: "Rotting log", icon: "🪵" } },
     { id: "forestfloor", name: "Forest floor", kinds: ["fern", "moss", "lichen", "sapling"], reward: { item: "Acorn cache", icon: "🌰" } },
+    { id: "tiny", name: "Tiny world", kinds: ["microbe", "moss", "lichen", "worm"], reward: { item: "Hand lens", icon: "🔍" } },
     { id: "night", name: "Night watch", kinds: ["owl", "mouse", "hedgehog", "spider"], reward: { item: "Moon lamp", icon: "🌙" } },
     { id: "desert", name: "Desert dwellers", kinds: ["cactus", "lizard", "snake", "scorpion"], reward: { item: "Clay pot", icon: "🏺" } },
     { id: "tidepool", name: "Tide-pool treasures", kinds: ["crab", "seastar", "anemone", "octopus", "shrimp"], reward: { item: "Anchor", icon: "⚓" } },

@@ -644,6 +644,16 @@ const TerraTerrarium = (() => {
       case "lichen": ctx.fillStyle = "#8d8f88"; ctx.beginPath(); ctx.ellipse(x, y - 4, 10, 6, 0, Math.PI, 0); ctx.fill();
         for (let k = 0; k < 6; k++) { ctx.fillStyle = k % 2 ? "#c7d68a" : "#e1a23a"; ctx.beginPath(); ctx.arc(x - 6 + k * 2.4, y - 6 + (k % 3), 1.4, 0, 7); ctx.fill(); } break;
       case "cactus": emoji("🌵", x, y + 1, 26, { rotate: sway * 0.3 }); break;
+      case "microbe": {
+        // A tiny colony seen "through a lens": a glass circle with drifting cells.
+        const cx = x, cy = y - 10, rr = 10;
+        ctx.fillStyle = "rgba(220,240,235,.85)"; ctx.strokeStyle = "#8a9a92"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = "#6b5d4a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + rr * 0.7, cy + rr * 0.7); ctx.lineTo(cx + rr * 1.3, cy + rr * 1.3); ctx.stroke();
+        ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, rr - 1, 0, 7); ctx.clip();
+        const cells = seeded(hashText(r.id) % 997 + 3);
+        for (let i = 0; i < 6; i++) { const px = cx - rr + cells() * rr * 2 + Math.sin(time * 0.8 + i) * 1.5, py = cy - rr + cells() * rr * 2 + Math.cos(time * 0.7 + i) * 1.5; ctx.fillStyle = ["#7fbf7a", "#c98bd1", "#e3b04b"][i % 3]; ctx.beginPath(); ctx.ellipse(px, py, 2.2, 1.4, i, 0, 7); ctx.fill(); }
+        ctx.restore(); break;
+      }
       case "seed": ctx.fillStyle = "#8a6440"; ctx.beginPath(); ctx.ellipse(x, y - 2, 3.5, 2.4, 0.3, 0, 7); ctx.fill(); ctx.strokeStyle = "#6fae4f"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 1, y - 4); ctx.quadraticCurveTo(x + 2, y - 8, x + 4 + sway * 10, y - 9); ctx.stroke(); break;
       case "fiddlehead": ctx.strokeStyle = "#5f9a46"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 1, y - 10, x + 2, y - 14); ctx.arc(x + 4.5, y - 14, 2.5, Math.PI, Math.PI * 2.8); ctx.stroke(); break;
       case "seastar": { ctx.fillStyle = ["#e0703a", "#c94f7c", "#e8a33a"][hashText(r.id) % 3]; ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? 3.5 : 9; ctx.lineTo(x + Math.cos(a) * rr, y - 5 + Math.sin(a) * rr * 0.6); } ctx.closePath(); ctx.fill(); break; }

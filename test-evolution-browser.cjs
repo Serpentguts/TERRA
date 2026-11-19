@@ -28,7 +28,7 @@ const assert = require('node:assert/strict');
     const ids = d.residents.filter(r => r.id.startsWith('s:')).map(r => r.id).sort();
     assert.deepEqual(ids, ['s:bumble-bee', 's:monarch', 's:pacific-tree-frog', 's:poppy']);
     // Field guide: cards, sets, a completed set's reward in the jar.
-    assert.match(await page.locator('#dex-summary').textContent(), /4 species · 1 of 8 sets complete/);
+    assert.match(await page.locator('#dex-summary').textContent(), /4 species · 1 of 9 sets complete/);
     assert.equal(await page.locator('.dex-card').count(), 4);
     assert.match(await page.locator('.dex-card[data-species="s:pacific-tree-frog"]').textContent(), /Pacific tree frog.*Tadpole · seen 1× · 2 to evolve/);
     assert.equal(await page.locator('.dex-set.complete[data-set="pollinators"]').count(), 1);

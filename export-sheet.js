@@ -9,12 +9,12 @@
 // Old schematic (non-geographic) locations are labelled as such, with no coordinates.
 // A readable report, not a restore file: the JSON backup is still the way to restore.
 const TerraSheetExport = (() => {
-  const GROUPS = { plant: "Plant", fungus: "Fungus", insect: "Insect", mammal: "Mammal", bird: "Bird", fish: "Fish", reptile: "Reptile/amphibian", other: "Other" };
+  const GROUPS = { plant: "Plant", fungus: "Fungus", insect: "Insect", mammal: "Mammal", bird: "Bird", fish: "Fish", reptile: "Reptile/amphibian", microorganism: "Microorganism", other: "Other" };
   // Broad Darwin Core classification from TERRA's groups (no guessing below the group).
   const DWC_RANKS = {
     plant: { kingdom: "Plantae" }, fungus: { kingdom: "Fungi" }, insect: { kingdom: "Animalia", phylum: "Arthropoda", class: "Insecta" },
     mammal: { kingdom: "Animalia", phylum: "Chordata", class: "Mammalia" }, bird: { kingdom: "Animalia", phylum: "Chordata", class: "Aves" },
-    fish: { kingdom: "Animalia", phylum: "Chordata" }, reptile: { kingdom: "Animalia", phylum: "Chordata" }, other: {}
+    fish: { kingdom: "Animalia", phylum: "Chordata" }, reptile: { kingdom: "Animalia", phylum: "Chordata" }, microorganism: {}, other: {}
   };
   const unknown = name => !String(name ?? "").trim() || String(name).trim().toLowerCase() === "unknown";
   const round = (n, d) => Math.round(n * 10 ** d) / 10 ** d;

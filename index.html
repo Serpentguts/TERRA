@@ -360,8 +360,8 @@
         <form id="observation-form">
           <div class="field"><label for="organism-choice">What did you find?</label>
             <input id="organism-choice" name="type" list="organism-options" value="Plant" required autocomplete="off" aria-describedby="organism-help">
-            <datalist id="organism-options"><option value="Plant"></option><option value="Mushroom"></option><option value="Insect"></option><option value="Mammal"></option><option value="Bird"></option><option value="Fish"></option><option value="Reptile"></option><option value="Other"></option></datalist>
-            <small id="organism-help">Search this dropdown by typing a group, then choose one of the eight options. Use arrow keys and Enter; choose Other when unsure. No species identification.</small>
+            <datalist id="organism-options"><option value="Plant"></option><option value="Mushroom"></option><option value="Reptile"></option><option value="Insect"></option><option value="Fish"></option><option value="Microorganism"></option><option value="Mammal"></option><option value="Bird"></option><option value="Other"></option></datalist>
+            <small id="organism-help">Search this dropdown by typing a group, then choose one of the nine options (Microorganism covers bacteria, protists, algae, slime molds and other microbes). Use arrow keys and Enter; choose Other when unsure. No species identification.</small>
           </div>
           <div class="field"><label for="name">Species or common name <span class="optional">(optional)</span></label>
             <div class="name-picker"><input id="name" name="name" type="text" maxlength="120" placeholder="e.g. Trichocereus bridgesii" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions" autocomplete="off" aria-describedby="name-help"><button id="agent-lookup" class="text-button agent-lookup" type="button" aria-label="Look up species info for this name">ⓘ Species info</button>

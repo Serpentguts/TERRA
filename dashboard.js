@@ -7,7 +7,7 @@
 // summary() is pure; render() draws it. The chosen view is a per-browser preference.
 const TerraDashboard = (() => {
   const MODE_KEY = "terra.workspace.v1";
-  const GROUPS = { plant: "Plants", fungus: "Fungi", insect: "Insects", mammal: "Mammals", bird: "Birds", fish: "Fish", reptile: "Reptiles & amphibians", other: "Other" };
+  const GROUPS = { plant: "Plants", fungus: "Fungi", insect: "Insects", mammal: "Mammals", bird: "Birds", fish: "Fish", reptile: "Reptiles & amphibians", microorganism: "Microorganisms", other: "Other" };
   const words = t => String(t ?? "").trim().split(/\s+/).filter(Boolean).length;
   const unknown = n => typeof n !== "string" || !n.trim() || n.trim().toLowerCase() === "unknown";
   const located = r => Boolean(r.location && r.location.kind !== "withheld" && r.location.space === "terra-geo-v1");

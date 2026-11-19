@@ -71,3 +71,13 @@ test('field guide: sets with ??? slots, completion and rewards, celebrated once'
     assert.throws(() => Dex.parse(JSON.stringify(bad)), /Unsupported/);
   for (const set of Dex.SETS) for (const kind of set.kinds) assert.ok(L.KINDS[kind], `${set.id}: ${kind}`);
 });
+
+test('microorganisms: their own group, a microbe colony in the jar, and the Tiny world set', () => {
+  assert.equal(L.kindFor({ name: 'Unknown', type: 'microorganism' }), 'microbe');
+  assert.deepEqual(['Pond diatoms', 'Dog vomit slime mold', 'Cyanobacteria mat', 'Amoeba'].map(name => L.kindFor({ name, type: 'other' })), ['microbe', 'microbe', 'microbe', 'microbe']);
+  assert.equal(L.KINDS.microbe.move, 'static');
+  assert.equal(L.iconFor('microbe', 0), '🦠');
+  const sp = L.species([{ id: 'm', type: 'microorganism', name: 'Diatoms', notes: '', date: '2024-01-01', privacy: 'hidden' }]);
+  const tiny = Dex.guide(sp, L.KINDS).sets.find(s => s.id === 'tiny');
+  assert.deepEqual([tiny.name, tiny.found, tiny.slots.length, tiny.reward.item], ['Tiny world', 1, 4, 'Hand lens']);
+});

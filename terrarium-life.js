@@ -36,6 +36,7 @@ const TerraLife = (() => {
     lbm: { name: "Little brown mushroom", draw: "lbm", move: "static", fact: "“Little brown mushrooms” are notoriously hard to identify and some are deadly. Never eat a wild mushroom without expert confirmation." },
     shelf: { name: "Shelf fungus", draw: "shelf", move: "static", fact: "Shelf (bracket) fungi grow from wood and help break down dead trees, recycling their nutrients." },
     lichen: { name: "Lichen", draw: "lichen", move: "static", fact: "A lichen is a partnership: a fungus living together with algae or cyanobacteria." },
+    microbe: { name: "Microbe colony", draw: "microbe", move: "static", fact: "Microorganisms (bacteria, protists, microscopic algae and fungi) are too small to see one at a time, yet they recycle nutrients and make much of the oxygen we breathe." },
     // Desert, tide-pool and rainforest life (each lives in its own habitat jar).
     scorpion: { name: "Scorpion", icon: "🦂", move: "crawl", habitat: "desert", fact: "Scorpions glow blue-green under ultraviolet light, thanks to compounds in their outer skeleton." },
     crab: { name: "Crab", icon: "🦀", move: "scurry", habitat: "tidepool", fact: "Many shore crabs walk sideways because their leg joints bend that way, which is fastest for them." },
@@ -58,6 +59,7 @@ const TerraLife = (() => {
   const habitatOf = kind => KINDS[kind]?.habitat ?? (["cactus", "lizard", "snake"].includes(kind) ? "desert" : "forest");
   // First match wins. Checked against the find's name.
   const KEYWORDS = Object.freeze([
+    [/\b(bacteria|bacterium|microbes?|micro-?organisms?|amoebae?|amoebas|paramecium|protists?|diatoms?|slime ?molds?|cyanobacteria|euglena|plankton)\b/i, "microbe"],
     [/\b(scorpion)s?\b/i, "scorpion"], [/\b(crab|hermit crab)s?\b/i, "crab"], [/\b(octopus|octopuses|octopi)\b/i, "octopus"], [/\b(shrimp|prawn)s?\b/i, "shrimp"],
     [/\b(sea ?star|starfish)s?\b/i, "seastar"], [/\b(anemone)s?\b/i, "anemone"], [/\b(parrot|macaw|parakeet|toucan|cockatoo)s?\b/i, "parrot"],
     [/\b(monkey|lemur|capuchin|howler|tamarin|marmoset)s?\b/i, "monkey"], [/\b(sloth)s?\b/i, "sloth"], [/\b(orchid|bromeliad)s?\b/i, "orchid"],
@@ -76,7 +78,7 @@ const TerraLife = (() => {
     [/\b(turkey ?tail|bracket|conk|polypore|reishi|chicken of the woods|oyster)\b/i, "shelf"],
     [/\b(poppy|poppies|lupine|daisy|daisies|aster|violet|clover|dandelion|flower|bloom|blossom|rose|lily|orchid|sunflower|iris)\b/i, "flower"]
   ]);
-  const GROUP_DEFAULT = Object.freeze({ plant: "herb", fungus: "lbm", insect: "beetle", mammal: "mouse", bird: "sparrow", fish: "fish", reptile: "lizard", other: "lichen" });
+  const GROUP_DEFAULT = Object.freeze({ plant: "herb", fungus: "lbm", insect: "beetle", mammal: "mouse", bird: "sparrow", fish: "fish", reptile: "lizard", microorganism: "microbe", other: "lichen" });
   function kindFor(record) {
     const name = String(record.name ?? "");
     for (const [pattern, kind] of KEYWORDS) if (pattern.test(name)) return kind;
@@ -122,7 +124,7 @@ const TerraLife = (() => {
   // Card icons for each stage (drawn residents need an emoji stand-in on cards).
   const CARD_ICONS = Object.freeze({
     sapling: ["🌰", "🌱", "🌳"], fern: ["🌱", "🌿", "🌿"], herb: ["🌱", "🌿", "🪴"], flower: ["🌱", "🌷", "🌸"], orchid: ["🌱", "🌷", "🌺"],
-    lbm: ["🍄", "🍄", "🍄"], shelf: ["🍄", "🍄", "🍄"], moss: ["☘️", "☘️", "☘️"], lichen: ["🪨", "🪨", "🪨"], seastar: ["⭐", "⭐", "🌟"], anemone: ["🪸", "🪸", "🪸"],
+    lbm: ["🍄", "🍄", "🍄"], shelf: ["🍄", "🍄", "🍄"], moss: ["☘️", "☘️", "☘️"], lichen: ["🪨", "🪨", "🪨"], microbe: ["🦠", "🦠", "🦠"], seastar: ["⭐", "⭐", "🌟"], anemone: ["🪸", "🪸", "🪸"],
     frog: ["🐸", "🐸", "🐸"], butterfly: ["🐛", "🦋", "🦋"], caterpillar: ["🐛", "🐛", "🦋"]
   });
   const iconFor = (kind, stage = 1) => CARD_ICONS[kind]?.[Math.max(0, Math.min(2, stage))] ?? form(kind, stage).icon ?? KINDS[kind].icon ?? "🌿";

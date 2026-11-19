@@ -45,9 +45,9 @@ const { chromium } = require('playwright');
     await page.click('#map-filters-done');
     assert.equal(await state(J), null);
 
-    // One native searchable dropdown; old schema keys survive all eight labels.
+    // One native searchable dropdown; old schema keys survive all nine labels.
     assert.equal(await page.locator('#observation-form input[type="radio"]').count(), 0);
-    assert.equal(await page.locator('#organism-options option').count(), 8);
+    assert.equal(await page.locator('#organism-options option').count(), 9);
     await page.fill('#organism-choice', 'invented');
     assert.equal(await page.locator('#organism-choice').evaluate(el => el.checkValidity()), false);
     await page.evaluate(() => document.dispatchEvent(new CustomEvent('terra:prefill-discovery', { detail: {
