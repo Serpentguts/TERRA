@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -29,7 +30,7 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('[data-follow="moss"]').getAttribute('aria-pressed'), 'true');
     await page.reload(); assert.equal(await page.locator('[data-follow="moss"]').textContent(), 'Unfollow locally');
     await page.focus('[data-follow="moss"]'); await page.keyboard.press('Space'); assert.deepEqual((await feed()).following, []);
-    await page.click('#feed .close-view');
+    await page.click('#bottom-navigation a[href="#home"]');
     await page.goto(origin + '/#demo-profile-fern');
     assert(await page.locator('#feed').isVisible(), 'Deep link reopens containing feed');
     await page.selectOption('#feed-type', 'offering');
@@ -39,7 +40,13 @@ const { chromium } = require('playwright');
     await page.click('#feed-save');
     assert.equal((await feed()).posts.length, 1);
     assert.equal(await page.locator('#feed-local-posts img, #feed-local-posts script').count(), 0);
-    assert.match(await page.locator('#feed-local-posts').textContent(), /NOT PUBLISHED.*not available to buy/is);
+    assert.match(await page.locator('#feed-local-posts').textContent(), /not available to buy/i);
+    assert.match(await page.locator('#feed-local-posts').textContent(), /NOT PUBLISHED/);
+    // Instagram-style order: who posted → photo (or illustration) → title and caption → specifics.
+    assert.deepEqual(await page.locator('#feed-local-posts > li').first().evaluate(li => [...li.children].map(c => c.className)), ['post-head', 'post-media', 'post-body']);
+    assert.deepEqual(await page.locator('#feed-local-posts .post-body').first().evaluate(b => [...b.children].map(c => c.className || c.tagName)),
+      ['post-title', 'post-caption', 'post-details', 'demo-purpose post-label', 'text-button']);
+    assert.equal(await page.locator('#feed-samples .post-media .post-art').count(), 5, 'samples show illustrations, never photos');
     assert.equal(await raw(J), null);
 
     // Seed legacy and privacy-tier records: no changes/migrations or copied private details.
@@ -49,7 +56,7 @@ const { chromium } = require('playwright');
     await page.evaluate(({ J, records }) => localStorage.setItem(J, JSON.stringify(records)), { J, records });
     await page.reload(); const journal = await raw(J);
     for (const [i, [terra, inat]] of [[true, false], [false, true], [true, true]].entries()) {
-      await page.click('#bottom-navigation a[href="#projects-title"]');
+      await page.click('#bottom-navigation a[href="#journal"]');
       await page.locator(`[data-share-observation="o${i}"]`).click();
       assert.equal(await page.locator('#feed-type').inputValue(), 'observation');
       assert.equal(await page.locator('#feed-source').inputValue(), `o${i}`);
@@ -114,7 +121,7 @@ const { chromium } = require('playwright');
     assert.equal(await raw(J), beforeRemove);
     // Corrupt feed fails closed without rewriting either store.
     await page.evaluate(F => localStorage.setItem(F, '{broken'), F);
-    await page.reload(); await page.click('#bottom-navigation a[href="#feed"]');
+    await page.reload(); await page.click('#navigation-toggle'); await page.click('#site-navigation a[href="#feed"]');
     assert(await page.locator('#feed-save').isDisabled());
     assert(await page.locator('[data-follow="fern"]').isDisabled());
     assert.equal(await raw(F), '{broken'); assert.equal(await raw(J), beforeRemove);

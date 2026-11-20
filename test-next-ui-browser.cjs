@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+require('./test-screens.cjs');
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -24,29 +25,29 @@ const { chromium } = require('playwright');
     assert.equal(await state(R), null, 'No empty-store startup rewrite');
     assert.equal(await state(U), null);
     await page.click('#bottom-navigation a[href="#map"]');
+    // Search bar and filters sit above the map; the list and key follow it.
     assert.equal(await page.evaluate(() => {
       const before = (a, b) => Boolean(document.querySelector(a).compareDocumentPosition(document.querySelector(b)) & Node.DOCUMENT_POSITION_FOLLOWING);
-      return before('#map-canvas', '.map-filters') && before('.map-filters', '.map-legend');
+      return before('#map-search', '#map-view') && before('#map-view', '#map-canvas') && before('#map-canvas', '.map-legend');
     }), true);
-    await page.selectOption('#map-organism', ['fungus', 'plant']);
-    await page.selectOption('#map-purpose', ['natural', 'cultivated']);
+    await page.click('#map-filters-toggle');
+    for (const value of ['fungus', 'plant']) await page.check(`#map-filter-panel input[name="map-organism"][value="${value}"]`);
+    for (const value of ['natural', 'cultivated']) await page.check(`#map-filter-panel input[name="map-purpose"][value="${value}"]`);
     assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 2);
     assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), 0);
     assert.match(await page.locator('#map-selected').textContent(), /natural, cultivated.*fungus, plant/);
-    await page.selectOption('#map-purpose', ['cultivated', 'sale']);
+    await page.uncheck('#map-filter-panel input[value="natural"]'); await page.check('#map-filter-panel input[value="sale"]');
     assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 1);
     assert.equal(await page.locator('#demo-listings .demo-card:visible').count(), 1);
-    await page.selectOption('#map-organism', []); await page.selectOption('#map-purpose', []);
-    assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 6);
-    await page.selectOption('#map-purpose', ['all', 'sale']);
-    assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 6, 'All explicitly overrides individual choices');
     await page.click('#map-reset');
-    assert.match(await page.locator('#map-selected').textContent(), /colors: all.*organisms: all/);
+    assert.equal(await page.locator('#demo-map .demo-card:visible').count(), 6);
+    assert.match(await page.locator('#map-selected').textContent(), /all settings.*organisms: all/);
+    await page.click('#map-filters-done');
     assert.equal(await state(J), null);
 
-    // One native searchable dropdown; old schema keys survive all eight labels.
+    // One native searchable dropdown; old schema keys survive all nine labels.
     assert.equal(await page.locator('#observation-form input[type="radio"]').count(), 0);
-    assert.equal(await page.locator('#organism-options option').count(), 8);
+    assert.equal(await page.locator('#organism-options option').count(), 9);
     await page.fill('#organism-choice', 'invented');
     assert.equal(await page.locator('#organism-choice').evaluate(el => el.checkValidity()), false);
     await page.evaluate(() => document.dispatchEvent(new CustomEvent('terra:prefill-discovery', { detail: {
@@ -70,12 +71,44 @@ const { chromium } = require('playwright');
 
     // Profile tabs, unverified text and persistence; never copy journal or project records.
     await page.click('#bottom-navigation a[href="#profile"]');
-    await page.locator('#profile > details > summary').click();
+    await page.locator('#profile-edit > summary').click();
     await page.fill('#profile-display-name', '<img src=x> Explorer');
     await page.fill('#profile-description', 'My local fieldbook');
     await page.fill('#profile-credential-input', 'Self-described botanist');
-    await page.selectOption('#profile-avatar-input', '🍄');
     await page.click('#profile-form button');
+    // Profile picture: drawn icons save immediately and keep the saved name; photos are shrunk to a square JPEG.
+    await page.locator('#avatar-picker > summary').click();
+    assert.equal(await page.locator('#avatar-grid input[name="avatar-choice"]:not([value="photo"])').count(), 12);
+    await page.locator('#avatar-grid label', { hasText: 'Mantis' }).click();
+    assert.equal(JSON.parse(await state(U)).avatar, 'mantis');
+    assert.equal(JSON.parse(await state(U)).name, '<img src=x> Explorer');
+    assert.equal(await page.locator('#profile-avatar').getAttribute('aria-label'), 'Profile picture: Mantis');
+    await page.locator('#avatar-grid input[value="bear"]').focus(); await page.keyboard.press('ArrowLeft');
+    assert.equal(JSON.parse(await state(U)).avatar, 'fox', 'Arrow keys move through the icons');
+    const wide = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 600; c.height = 300; const x = c.getContext('2d'); x.fillStyle = '#3a7'; x.fillRect(0, 0, 600, 300); return c.toDataURL('image/png').split(',')[1]; });
+    await page.setInputFiles('#avatar-photo-input', { name: 'me.png', mimeType: 'image/png', buffer: Buffer.from(wide, 'base64') });
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('terra.profile.v1')).avatar === 'photo');
+    const withPhoto = JSON.parse(await state(U));
+    assert.match(withPhoto.photo, /^data:image\/jpeg;base64,/);
+    assert.deepEqual(await page.locator('#profile-avatar img').evaluate(img => [img.naturalWidth, img.naturalHeight]), [256, 256]);
+    assert.match(await page.locator('#avatar-status').textContent(), /Photo set/);
+    await page.setInputFiles('#avatar-photo-input', { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hi') });
+    assert.match(await page.locator('#avatar-status').textContent(), /Choose an image file/);
+    assert.equal(JSON.parse(await state(U)).photo, withPhoto.photo, 'A rejected file keeps the current photo');
+    await page.locator('#avatar-grid label', { hasText: 'Frog' }).click();
+    assert.equal(JSON.parse(await state(U)).photo, withPhoto.photo, 'Switching to an icon keeps the photo available');
+    await page.locator('#avatar-grid label', { hasText: 'Your photo' }).click();
+    assert.equal(JSON.parse(await state(U)).avatar, 'photo');
+    await page.click('#avatar-remove-photo');
+    assert.deepEqual([JSON.parse(await state(U)).avatar, JSON.parse(await state(U)).photo], ['leaf', undefined]);
+    await page.locator('#avatar-grid label', { hasText: 'Mushroom' }).click();
+    // Profiles saved by the earlier symbol picker still load.
+    await page.evaluate(U => { const p = JSON.parse(localStorage.getItem(U)); p.avatar = '🐦'; localStorage.setItem(U, JSON.stringify(p)); }, U);
+    await page.reload();
+    assert.equal(await page.locator('#profile-avatar').getAttribute('aria-label'), 'Profile picture: Owl');
+    assert.equal(await page.locator('#avatar-grid input[value="owl"]').isChecked(), true);
+    await page.locator('#avatar-picker > summary').click();
+    await page.locator('#avatar-grid label', { hasText: 'Mushroom' }).click();
     assert.equal(await page.locator('#profile-name img').count(), 0);
     assert.match(await page.locator('#profile-credentials').textContent(), /Self-described botanist.*user-entered \/ unverified/);
     const profile = await state(U);
@@ -83,18 +116,20 @@ const { chromium } = require('playwright');
     await page.locator('#posts-tab').focus(); await page.keyboard.press('ArrowRight');
     assert.equal(await page.locator('#projects-tab').getAttribute('aria-selected'), 'true');
     await page.keyboard.press('End');
+    assert.equal(await page.locator('#validate-tab').getAttribute('aria-selected'), 'true');
+    await page.keyboard.press('ArrowLeft');
     assert.equal(await page.locator('#awards-tab').getAttribute('aria-selected'), 'true');
     assert.equal(await page.locator('#profile-posts').isVisible(), false);
     assert.match(await page.locator('#profile-awards').textContent(), /no genuine verification evidence/);
     assert.match(await page.locator('#profile-awards').textContent(), /No cash, trade, NFT, blockchain or financial value/);
-    await page.locator('#decor-list button').click();
+    await page.locator('#decor-list button[data-badge]').click();
     assert.equal((await rewards()).grants[0].placed, false);
-    assert.equal(await page.locator('#decor-list button').evaluate(el => el === document.activeElement), true);
-    assert.equal(await page.locator('#rewards-terrarium span').count(), 0);
+    assert.equal(await page.locator('#decor-list button[data-badge]').evaluate(el => el === document.activeElement), true);
+    assert.equal(await page.evaluate(() => TerraTerrarium.debug().items.length), 0);
     await page.reload(); assert.equal(await state(U), profile);
     await page.click('#awards-tab');
     assert.equal((await rewards()).grants[0].placed, false);
-    await page.locator('#decor-list button').click();
+    await page.locator('#decor-list button[data-badge]').click();
     assert.equal((await rewards()).grants[0].token, JSON.parse(first).grants[0].token);
 
     // Legacy six-field journal + ID-only projects unchanged; dates count once, not events.
@@ -106,42 +141,38 @@ const { chromium } = require('playwright');
     const journalRaw = await state(J), projectRaw = await state(P);
     await page.reload();
     assert.equal(await state(J), journalRaw); assert.equal(await state(P), projectRaw);
-    assert.deepEqual((await rewards()).grants.map(g => g.badge), ['first', 'obs5', 'week']);
+    assert.deepEqual((await rewards()).grants.map(g => g.badge), ['first', 'obs5', 'streak3', 'streak5', 'week']);
     assert.equal(await page.locator('#profile-observations li').count(), 7);
     assert.equal(await page.locator('#profile-observations plant').count(), 0);
     assert.doesNotMatch(await page.locator('#profile-observations').textContent(), /Private notes/);
     await page.selectOption('#project-select', 'p1'); await page.click('#project-toggle');
-    assert.deepEqual((await rewards()).grants.map(g => g.badge), ['first', 'obs5', 'week', 'project']);
+    assert.deepEqual((await rewards()).grants.map(g => g.badge), ['first', 'obs5', 'streak3', 'streak5', 'week', 'project']);
     const completeRewards = await state(R);
     await page.click('#project-toggle'); await page.click('#project-toggle');
     assert.equal(await state(R), completeRewards, 'Reopen/complete cannot farm rewards');
     page.on('dialog', d => d.accept());
+    await page.locator('#observation-list > li').first().locator('.card-options').click();
     await page.locator('#observation-list > li').first().getByRole('button', { name: /Delete/ }).click();
-    assert.equal(await page.locator('#profile-observations li').count(), 6);
+    await page.click('#delete-confirm-yes');
+    await page.waitForFunction(() => document.querySelectorAll('#profile-observations li').length === 6);
     await page.locator('#trash-list').getByRole('button', { name: /Restore/ }).click();
     assert.equal(await page.locator('#profile-observations li').count(), 7);
     assert.equal(await state(R), completeRewards, 'Delete/restore cannot farm rewards');
 
-    // Non-destructive minimized stack, overview states, repeated same-hash reopening.
-    await page.fill('#notes', 'Unsaved workspace draft');
-    const formView = page.locator('#form-title').locator('xpath=ancestor::section[1]');
-    await formView.locator('.minimize-view').click();
-    assert.equal(await page.locator('#notes').isVisible(), false);
-    await page.click('#bottom-navigation a[href="#workspace"]');
-    assert.match(await page.locator('#workspace-views').textContent(), /Record a discovery · minimized/);
-    await page.click('#workspace-views a[href="#form-title"]');
-    assert.equal(await page.locator('#notes').inputValue(), 'Unsaved workspace draft');
-    assert.equal(await page.locator('#notes').isVisible(), true);
-    await formView.locator('.close-view').click();
-    assert.match(await page.locator('#workspace-views').textContent(), /Record a discovery · closed/);
-    await page.click('#workspace-views a[href="#form-title"]');
-    await formView.locator('.minimize-view').click();
-    await page.click('#bottom-navigation a[href="#identify-title"]');
-    assert.equal(await page.locator('#notes').isVisible(), true, 'Grouped destinations expand minimized related draft');
-    assert.equal(await page.locator('#notes').inputValue(), 'Unsaved workspace draft');
-    await page.click('#workspace-close');
-    assert.equal(await page.locator('#workspace').isVisible(), false);
-    assert.equal(await page.locator('#bottom-navigation a:visible').count(), 7);
+    // Switching screens keeps unsaved drafts; repeated same-hash links still route.
+    await page.click('#bottom-navigation a[href="#record"]');
+    await page.fill('#notes', 'Unsaved draft');
+    await page.click('#bottom-navigation a[href="#map"]');
+    assert.equal(await page.locator('#notes').evaluate(el => el.checkVisibility()), false);
+    await page.click('#bottom-navigation a[href="#record"]');
+    assert.equal(await page.locator('#notes').inputValue(), 'Unsaved draft');
+    await page.click('#bottom-navigation a[href="#record"]');
+    assert.equal(await page.locator('#form-title').evaluate(el => el === document.activeElement), true);
+    await page.click('.photo-hint a');
+    assert.equal(await page.locator('#identify-title').evaluate(el => el.checkVisibility()), true);
+    assert.equal(await page.locator('#bottom-navigation a[href="#record"]').getAttribute('aria-current'), 'page');
+    assert.equal(await page.locator('#notes').inputValue(), 'Unsaved draft');
+    assert.equal(await page.locator('#bottom-navigation a:visible').count(), 5);
     assert.equal(await state(R), completeRewards);
 
     // Cross-tab changes refresh derived views and profile without duplicate grants.
@@ -170,8 +201,8 @@ const { chromium } = require('playwright');
     assert.equal(await failure.evaluate(k => localStorage.getItem(k), R), null);
     assert.equal(JSON.parse(await state(J)).length, 6);
     await failure.goto(origin + '/#profile'); await failure.reload();
-    assert.equal(await failure.evaluate(R => JSON.parse(localStorage.getItem(R)).grants.map(g => g.badge).join(), R), 'first,obs5,project', 'Six remaining days + complete project: no seven-day streak');
-    await failure.locator('#profile > details > summary').click();
+    assert.equal(await failure.evaluate(R => JSON.parse(localStorage.getItem(R)).grants.map(g => g.badge).join(), R), 'first,obs5,streak3,streak5,project', 'Six remaining days + complete project: no seven-day streak');
+    await failure.locator('#profile-edit > summary').click();
     await failure.fill('#profile-description', 'Kept failed draft');
     await failure.evaluate(U => { const original = Storage.prototype.setItem; Storage.prototype.setItem = function (key, value) { if (key === U) throw Error('Quota'); return original.call(this, key, value); }; }, U);
     await failure.click('#profile-form button');
@@ -185,10 +216,11 @@ const { chromium } = require('playwright');
     assert.equal(await state(R), '{bad'); assert.equal(await state(U), '{bad');
     assert.match(await page.locator('#rewards-status').textContent(), /unavailable/);
     assert.equal(await page.locator('#profile-form button').isDisabled(), true);
-    assert.equal(await page.locator('#rewards-terrarium span').count(), 0);
+    assert.equal(await page.evaluate(() => TerraTerrarium.debug().items.length), 0);
+    // Old #workspace links land on Home.
     await page.goto(origin + '/#workspace'); await page.reload();
-    assert.equal(await page.locator('#workspace').isVisible(), true);
-    assert.equal(await page.locator('#bottom-navigation a[href="#workspace"]').getAttribute('aria-current'), 'location');
+    assert.equal(await page.locator('#home').evaluate(el => el.checkVisibility()), true);
+    assert.equal(await page.locator('#bottom-navigation a[href="#home"]').getAttribute('aria-current'), 'page');
     assert.deepEqual(errors, []); assert.deepEqual(outbound, []);
     await context.close();
     console.log('PASS: multi-select union/intersection/order/reset, searchable groups, same-source profile/tabs/credentials, three awards/random decor/placement/reload, duplicate-event/completion/trash farming prevention, legacy schema, cross-tab updates, nav minimize/close/reopen, quota/corrupt-store isolation, no network/GPS.');

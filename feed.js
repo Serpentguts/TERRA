@@ -42,12 +42,50 @@
     syncComposer();
   }
   function link(href, text) { const a = node("a", text); a.href = href; return a; }
-  function sampleCard(sample) {
-    const card = node("li", undefined, "feed-card");
-    const author = TerraFeed.profiles.find(p => p.id === sample.author);
-    card.append(node("p", `FICTIONAL DEMO · ${TerraFeed.types[sample.type]} · Not published`, "demo-purpose"),
-      link(`#demo-profile-${author.id}`, `${author.icon} ${author.name}`), node("h4", sample.title), node("p", sample.body));
+  // Instagram-style card: who posted it, the photo, the caption, then the specifics.
+  const TYPE_ART = { observation: "🔎", offering: "🌻", cultivated: "🪴", update: "📝" };
+  const GROUP_ART = { plant: "🌿", fungus: "🍄", reptile: "🦎", insect: "🐞", fish: "🐟", microorganism: "🦠", mammal: "🦊", bird: "🐦", other: "🔎" };
+  let photoUrls = [];
+  function postCard({ who, whoHref, type, art, observationId, title, caption, details = [], label, extra = [] }) {
+    const card = node("li", undefined, "feed-card post-card");
+    const head = node("div", undefined, "post-head");
+    const avatar = node("span", who.icon || "🌱", "post-avatar"); avatar.setAttribute("aria-hidden", "true");
+    const name = link(whoHref, who.name); name.className = "post-author";
+    const names = node("div", undefined, "post-names");
+    names.append(name, node("span", who.sub ? `${TerraFeed.types[type]} · ${who.sub}` : TerraFeed.types[type], "post-type"));
+    head.append(avatar, names);
+    // The photo comes live from the journal record (never copied into the feed). No photo: an illustration.
+    const media = node("div", undefined, "post-media");
+    const placeholder = node("div", undefined, "post-art");
+    placeholder.append(node("span", art, "post-art-emoji"), node("small", "Illustration · no photo"));
+    placeholder.querySelector(".post-art-emoji").setAttribute("aria-hidden", "true");
+    media.append(placeholder);
+    if (observationId && typeof TerraPhotos !== "undefined") {
+      TerraPhotos.forObservation(observationId).then(rows => {
+        const blob = rows[0]?.full || rows[0]?.thumb;
+        if (!blob || !media.isConnected) return;
+        const url = URL.createObjectURL(blob); photoUrls.push(url);
+        const img = node("img", undefined, "post-photo"); img.src = url; img.alt = `Photo for ${title}`;
+        media.replaceChildren(img);
+        if (rows.length > 1) media.append(node("span", `1/${rows.length}`, "post-count"));
+      }).catch(() => { /* Photos unavailable: keep the illustration. */ });
+    }
+    const body = node("div", undefined, "post-body");
+    body.append(node("h4", title, "post-title"));
+    if (caption) body.append(node("p", caption, "post-caption"));
+    if (details.length) {
+      const dl = node("dl", undefined, "post-details");
+      for (const [k, v] of details) dl.append(node("dt", k), node("dd", v));
+      body.append(dl);
+    }
+    body.append(...extra, node("p", label, "demo-purpose post-label"));
+    card.append(head, media, body);
     return card;
+  }
+  function sampleCard(sample) {
+    const author = TerraFeed.profiles.find(p => p.id === sample.author);
+    return postCard({ who: author, whoHref: `#demo-profile-${author.id}`, type: sample.type, art: sample.art || TYPE_ART[sample.type],
+      title: sample.title, caption: sample.body, label: `FICTIONAL DEMO · ${TerraFeed.types[sample.type]} · Not published` });
   }
   // Fixed samples and profiles have no storage side effects on startup.
   for (const sample of TerraFeed.samples) $("feed-samples").append(sampleCard(sample));
@@ -70,17 +108,22 @@
     $("feed-profiles").append(card);
   }
   function localCard(post, records, preparation) {
-    const card = node("li", undefined, "feed-card");
-    card.dataset.postId = post.id;
-    card.append(node("p", preparation ? "LOCAL PREPARATION · iNaturalist NOT SUBMITTED" : "LOCAL TERRA DEMO · NOT PUBLISHED", "demo-purpose"),
-      link("#profile", "Your local profile · not a public account"), node("h4", post.title), node("p", `${TerraFeed.types[post.type]} · Saved locally ${new Date(post.createdAt).toLocaleString()}`), node("p", post.body));
+    const record = post.observationId ? records?.find(r => r.id === post.observationId) : null;
+    const details = [["Posted", new Date(post.createdAt).toLocaleString()]];
+    const extra = [];
     if (post.observationId) {
-      const record = records?.find(r => r.id === post.observationId);
-      card.append(node("p", record ? sourceSummary(record) : "Source observation unavailable (in Trash, removed, or journal unreadable). No saved snapshot or identification is shown."));
-      if (record) card.append(link("#saved-title", "Review original journal record / provenance"));
+      if (record) {
+        details.unshift(["Organism", `${record.name} · unverified`], ["Group", categories[record.type]], ["Observed", record.date], ["Where", `${privacyLabels[record.privacy]} · location withheld`]);
+        extra.push(link("#saved-title", "Review original journal record / provenance"));
+      } else details.unshift(["Source", "Source observation unavailable (in Trash, removed, or journal unreadable). No saved snapshot or identification is shown."]);
     }
-    if (post.type === "offering") card.append(node("p", "Demo offering only · not available to buy · no transaction."));
-    if (preparation) card.append(node("p", "Review checklist: confirm organism/finding and date, review privacy, choose an appropriate real location and photos separately. No external request or submission was made. This is not an export or an upload-ready payload."));
+    if (post.type === "offering") details.push(["Offering", "Demo only · not available to buy · no transaction"]);
+    if (preparation) details.push(["Checklist", "Confirm organism/finding and date, review privacy, choose an appropriate real location and photos separately. No external request or submission was made. This is not an export or an upload-ready payload."]);
+    const card = postCard({ who: { icon: "🌱", name: "You", sub: "local profile, not public" }, whoHref: "#profile", type: post.type,
+      art: record ? GROUP_ART[record.type] || TYPE_ART.observation : TYPE_ART[post.type], observationId: record ? record.id : null,
+      title: post.title, caption: post.body, details, extra,
+      label: preparation ? "LOCAL PREPARATION · iNaturalist NOT SUBMITTED" : "LOCAL TERRA DEMO · NOT PUBLISHED" });
+    card.dataset.postId = post.id;
     const remove = node("button", "Remove local post / preparation", "text-button"); remove.type = "button";
     remove.setAttribute("aria-label", `Remove local post / preparation: ${post.title}`);
     remove.addEventListener("click", () => {
@@ -89,10 +132,12 @@
       render(); $("feed-status").textContent = "Local post and its preparation removed. Original journal record unchanged.";
       $("feed-save").focus();
     });
-    card.append(remove);
+    card.querySelector(".post-body").append(remove);
     return card;
   }
   function render() {
+    for (const url of photoUrls) URL.revokeObjectURL(url);
+    photoUrls = [];
     let state;
     try { state = read(); readable = true; showError($("feed-storage-error"), ""); }
     catch {

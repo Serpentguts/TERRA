@@ -4,7 +4,7 @@
 // and deletion timestamps are preserved in storage/backups. Photos are never saved.
 const STORAGE_KEY = "terra.observations.v1";
 // Keep legacy fungus/other keys readable in existing version-1 journals and backups.
-const categories = { plant: "Plant", fungus: "Mushroom", insect: "Insect", mammal: "Mammal", bird: "Bird", fish: "Fish", reptile: "Reptile", other: "Other" };
+const categories = { plant: "Plant", fungus: "Mushroom", reptile: "Reptile", insect: "Insect", fish: "Fish", microorganism: "Microorganism", mammal: "Mammal", bird: "Bird", other: "Other" };
 const privacyLabels = { hidden: "Hidden", approximate: "Approximate", exact: "Exact" };
 const form = document.querySelector("#observation-form");
 const organismChoice = document.querySelector("#organism-choice");
@@ -46,6 +46,7 @@ let activeChoice = -1;
 let observations = [];
 let storageReady = false;
 let previewUrl = null;
+let previewFile = null;
 // Retry identity is in memory only; never persist workflow bookkeeping.
 let pendingDiscovery = null;
 const projectObservation = document.querySelector("#project-observation");
@@ -125,7 +126,7 @@ document.addEventListener("terra:prefill-discovery", event => {
     const card = element("li", "identify-photo");
     const img = element("img");
     const url = URL.createObjectURL(file);
-    const image = { img, url };
+    const image = { img, url, file };
     img.alt = `Temporary discovery preview: ${file.name}`;
     img.onerror = () => {
       img.onerror = null;
@@ -142,7 +143,7 @@ document.addEventListener("terra:prefill-discovery", event => {
     img.src = url;
   }
   discoveryImageWrap.hidden = false;
-  transferStatus.textContent = "Draft prefilled only. Review name, date, group, temporary images/location, notes and privacy, then Save separately. Images and location detail are not saved or exported. Nothing sent to iNaturalist.";
+  transferStatus.textContent = "Draft prefilled only. Review name, date, group, temporary images/location, notes and privacy, then Save separately. Transferred photos are saved with the observation only if “Save photos” stays checked; location detail is not saved or exported. Nothing sent to iNaturalist.";
   nameInput.focus();
 });
 
@@ -295,6 +296,9 @@ function load() {
 function persist(next, errorElement = formError) {
   try {
     const retained = TerraData.retain(next);
+    // Records that just expired from Trash take their photos with them.
+    const expired = next.filter(r => !retained.includes(r)).map(r => r.id);
+    if (expired.length && typeof TerraPhotos !== "undefined") TerraPhotos.remove(expired).catch(() => {});
     localStorage.setItem(STORAGE_KEY, JSON.stringify(retained));
     observations = retained;
     showError(errorElement, "");
@@ -310,6 +314,17 @@ function element(tag, className, text) {
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+// "Are you sure?" for deleting, as an in-app dialog (Cancel is the default). Resolves true to delete.
+function confirmDelete(name) {
+  const dialog = document.querySelector("#delete-confirm");
+  if (!dialog || typeof dialog.showModal !== "function") return Promise.resolve(window.confirm(`Delete “${name}”? It moves to Trash for 3 days, then it's gone for good.`));
+  dialog.querySelector("#delete-confirm-name").textContent = `“${name}”`;
+  dialog.returnValue = "";
+  dialog.showModal();
+  dialog.querySelector("#delete-confirm-no").focus();
+  return new Promise(resolve => dialog.addEventListener("close", () => resolve(dialog.returnValue === "delete"), { once: true }));
 }
 
 function render() {
@@ -330,11 +345,19 @@ function render() {
     meta.append(element("span", "category", categories[observation.type]), date);
     card.append(meta, element("h3", "", observation.name));
     card.append(element("p", "card-notes", observation.notes || "No field notes added."));
-    // Version-1 records contain no identification evidence. A manual name or
-    // fixed photo-demo selection must never imply AI, community or expert review.
+    if (observation.taxon) card.append(element("p", "card-taxon", observation.taxon.scientificName));
+    if (observation.agent) {
+      const write = element("details", "card-agent");
+      write.append(element("summary", "", "Agent write-up"), element("p", "", observation.agent.summary));
+      card.append(write);
+    }
+    // A manual name or an agent suggestion must never imply community or expert review.
     const provenance = element("details", "identification-history");
     provenance.append(element("summary", "", "Identification provenance"));
-    provenance.append(element("p", "", "No identification history yet"));
+    const t = observation.taxon, sources = { plantnet: "Pl@ntNet photo ID", inat: "iNaturalist photo ID", gbif: "a GBIF name match", manual: "you" };
+    provenance.append(element("p", "", t
+      ? `Suggested by ${sources[t.source]}${typeof t.score === "number" ? ` (${Math.round(t.score * 100)}% confidence)` : ""} and chosen by you${t.gbifKey ? `; matched to GBIF species ${t.gbifKey}` : ""}. Not yet reviewed by the community or experts.`
+      : "No identification history yet"));
     card.append(provenance);
     const share = element("a", "text-button", "Share / prepare · local demo");
     share.href = "#feed-post-title";
@@ -342,12 +365,22 @@ function render() {
     share.setAttribute("aria-label", `Share or prepare saved observation: ${observation.name} (local demo)`);
     card.append(share);
     const bottom = element("div", "card-bottom");
-    const remove = element("button", "text-button", "🗑 Delete");
+    // Delete sits behind the card's options (gear) button and then asks to confirm, so it's hard to
+    // hit by accident. It moves the record to Trash (restorable for 3 days), never straight out.
+    const gear = element("button", "card-options");
+    gear.type = "button";
+    gear.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+    gear.setAttribute("aria-label", `Options for ${observation.name}`);
+    gear.setAttribute("aria-expanded", "false");
+    const menu = element("div", "card-menu");
+    menu.hidden = true;
+    gear.addEventListener("click", () => { menu.hidden = !menu.hidden; gear.setAttribute("aria-expanded", String(!menu.hidden)); });
+    const remove = element("button", "text-button danger-text", "🗑 Delete observation…");
     remove.type = "button";
     remove.disabled = !storageReady;
     remove.setAttribute("aria-label", `Delete observation: ${observation.name}`);
-    remove.addEventListener("click", () => {
-      if (!window.confirm(`Move “${observation.name}” to Trash? Restore it within 3 days. After that it is permanently removed on the next successful journal change.`)) return;
+    remove.addEventListener("click", async () => {
+      if (!await confirmDelete(observation.name)) { gear.focus(); return; }
       // Read again so another tab's latest entries are not overwritten.
       load();
       if (!storageReady) return;
@@ -357,8 +390,22 @@ function render() {
         exportButton.disabled ? document.querySelector("#name").focus() : exportButton.focus();
       }
     });
-    bottom.append(element("small", "", `Privacy: ${privacyLabels[observation.privacy]} · ${observation.location ? (observation.privacy === "hidden" ? "Location withheld" : observation.privacy === "approximate" ? "Coarse local region only" : "Local schematic pin") : "Legacy record: no location saved"}`), remove);
-    card.append(bottom);
+    menu.append(remove);
+    bottom.append(element("small", "", `Privacy: ${privacyLabels[observation.privacy]} · ${observation.location ? (observation.privacy === "hidden" ? "Location withheld" : observation.privacy === "approximate" ? "Coarse local region only" : "Local schematic pin") : "Legacy record: no location saved"}`), gear);
+    card.append(bottom, menu);
+    // iNaturalist: a link once posted, or a button to post (after the card's other controls).
+    if (!observation.deletedAt) {
+      if (observation.inat) {
+        const link = element("a", "card-inat", "On iNaturalist ↗");
+        link.href = observation.inat.url; link.target = "_blank"; link.rel = "noopener noreferrer";
+        card.append(link);
+      } else if (typeof TerraField !== "undefined") {
+        const post = element("button", "text-button card-inat-post", "Post to iNaturalist");
+        post.type = "button";
+        post.addEventListener("click", async () => { post.disabled = true; post.textContent = "Posting…"; if (!(await TerraField.postToInat(observation))) { post.disabled = false; post.textContent = "Post to iNaturalist"; } });
+        card.append(post);
+      }
+    }
     list.append(card);
   }
   refreshProjectAction();
@@ -395,10 +442,12 @@ function clearPreview() {
   clearDiscoveryImages();
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = null;
+  previewFile = null;
   preview.removeAttribute("src");
   previewWrap.hidden = true;
   photoInput.value = "";
   showError(photoError, "");
+  document.dispatchEvent(new CustomEvent("terra:photo-cleared"));
 }
 
 photoInput.addEventListener("change", () => {
@@ -410,8 +459,10 @@ photoInput.addEventListener("change", () => {
     return;
   }
   previewUrl = URL.createObjectURL(file);
+  previewFile = file; // Kept for saving: the file input itself is cleared above.
   preview.src = previewUrl;
   previewWrap.hidden = false;
+  document.dispatchEvent(new CustomEvent("terra:photo-previewed", { detail: { file } }));
 });
 preview.addEventListener("error", () => {
   clearPreview();
@@ -431,6 +482,9 @@ function saveDiscovery(withProject = false) {
     date: data.get("date"),
     privacy: data.get("privacy")
   };
+  // Keep the agent's identification only if the name is still the one it filled in.
+  const taxon = typeof TerraAgent !== "undefined" ? TerraAgent.taxonFor(observation.name) : null;
+  if (taxon) observation.taxon = taxon;
   const location = TerraMaps.observation.read();
   if (location) observation.location = location;
   if (!validObservation(observation) || !TerraData.observationDate(observation.date) || !location) {
@@ -462,6 +516,10 @@ function saveDiscovery(withProject = false) {
     }
   }
   pendingDiscovery = null;
+  // Photos to keep with this observation: the picked photo plus any transferred from Explore a photo.
+  const photoFiles = document.querySelector("#save-photos").checked
+    ? [...(previewUrl && previewFile ? [previewFile] : []), ...discoveryImages.map(image => image.file).filter(Boolean)]
+    : [];
   const targetProject = discoveryProject.value;
   form.reset();
   TerraLocation.sync("discovery");
@@ -472,13 +530,42 @@ function saveDiscovery(withProject = false) {
   closeSuggestions();
   nameStatus.textContent = "";
   clearPreview();
+  if (typeof TerraAgent !== "undefined") TerraAgent.reset();
   transferStatus.textContent = "";
   render();
   projectObservation.value = observation.id;
-  status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist. Image previews are not saved.`;
+  status.textContent = `Saved “${observation.name}” to the local journal in this browser.${withProject ? " Added to the selected TERRA project." : ""} Nothing was published to iNaturalist.${photoFiles.length ? " Saving photo…" : " No photo saved."}`;
+  document.dispatchEvent(new CustomEvent("terra:observation-saved", { detail: { name: observation.name } }));
+  if (photoFiles.length) {
+    const savedName = observation.name;
+    TerraPhotos.save(observation.id, photoFiles)
+      .then(count => { status.textContent = `Saved “${savedName}” with ${count} photo${count === 1 ? "" : "s"} in this browser. Nothing was uploaded or published.`; })
+      .catch(() => { status.textContent = `Saved “${savedName}”, but its photo couldn't be stored in this browser (storage blocked or full). The observation itself is safe.`; });
+  }
   document.querySelector("#name").focus();
 }
 form.addEventListener("submit", event => { event.preventDefault(); saveDiscovery(); });
+// For other parts of TERRA (field sessions, iNaturalist posting): add or update a journal record
+// through the same validation and storage as the form.
+const TerraJournal = Object.freeze({
+  add(record) {
+    load();
+    if (!storageReady || !validObservation(record) || observations.some(r => r.id === record.id)) return false;
+    if (!persist([record, ...observations], storageError)) return false;
+    render();
+    return true;
+  },
+  update(id, fields) {
+    load();
+    const current = observations.find(r => r.id === id);
+    if (!storageReady || !current) return false;
+    const next = { ...current, ...fields };
+    if (!validObservation(next)) return false;
+    if (!persist(observations.map(r => r.id === id ? next : r), storageError)) return false;
+    render();
+    return true;
+  }
+});
 addProjectButton.addEventListener("click", () => {
   showError(formError, "");
   if (!projectObservation.value) {
@@ -502,7 +589,7 @@ exportButton.addEventListener("click", () => {
   try {
     const exported = {
       format: "terra-observations", version: 1, exportedAt: new Date().toISOString(),
-      notice: "Browser-only journal. May include versioned local schematic locations and 3-day Trash timestamps. No photos or real geographic coordinates. Keep private; do not downgrade to older builds that discard optional fields.",
+      notice: "TERRA journal backup. Restore it with Journal → Restore. May include real GPS coordinates (observations saved with Exact location), coarse location areas, notes, agent write-ups, iNaturalist links and 3-day Trash timestamps. Photos are not included. Keep this file private; do not downgrade to older builds that discard optional fields.",
       observations: TerraData.retain(observations)
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" }));
