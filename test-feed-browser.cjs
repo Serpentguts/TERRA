@@ -40,7 +40,13 @@ const { chromium } = require('playwright');
     await page.click('#feed-save');
     assert.equal((await feed()).posts.length, 1);
     assert.equal(await page.locator('#feed-local-posts img, #feed-local-posts script').count(), 0);
-    assert.match(await page.locator('#feed-local-posts').textContent(), /NOT PUBLISHED.*not available to buy/is);
+    assert.match(await page.locator('#feed-local-posts').textContent(), /not available to buy/i);
+    assert.match(await page.locator('#feed-local-posts').textContent(), /NOT PUBLISHED/);
+    // Instagram-style order: who posted → photo (or illustration) → title and caption → specifics.
+    assert.deepEqual(await page.locator('#feed-local-posts > li').first().evaluate(li => [...li.children].map(c => c.className)), ['post-head', 'post-media', 'post-body']);
+    assert.deepEqual(await page.locator('#feed-local-posts .post-body').first().evaluate(b => [...b.children].map(c => c.className || c.tagName)),
+      ['post-title', 'post-caption', 'post-details', 'demo-purpose post-label', 'text-button']);
+    assert.equal(await page.locator('#feed-samples .post-media .post-art').count(), 5, 'samples show illustrations, never photos');
     assert.equal(await raw(J), null);
 
     // Seed legacy and privacy-tier records: no changes/migrations or copied private details.

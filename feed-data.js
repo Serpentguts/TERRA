@@ -10,11 +10,11 @@ const TerraFeed = (() => {
     { id: "robin", name: "Robin · mock profile", icon: "🐦", bio: "Fictional neighborhood naturalist. All sightings are invented." }
   ]);
   const samples = Object.freeze([
-    { author: "moss", type: "observation", title: "A fan-shaped finding", body: "Invented observation: a fallen branch, an imaginary woodland morning. Discovery: a possible bracket fungus, unverified. Not a real field record." },
-    { author: "fern", type: "offering", title: "Seed swap example", body: "Fictional seed packets for a garden swap. Demo offering / sale only — unavailable, no checkout, contact or transaction." },
-    { author: "fern", type: "cultivated", title: "New leaves on the windowsill", body: "An imaginary cultivated basil plant putting out its next pair of leaves." },
-    { author: "robin", type: "observation", title: "A visitor to the hedgerow", body: "Invented observation: a small bird, a fictional afternoon, an imaginary hedgerow. Discovery: organism unresolved; no verified identification." },
-    { author: "robin", type: "update", title: "Looking a little closer", body: "A fictional field update about noticing textures without disturbing habitat." }
+    { author: "moss", type: "observation", title: "A fan-shaped finding", art: "🍄", body: "Invented observation: a fallen branch, an imaginary woodland morning. Discovery: a possible bracket fungus, unverified. Not a real field record." },
+    { author: "fern", type: "offering", title: "Seed swap example", art: "🌻", body: "Fictional seed packets for a garden swap. Demo offering / sale only — unavailable, no checkout, contact or transaction." },
+    { author: "fern", type: "cultivated", title: "New leaves on the windowsill", art: "🌱", body: "An imaginary cultivated basil plant putting out its next pair of leaves." },
+    { author: "robin", type: "observation", title: "A visitor to the hedgerow", art: "🐦", body: "Invented observation: a small bird, a fictional afternoon, an imaginary hedgerow. Discovery: organism unresolved; no verified identification." },
+    { author: "robin", type: "update", title: "Looking a little closer", art: "🔍", body: "A fictional field update about noticing textures without disturbing habitat." }
   ]);
   const text = (value, max) => typeof value === "string" && value.length <= max;
   const id = value => text(value, 200) && Boolean(value.trim());

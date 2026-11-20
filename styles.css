@@ -845,3 +845,24 @@ body[data-workspace="professional"] #home-quests, body[data-workspace="professio
 .confirm-actions button { min-height: 44px; padding: 8px 18px; font-size: 15px; font-weight: 600; border-radius: 8px; cursor: pointer; }
 .danger-button { border: 1px solid #8c1d18; background: #8c1d18; color: #fff; }
 .danger-button:hover { background: #6f1612; }
+/* Feed posts, Instagram-style: who → photo → caption → specifics */
+#feed .post-card { max-width: 520px; padding: 0; overflow: hidden; }
+.post-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+.post-avatar { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 50%; background: #edf0e6; box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--green); font-size: 18px; }
+.post-author { font-weight: 650; color: var(--ink); text-decoration: none; min-width: 0; }
+.post-author:hover, .post-author:focus-visible { text-decoration: underline; }
+.post-names { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.post-type { font-size: 12px; color: var(--muted); }
+.post-media { position: relative; aspect-ratio: 4 / 5; max-height: 560px; background: #e7ece0; overflow: hidden; }
+.post-photo { display: block; width: 100%; height: 100%; object-fit: cover; }
+.post-count { position: absolute; top: 10px; right: 10px; padding: 2px 8px; border-radius: 10px; background: #1b2a22b3; color: #fff; font-size: 12px; }
+.post-art { display: grid; place-content: center; justify-items: center; gap: 8px; width: 100%; height: 100%; background: radial-gradient(circle at 30% 25%, #f4f6ee 0, #dfe7d4 45%, #c9d6bc 100%); color: var(--muted); }
+.post-art-emoji { font-size: clamp(64px, 22vw, 112px); line-height: 1; filter: saturate(.9); }
+#feed .post-body { padding: 12px 14px 16px; }
+#feed .post-card .post-title { margin: 0 0 4px; font-size: 17px; }
+#feed .post-card .post-caption { margin: 0 0 10px; }
+.post-details { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 10px 0; padding-top: 10px; border-top: 1px solid #edf0e8; font-size: 13px; }
+.post-details dt { color: var(--muted); font-weight: 600; }
+.post-details dd { margin: 0; }
+#feed .post-card .post-label { margin: 10px 0 6px; font-size: 11px; }
+@media (max-width: 420px) { .post-details { grid-template-columns: 1fr; } .post-details dd { margin-bottom: 4px; } }
